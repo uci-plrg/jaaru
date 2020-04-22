@@ -7,7 +7,7 @@
 
 #include <cstddef>
 #include <inttypes.h>
-
+#include "classlist.h"
 #include "mypthread.h"
 #include "mymemory.h"
 #include "memoryorder.h"
@@ -97,6 +97,7 @@ public:
 	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, int size);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size);
 	ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t time);
+	ModelAction(action_type_t type);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
 	~ModelAction();
 	void print() const;

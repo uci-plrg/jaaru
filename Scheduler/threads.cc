@@ -372,7 +372,7 @@ Thread::Thread(thread_id_t tid) :
 	state(THREAD_READY),	/* Thread is always ready? */
 	last_action_val(0),
 	model_thread(true),
-	memory()
+	memory(new ThreadMemory())
 {
 	memset(&context, 0, sizeof(context));
 }
@@ -398,7 +398,7 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
 	state(THREAD_CREATED),
 	last_action_val(VALUE_NONE),
 	model_thread(false),
-	memory()
+	memory(new ThreadMemory())
 {
 	int ret;
 
@@ -431,7 +431,7 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void *(*func)(void *), void *a, Threa
 	state(THREAD_CREATED),
 	last_action_val(VALUE_NONE),
 	model_thread(false),
-	memory()
+	memory(new ThreadMemory())
 {
 	int ret;
 

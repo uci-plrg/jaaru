@@ -3,7 +3,12 @@
 #include <inttypes.h>
 #include "stl-model.h"
 #include "hashset.h"
-#include "modeltypes.h"
+
+typedef int thread_id_t;
+
+#define THREAD_ID_T_NONE        -1
+
+typedef unsigned int modelclock_t;
 
 class CacheLine;
 class ThreadMemory;
@@ -11,7 +16,7 @@ class Thread;
 class ModelAction;
 class ModelExecution;
 class Scheduler;
-
+class ClockVector;
 //struct model_snapshot_members;
 /*
 typedef SnapList<ModelAction *> action_list_t;

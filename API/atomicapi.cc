@@ -6,6 +6,8 @@
 #include "common.h"
 #include "pmcheckapi.h"
 #include "threadmemory.h"
+
+
 memory_order orders[7] = {
         memory_order_relaxed, memory_order_consume, memory_order_acquire,
         memory_order_release, memory_order_acq_rel, memory_order_seq_cst,
@@ -57,7 +59,7 @@ VOLATILESTORE(64)
         void pmc_atomic_init ## size (void * obj, uint ## size ## _t val, const char * position) { \
 		DEBUG("pmc_atomic_init%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val);\
                 createModelIfNotExist();                                                      \
-		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val)			\
+		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val);		\
                 getThreadMemory()->applyRMW(action);											\
 		model->switch_to_master(action); 											\
                 *((volatile uint ## size ## _t *)obj) = val;										\
@@ -75,7 +77,7 @@ PMCATOMICINT(64)
 		DEBUG("pmc_atomic_load%u:addr = %p\n", size, obj);\
                 createModelIfNotExist();												\
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj);				\
-		getThreadMemory()->applyRead(action)											\
+		getThreadMemory()->applyRead(action, size);											\
                 uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action); 						\
                 return val;														\
         }
@@ -91,8 +93,8 @@ PMCATOMICLOAD(64)
         void pmc_atomic_store ## size(void * obj, uint ## size ## _t val, int atomic_index, const char * position) {			\
 		DEBUG("pmc_atomic_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val);\
                 createModelIfNotExist();												\
-		ModelAction *action =  new modelaction(atomic_write, position, orders[atomic_index], obj, (uint64_t) val);		\
-                getThreadMemory()->applyWrite(action);											\
+		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val);		\
+                getThreadMemory()->applyWrite(action, size);											\
 		model->switch_to_master(action);											\
                 *((volatile uint ## size ## _t *)obj) = val;										\
         }

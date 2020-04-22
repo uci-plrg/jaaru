@@ -1,19 +1,19 @@
 #include "pmcheckapi.h"
 #include "model.h"
-#include "threadmem.h"
+#include "threadmemory.h"
 #include "threads-model.h"
 #include "common.h"
 // PMC Non-Atomic Store
 inline ThreadMemory* getThreadMemory(){
-	createmodelIfNotExist();
-	return = thread_current()->getMemory();
+	createModelIfNotExist();
+	return thread_current()->getMemory();
 	
 }
 
 #define PMCHECKSTORE(size) 									\
 	void pmc_store ## size (void *addrs){							\
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);\
-		getThreadMemory()->applyWrite(new ModelAction(NONATOMIC_WRITE, memory_order_seq_cst, addrs) ); \
+		getThreadMemory()->applyWrite(new ModelAction(NONATOMIC_WRITE, memory_order_seq_cst, addrs), size); \
 	}
 PMCHECKSTORE(8)
 PMCHECKSTORE(16)
@@ -26,7 +26,7 @@ PMCHECKSTORE(64)
 #define PMCHECKLOAD(size)										\
 	void pmc_load ## size (void *addrs) {								\
 		DEBUG("pmc_load%u:addr = %p\n", size, addrs);\
-		getThreadMemory()->applyRead( new ModelAction(NONATOMIC_READ, memory_order_seq_cst, addrs);	\
+		getThreadMemory()->applyRead( new ModelAction(NONATOMIC_READ, memory_order_seq_cst, addrs) , size);	\
 	}
 
 PMCHECKLOAD(8)
@@ -45,7 +45,7 @@ void pmc_clwb(void * addrs){
 
 void pmc_clflushopt(void * addrs){
 	DEBUG("pmc_clflushopt:addr = %p\n",addrs);
-	getThreadMemory()->applyCacheOp(new ModelAction(ACTION_CLFLUSHOpt, memory_order_seq_cst, addrs) );
+	getThreadMemory()->applyCacheOp(new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs) );
 }
 
 void pmc_clflush(void * addrs){
@@ -55,7 +55,7 @@ void pmc_clflush(void * addrs){
 
 void pmc_mfence(){
 	DEBUG("pmc_mfence\n");
-	getThreadMemory()->applyFence(new ModelAction(ACTION_CACHEMFENCE) );
+	getThreadMemory()->applyFence(new ModelAction(CACHE_MFENCE) );
 }
 
 void pmc_lfence(){
@@ -64,6 +64,6 @@ void pmc_lfence(){
 
 void pmc_sfence(){
 	DEBUG("pmc_sfence\n");
-	getThreadMemory()->applyFence(new ModelAction(ACTION_CACHESFENCE)
+	getThreadMemory()->applyFence(new ModelAction(CACHE_SFENCE) );
 }
 

@@ -54,7 +54,7 @@ public:
 	void set_state(thread_state s);
 	thread_id_t get_id() const;
 	thrd_t get_thrd_t() const { return *user_thread; }
-	ThreadMemory * getMemory(){return &memory;}
+	ThreadMemory * getMemory(){return memory;}
 	Thread * get_parent() const { return parent; }
 
 	void set_creation(ModelAction *act) { creation = act; }
@@ -183,7 +183,7 @@ private:
 
 	/** @brief Is this Thread a special model-checker thread? */
 	const bool model_thread;
-	ThreadMemory memory;
+	ThreadMemory* memory;
 };
 
 #ifdef TLS

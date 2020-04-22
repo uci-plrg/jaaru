@@ -33,5 +33,5 @@ void pmc_sfence();
 #if __cplusplus
 }
 #endif
-extern inline ThreadMemory* getThreadMemory();
+
 #endif

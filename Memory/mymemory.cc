@@ -11,7 +11,6 @@
 #include "common.h"
 #include "threads-model.h"
 #include "model.h"
-#include "datarace.h"
 
 #define REQUESTS_BEFORE_ALLOC 1024
 

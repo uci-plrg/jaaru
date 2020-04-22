@@ -87,4 +87,6 @@ private:
 };
 
 extern ModelChecker *model;
+void createModelIfNotExist();
+
 #endif	/* __MODEL_H__ */

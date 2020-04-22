@@ -5,6 +5,8 @@
 #ifndef ATOMICAPI_H
 #define ATOMICAPI_H
 
+#include <stdint.h>
+
 #if __cplusplus
 extern "C" {
 #else

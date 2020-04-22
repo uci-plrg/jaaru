@@ -89,6 +89,32 @@ ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value,
 }
 
 /**
+ * @brief Construct a new ModelAction for cache fence
+ *
+ * @param type The type of action: CACHE_MFENCE
+ */
+
+ModelAction::ModelAction(action_type_t type) :
+	location(NULL),
+	position(NULL),
+	time(0),
+	last_fence_release(NULL),
+	cv(NULL),
+	rf_cv(NULL),
+	trace_ref(NULL),
+	thrdmap_ref(NULL),
+	action_ref(NULL),
+	value(0),
+	type(type),
+	order(memory_order_seq_cst),
+	original_order(memory_order_seq_cst),
+	seq_number(ACTION_INITIAL_CLOCK)
+{
+	Thread *t = thread_current();
+	this->tid = t!= NULL ? t->get_id() : -1;
+}
+
+/**
  * @brief Construct a new ModelAction
  *
  * @param type The type of action
