@@ -6,6 +6,7 @@
 #include "common.h"
 #include "model.h"
 #include "execution.h"
+#include "fuzzer.h"
 
 /**
  * Format an "enabled_type_t" for printing

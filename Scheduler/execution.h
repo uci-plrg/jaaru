@@ -17,6 +17,7 @@
 #include "mypthread.h"
 #include <condition_variable>
 #include "classlist.h"
+#include "mutex.h"
 
 typedef SnapList<ModelAction *> action_list_t;
 
@@ -32,7 +33,7 @@ public:
 	Thread * take_step(ModelAction *curr);
 
 	void print_summary();
-
+	void print_tail();
 	void add_thread(Thread *t);
 	Thread * get_thread(thread_id_t tid) const;
 	Thread * get_thread(const ModelAction *act) const;
@@ -67,8 +68,9 @@ public:
 	bool is_deadlocked() const;
 
 	action_list_t * get_action_trace() { return &action_trace; }
-	HashTable<pthread_cond_t *, cdsc::snapcondition_variable *, uintptr_t, 4> * getCondMap() {return &cond_map;}
-	HashTable<pthread_mutex_t *, cdsc::snapmutex *, uintptr_t, 4> * getMutexMap() {return &mutex_map;}
+	Fuzzer * getFuzzer();
+	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> * getCondMap() {return &cond_map;}
+	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> * getMutexMap() {return &mutex_map;}
 	ModelAction * check_current_action(ModelAction *curr);
 
 	bool isFinished() {return isfinished;}
@@ -76,7 +78,9 @@ public:
 	void restore_last_seq_num();
 	void collectActions();
 	modelclock_t get_curr_seq_num();
-	
+#ifdef TLS
+        pthread_key_t getPthreadKey() {return pthreadkey;}
+#endif	
 	SNAPSHOTALLOC
 private:
 	int get_execution_number() const;
@@ -110,36 +114,68 @@ private:
 	void removeAction(ModelAction *act);
 	void fixupLastAct(ModelAction *act);
 
-	ModelChecker *model;
+#ifdef TLS
+        pthread_key_t pthreadkey;
+#endif
+        ModelChecker *model;
+        struct model_params * params;
 
-	/** The scheduler to use: tracks the running/ready Threads */
-	Scheduler * const scheduler;
-
-
-	SnapVector<Thread *> thread_map;
-	SnapVector<Thread *> pthread_map;
-	uint32_t pthread_counter;
-
-	action_list_t action_trace;
+        /** The scheduler to use: tracks the running/ready Threads */
+        Scheduler * const scheduler;
 
 
-	/** Per-object list of actions that each thread performed. */
-	HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_thrd_map;
+        SnapVector<Thread *> thread_map;
+        SnapVector<Thread *> pthread_map;
+        uint32_t pthread_counter;
 
-	/** Per-object list of writes that each thread performed. */
-	HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
+        action_list_t action_trace;
 
-	/** A special model-checker Thread; used for associating with
-	 *  model-checker-related ModelAcitons */
-	Thread *model_thread;
 
+        /** Per-object list of actions. Maps an object (i.e., memory location)
+         * to a trace of all actions performed on the object.
+         * Used only for SC fences, unlocks, & wait.
+         */
+        HashTable<const void *, action_list_t *, uintptr_t, 2> obj_map;
+
+        /** Per-object list of actions. Maps an object (i.e., memory location)
+         * to a trace of all actions performed on the object. */
+        HashTable<const void *, action_list_t *, uintptr_t, 2> condvar_waiters_map;
+
+        /** Per-object list of actions that each thread performed. */
+        HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_thrd_map;
+
+        /** Per-object list of writes that each thread performed. */
+        HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
+
+        HashTable<const void *, ModelAction *, uintptr_t, 4> obj_last_sc_map;
+
+
+        HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;
+        HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;
+
+        /**
+         * List of pending release sequences. Release sequences might be
+         * determined lazily as promises are fulfilled and modification orders
+         * are established. Each entry in the list may only be partially
+         * filled, depending on its pending status.
+         */
+
+        SnapVector<ModelAction *> thrd_last_action;
+        SnapVector<ModelAction *> thrd_last_fence_release;
+
+        /** A special model-checker Thread; used for associating with
+         *  model-checker-related ModelAcitons */
+        Thread *model_thread;
 	/** Private data members that should be snapshotted. They are grouped
-	 * together for efficiency and maintainability. */
-	struct model_snapshot_members * const priv;
+         * together for efficiency and maintainability. */
+        struct model_snapshot_members * const priv;
 
-	Thread * action_select_next_thread(const ModelAction *curr) const;
+	Fuzzer * fuzzer;
 
-	bool isfinished;
+        Thread * action_select_next_thread(const ModelAction *curr) const;
+	bool paused_by_fuzzer(const ModelAction * act) const;
+        bool isfinished;
+
 };
 
 #endif	/* __EXECUTION_H__ */

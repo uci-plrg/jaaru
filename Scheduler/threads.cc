@@ -14,7 +14,7 @@
 #include "model.h"
 #include "execution.h"
 #include "schedule.h"
-
+#include "threadmemory.h"
 #ifdef TLS
 #include <dlfcn.h>
 uintptr_t get_tls_addr() {

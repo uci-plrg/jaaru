@@ -17,12 +17,13 @@ class ModelAction;
 class ModelExecution;
 class Scheduler;
 class ClockVector;
+class Fuzzer;
+class ModelChecker;
 //struct model_snapshot_members;
 /*
 typedef SnapList<ModelAction *> action_list_t;
 typedef SnapList<uint32_t> func_id_list_t;
 typedef SnapList<FuncInst *> func_inst_list_t;
-typedef HashTable<FuncInst *, ModelAction *, uintptr_t, 0> inst_act_map_t;
 
 typedef HashSet<Predicate *, uintptr_t, 0, model_malloc, model_calloc, model_free> PredSet;
 typedef HSIterator<Predicate *, uintptr_t, 0, model_malloc, model_calloc, model_free> PredSetIter;
@@ -37,6 +38,7 @@ typedef HSIterator<thread_id_t, int, 0> thrd_id_set_iter;
 extern volatile int modellock;
 */
 
+typedef SnapList<ModelAction *> action_list_t;
 
 unsigned int cacheLineHashFunction ( CacheLine * cl);
 bool cacheLineEquals(CacheLine *c1, CacheLine *c2);

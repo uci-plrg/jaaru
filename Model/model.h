@@ -19,8 +19,6 @@
 #include "snapshot-interface.h"
 #include "reporter.h"
 
-typedef SnapList<ModelAction *> action_list_t;
-
 /** @brief The central structure for model-checking */
 class ModelChecker {
 public:

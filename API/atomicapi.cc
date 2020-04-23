@@ -14,7 +14,7 @@ memory_order orders[7] = {
 };
 
 
-static void createModelIfNotExist() {
+void createModelIfNotExist() {
         if (!model) {
                 snapshot_system_init(10000, 1024, 1024, 40000);
                 model = new ModelChecker();
