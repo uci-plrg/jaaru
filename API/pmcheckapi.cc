@@ -3,6 +3,8 @@
 #include "threadmemory.h"
 #include "threads-model.h"
 #include "common.h"
+#include "datarace.h"
+
 // PMC Non-Atomic Store
 inline ThreadMemory* getThreadMemory(){
 	createModelIfNotExist();
@@ -12,8 +14,14 @@ inline ThreadMemory* getThreadMemory(){
 
 #define PMCHECKSTORE(size) 									\
 	void pmc_store ## size (void *addrs){							\
-		DEBUG("pmc_store%u:addr = %p\n", size, addrs);\
-		getThreadMemory()->applyWrite(new ModelAction(NONATOMIC_WRITE, memory_order_seq_cst, addrs), size); \
+		DEBUG("pmc_store%u:addr = %p\n", size, addrs);								\
+		ModelAction *action = new ModelAction(NONATOMIC_WRITE, memory_order_seq_cst, addrs);			\
+		action->setOperatorSize(size);										\
+		getThreadMemory()->applyWrite(action);									\
+		thread_id_t tid = thread_current()->get_id();           \
+		for(int i=0; i< size/8; i++){										\
+			raceCheckWrite(tid, (void *)(((uintptr_t)addrs) + i));						\
+		}													\
 	}
 PMCHECKSTORE(8)
 PMCHECKSTORE(16)
@@ -23,10 +31,16 @@ PMCHECKSTORE(64)
 
 // PMC Non-Atomic Load
 
-#define PMCHECKLOAD(size)										\
-	void pmc_load ## size (void *addrs) {								\
-		DEBUG("pmc_load%u:addr = %p\n", size, addrs);\
-		getThreadMemory()->applyRead( new ModelAction(NONATOMIC_READ, memory_order_seq_cst, addrs) , size);	\
+#define PMCHECKLOAD(size)											\
+	void pmc_load ## size (void *addrs) {									\
+		DEBUG("pmc_load%u:addr = %p\n", size, addrs);							\
+		ModelAction *action = new ModelAction(NONATOMIC_READ, memory_order_seq_cst, addrs);		\
+		action->setOperatorSize(size);									\
+		getThreadMemory()->applyRead( action);								\
+		thread_id_t tid = thread_current()->get_id();           \
+		for(int i=0; i< size/8; i++){                                                                           \
+                        raceCheckRead(tid, (void *)(((uintptr_t)addrs) + i));                                           \
+                }												\
 	}
 
 PMCHECKLOAD(8)
@@ -59,6 +73,7 @@ void pmc_mfence(){
 }
 
 void pmc_lfence(){
+	DEBUG("pmc_lfence\n");
 	ASSERT(0);
 }
 

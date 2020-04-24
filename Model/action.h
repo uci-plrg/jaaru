@@ -184,6 +184,7 @@ public:
         inline bool operator >(const ModelAction& act) const {
                 return get_seq_number() > act.get_seq_number();
         }
+	inline void setOperatorSize(uint size){this->opbitsize = size;}
 	
 	void process_rmw(ModelAction * act);
         void copy_typeandorder(ModelAction * act);
@@ -194,6 +195,12 @@ public:
         /* to accomodate pthread create and join */
         Thread * thread_operand;
         void set_thread_operand(Thread *th) { thread_operand = th; }
+	void setTraceRef(sllnode<ModelAction *> *ref) { trace_ref = ref; }
+        void setThrdMapRef(sllnode<ModelAction *> *ref) { thrdmap_ref = ref; }
+        void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
+        sllnode<ModelAction *> * getTraceRef() { return trace_ref; }
+        sllnode<ModelAction *> * getThrdMapRef() { return thrdmap_ref; }
+        sllnode<ModelAction *> * getActionRef() { return action_ref; }
 
 	SNAPSHOTALLOC
 private:
@@ -229,7 +236,9 @@ private:
          */
 	ClockVector *cv;
         ClockVector *rf_cv;
-
+	sllnode<ModelAction *> * trace_ref;
+        sllnode<ModelAction *> * thrdmap_ref;
+        sllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
 	uint64_t value;
 
@@ -252,6 +261,12 @@ private:
 	 * should represent the action's position in the execution order.
 	 */
 	modelclock_t seq_number;
+	/**
+	 * @brief Size of this action
+	 * If the action is write or read, we keep the size of the operation here.
+	 * (e.g. 8, 16, 32, or 64)
+	 */
+	 uint opbitsize;
 };
 
 #endif	/* __ACTION_H__ */

@@ -12,7 +12,9 @@
 #include "threads-model.h"
 #include "reporter.h"
 #include "fuzzer.h"
-
+#include "datarace.h"
+#include "mutex.h"
+#include "threadmemory.h"
 #define INITIAL_THREAD_ID       0
 
 /**
@@ -35,6 +37,8 @@ struct model_snapshot_members {
 	unsigned int next_thread_id;
 	modelclock_t used_sequence_numbers;
 	SnapVector<bug_message *> bugs;
+	/** @brief Incorrectly-ordered synchronization was made */
+        bool asserted;
 
 	SNAPSHOTALLOC
 };
@@ -93,7 +97,7 @@ void ModelExecution::print_tail()
 
 	       ModelAction * act = it->getVal();
 	       list.push_front(act);
-	       counter;
+	       counter++;
 	}
 
 	for (it = list.begin();it != NULL;it=it->getNext()) {
@@ -308,6 +312,8 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  */
 bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
+	getThreadMemory()->applyRead(curr);
+	ASSERT(0);
 	SnapVector<ModelAction *> * priorset = new SnapVector<ModelAction *>();
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
@@ -335,9 +341,6 @@ bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 		ASSERT(rf);
 		bool canprune = false;
 		if (r_modification_order(curr, rf, priorset, &canprune)) {
-			for(unsigned int i=0;i<priorset->size();i++) {
-				mo_graph->addEdge((*priorset)[i], rf);
-			}
 			read_from(curr, rf);
 			get_thread(curr)->set_return_value(curr->get_return_value());
 			delete priorset;
@@ -367,8 +370,8 @@ bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
  */
 bool ModelExecution::process_mutex(ModelAction *curr)
 {
-	cdsc::mutex *mutex = curr->get_mutex();
-	struct cdsc::mutex_state *state = NULL;
+	pmc::mutex *mutex = curr->get_mutex();
+	struct pmc::mutex_state *state = NULL;
 
 	if (mutex)
 		state = mutex->get_state();
@@ -701,8 +704,8 @@ bool ModelExecution::synchronize(const ModelAction *first, ModelAction *second)
  */
 bool ModelExecution::check_action_enabled(ModelAction *curr) {
 	if (curr->is_lock()) {
-		cdsc::mutex *lock = curr->get_mutex();
-		struct cdsc::mutex_state *state = lock->get_state();
+		pmc::mutex *lock = curr->get_mutex();
+		struct pmc::mutex_state *state = lock->get_state();
 		if (state->locked)
 			return false;
 	} else if (curr->is_thread_join()) {
@@ -775,11 +778,10 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 /** Close out a RMWR by converting previous RMWR into a RMW or READ. */
 ModelAction * ModelExecution::process_rmw(ModelAction *act) {
+	getThreadMemory()->applyRMW(act);
+	ASSERT(0);
 	ModelAction *lastread = get_last_action(act->get_tid());
 	lastread->process_rmw(act);
-	if (act->is_rmw()) {
-		mo_graph->addRMWEdge(lastread->get_reads_from(), lastread);
-	}
 	return lastread;
 }
 
@@ -858,13 +860,11 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
 				else
 					continue;
 			}
-
+			ASSERT(0);
 			if (act->is_write()) {
 				/* C++, Section 29.3 statement 5 */
 				if (curr->is_seqcst() && last_sc_fence_thread_local &&
 						*act < *last_sc_fence_thread_local) {
-					if (mo_graph->checkReachable(rf, act))
-						return false;
 					if (!check_only)
 						priorset->push_back(act);
 					break;
@@ -872,8 +872,6 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
 				/* C++, Section 29.3 statement 4 */
 				else if (act->is_seqcst() && last_sc_fence_local &&
 								 *act < *last_sc_fence_local) {
-					if (mo_graph->checkReachable(rf, act))
-						return false;
 					if (!check_only)
 						priorset->push_back(act);
 					break;
@@ -881,8 +879,6 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
 				/* C++, Section 29.3 statement 6 */
 				else if (last_sc_fence_thread_before &&
 								 *act < *last_sc_fence_thread_before) {
-					if (mo_graph->checkReachable(rf, act))
-						return false;
 					if (!check_only)
 						priorset->push_back(act);
 					break;
@@ -901,15 +897,11 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
 					}
 				}
 				if (act->is_write()) {
-					if (mo_graph->checkReachable(rf, act))
-						return false;
 					if (!check_only)
 						priorset->push_back(act);
 				} else {
 					ModelAction *prevrf = act->get_reads_from();
 					if (!prevrf->equals(rf)) {
-						if (mo_graph->checkReachable(rf, prevrf))
-							return false;
 						if (!check_only)
 							priorset->push_back(prevrf);
 					} else {
@@ -1034,45 +1026,7 @@ void ModelExecution::w_modification_order(ModelAction *curr)
 			}
 		}
 	}
-	mo_graph->addEdges(&edgeset, curr);
 
-}
-
-/**
- * Arbitrary reads from the future are not allowed. Section 29.3 part 9 places
- * some constraints. This method checks one the following constraint (others
- * require compiler support):
- *
- *   If X --hb-> Y --mo-> Z, then X should not read from Z.
- *   If X --hb-> Y, A --rf-> Y, and A --mo-> Z, then X should not read from Z.
- */
-bool ModelExecution::mo_may_allow(const ModelAction *writer, const ModelAction *reader)
-{
-	SnapVector<action_list_t> *thrd_lists = obj_thrd_map.get(reader->get_location());
-	unsigned int i;
-	/* Iterate over all threads */
-	for (i = 0;i < thrd_lists->size();i++) {
-		const ModelAction *write_after_read = NULL;
-
-		/* Iterate over actions in thread, starting from most recent */
-		action_list_t *list = &(*thrd_lists)[i];
-		sllnode<ModelAction *>* rit;
-		for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
-			ModelAction *act = rit->getVal();
-
-			/* Don't disallow due to act == reader */
-			if (!reader->happens_before(act) || reader == act)
-				break;
-			else if (act->is_write())
-				write_after_read = act;
-			else if (act->is_read() && act->get_reads_from() != NULL)
-				write_after_read = act->get_reads_from();
-		}
-
-		if (write_after_read && write_after_read != writer && mo_graph->checkReachable(write_after_read, writer))
-			return false;
-	}
-	return true;
 }
 
 /**
@@ -1428,19 +1382,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 				if (curr->is_seqcst() && (act->is_seqcst() || (last_sc_write != NULL && act->happens_before(last_sc_write))) && act != last_sc_write)
 					allow_read = false;
 
-				/* Need to check whether we will have two RMW reading from the same value */
-				if (curr->is_rmwr()) {
-					/* It is okay if we have a failing CAS */
-					if (!curr->is_rmwrcas() ||
-							valequals(curr->get_value(), act->get_value(), curr->getSize())) {
-						//Need to make sure we aren't the second RMW
-						CycleNode * node = mo_graph->getNode_noCreate(act);
-						if (node != NULL && node->getRMW() != NULL) {
-							//we are the second RMW
-							allow_read = false;
-						}
-					}
-				}
+				/*TODO: Need to check whether we will have two RMW reading from the same value */
 
 				if (allow_read) {
 					/* Only add feasible reads */
@@ -1481,51 +1423,9 @@ static void print_list(action_list_t *list)
 	model_print("------------------------------------------------------------------------------------\n");
 }
 
-#if SUPPORT_MOD_ORDER_DUMP
-void ModelExecution::dumpGraph(char *filename)
-{
-	char buffer[200];
-	sprintf(buffer, "%s.dot", filename);
-	FILE *file = fopen(buffer, "w");
-	fprintf(file, "digraph %s {\n", filename);
-	mo_graph->dumpNodes(file);
-	ModelAction **thread_array = (ModelAction **)model_calloc(1, sizeof(ModelAction *) * get_num_threads());
-
-	for (sllnode<ModelAction*>* it = action_trace.begin();it != NULL;it=it->getNext()) {
-		ModelAction *act = it->getVal();
-		if (act->is_read()) {
-			mo_graph->dot_print_node(file, act);
-			mo_graph->dot_print_edge(file,
-															 act->get_reads_from(),
-															 act,
-															 "label=\"rf\", color=red, weight=2");
-		}
-		if (thread_array[act->get_tid()]) {
-			mo_graph->dot_print_edge(file,
-															 thread_array[id_to_int(act->get_tid())],
-															 act,
-															 "label=\"sb\", color=blue, weight=400");
-		}
-
-		thread_array[act->get_tid()] = act;
-	}
-	fprintf(file, "}\n");
-	model_free(thread_array);
-	fclose(file);
-}
-#endif
-
 /** @brief Prints an execution trace summary. */
 void ModelExecution::print_summary()
 {
-#if SUPPORT_MOD_ORDER_DUMP
-	char buffername[100];
-	sprintf(buffername, "exec%04u", get_execution_number());
-	mo_graph->dumpGraphToFile(buffername);
-	sprintf(buffername, "graph%04u", get_execution_number());
-	dumpGraph(buffername);
-#endif
-
 	model_print("Execution trace %d:", get_execution_number());
 	if (scheduler->all_threads_sleeping())
 		model_print(" SLEEP-SET REDUNDANT");
@@ -1705,8 +1605,6 @@ void ModelExecution::removeAction(ModelAction *act) {
 			obj_last_sc_map.remove(act->get_location());
 		}
 
-		//Remove from Cyclegraph
-		mo_graph->freeAction(act);
 	}
 }
 
@@ -1743,19 +1641,18 @@ void ModelExecution::fixupLastAct(ModelAction *act) {
 /** Compute which actions to free.  */
 
 void ModelExecution::collectActions() {
-        if (priv->used_sequence_numbers < params->traceminsize)
+	if (priv->used_sequence_numbers < params->traceminsize)
                 return;
-
+	
         //Compute minimal clock vector for all live threads
         ClockVector *cvmin = computeMinimalCV();
-        SnapVector<CycleNode *> * queue = new SnapVector<CycleNode *>();
         modelclock_t maxtofree = priv->used_sequence_numbers - params->traceminsize;
 
         //Next walk action trace...  When we hit an action, see if it is
         //invisible (e.g., earlier than the first before the minimum
         //clock for the thread...  if so erase it and all previous
         //actions in cyclegraph
-        sllnode<ModelAction*> * it;
+	sllnode<ModelAction*> * it;
         for (it = action_trace.begin();it != NULL;it=it->getNext()) {
                 ModelAction *act = it->getVal();
                 modelclock_t actseq = act->get_seq_number();
@@ -1767,8 +1664,8 @@ void ModelExecution::collectActions() {
                 thread_id_t act_tid = act->get_tid();
                 modelclock_t tid_clock = cvmin->getClock(act_tid);
 
-                //Free if it is invisible or we have set a flag to remove visible actions.
-                if (actseq <= tid_clock || params->removevisible) {
+                //TODO:Free if it is invisible or we have set a flag to remove visible actions.
+                if (actseq <= tid_clock) {
                         ModelAction * write;
                         if (act->is_write()) {
                                 write = act;
@@ -1777,26 +1674,8 @@ void ModelExecution::collectActions() {
                         } else
                                 continue;
 
-                        //Mark everything earlier in MO graph to be freed
-                        CycleNode * cn = mo_graph->getNode_noCreate(write);
-                        if (cn != NULL) {
-                                queue->push_back(cn);
-                                while(!queue->empty()) {
-                                        CycleNode * node = queue->back();
-                                        queue->pop_back();
-                                        for(unsigned int i=0;i<node->getNumInEdges();i++) {
-                                                CycleNode * prevnode = node->getInEdge(i);
-                                                ModelAction * prevact = prevnode->getAction();
-                                                if (prevact->get_type() != READY_FREE) {
-                                                        prevact->set_free();
-                                                        queue->push_back(prevnode);
-                                                }
-                                        }
-                                }
-                        }
                 }
         }
-
 	//We may need to remove read actions in the window we don't delete to preserve correctness.
 
         for (sllnode<ModelAction*> * it2 = action_trace.end();it2 != it;) {
@@ -1938,7 +1817,6 @@ void ModelExecution::collectActions() {
         }
 
         delete cvmin;
-        delete queue;
 }
 
 Fuzzer * ModelExecution::getFuzzer() {

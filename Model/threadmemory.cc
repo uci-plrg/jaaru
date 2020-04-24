@@ -4,27 +4,27 @@
 ThreadMemory::ThreadMemory() :
 	storeBuffer(),
 	cache(),
-	memoryBuffer
+	memoryBuffer()
 {
 }
 
-void applyWrite(ModelAction * write) {
+void ThreadMemory::applyWrite(ModelAction * write) {
 	storeBuffer.push_back(write);
 }
 
-void applyRead(ModelAction *read) {
+void ThreadMemory::applyRead(ModelAction *read) {
 	ASSERT(0);
 }
 
-void applyCacheOp(ModelAction *clflush){
+void ThreadMemory::applyCacheOp(ModelAction *clflush){
 	storeBuffer.push_back(clflush);
 }
 
-void applyFence(ModelAction *fence){
+void ThreadMemory::applyFence(ModelAction *fence){
 	ASSERT(0);
 }
 
-void applyRMW(ModelAction *write){
+void ThreadMemory::applyRMW(ModelAction *write){
 	ASSERT(0);
 }
 

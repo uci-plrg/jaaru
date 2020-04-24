@@ -14,7 +14,6 @@
 #include "output.h"
 #include "execution.h"
 #include "params.h"
-#include "plugins.h"
 
 ModelChecker *model = NULL;
 
@@ -59,7 +58,7 @@ ModelChecker::ModelChecker() :
 	params(),
 	scheduler(new Scheduler()),
 	execution(new ModelExecution(this, scheduler)),
-	execution_number(1),
+	execution_number(1)
 {
 	model_print("PMCheck\n"
 			"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
@@ -265,7 +264,6 @@ void ModelChecker::finish_execution(bool more_executions)
 		if (execution->is_deadlocked())
 			assert_bug("Deadlock detected");
 
-		run_trace_analyses();
 	}
 
 	record_stats();
@@ -279,13 +277,6 @@ void ModelChecker::finish_execution(bool more_executions)
 	execution_number ++;
 	if (more_executions)
 		reset_to_initial_state();
-	history->set_new_exec_flag();
-}
-
-/** @brief Run trace analyses on complete trace */
-void ModelChecker::run_trace_analyses() {
-	for (unsigned int i = 0;i < trace_analyses.size();i ++)
-		trace_analyses[i] -> analyze(execution->get_action_trace());
 }
 
 /**
@@ -392,6 +383,14 @@ void ModelChecker::run()
 		Thread * t = init_thread;
 		
 		do {
+			/* Check whether we need to free model actions. */
+
+                        if (params.traceminsize != 0 &&
+                                        execution->get_curr_seq_num() > checkfree) {
+                                checkfree += params.checkthreshold;
+                                execution->collectActions();
+                        }
+
 			/*
 			 * Stash next pending action(s) for thread(s). There
 			 * should only need to stash one thread's action--the

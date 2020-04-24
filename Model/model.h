@@ -78,7 +78,6 @@ private:
 	/** @brief The cumulative execution stats */
 	struct execution_stats stats;
 	void record_stats();
-	void run_trace_analyses();
 	void print_bugs() const;
 	void print_execution(bool printbugs) const;
 	void print_stats() const;
@@ -86,5 +85,5 @@ private:
 
 extern ModelChecker *model;
 void createModelIfNotExist();
-
+void parse_options(struct model_params *params);
 #endif	/* __MODEL_H__ */

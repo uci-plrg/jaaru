@@ -6,8 +6,8 @@
 #include "common.h"
 #include "pmcheckapi.h"
 #include "threadmemory.h"
-
-
+#include "datarace.h"
+#include "threads-model.h"
 memory_order orders[7] = {
         memory_order_relaxed, memory_order_consume, memory_order_acquire,
         memory_order_release, memory_order_acq_rel, memory_order_seq_cst,
@@ -29,7 +29,8 @@ void createModelIfNotExist() {
 		DEBUG("pmc_volatile_load%u:addr = %p\n", size, obj);\
                 createModelIfNotExist();                                                      						\
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj);				\
-		getThreadMemory()->applyRead(action, size);										\
+		action->setOperatorSize(size);												\
+		getThreadMemory()->applyRead(action);											\
                 return (uint ## size ## _t)model->switch_to_master(action); 								\
         }
 
@@ -44,9 +45,14 @@ VOLATILELOAD(64)
 		DEBUG("pmc_volatile_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val);\
                 createModelIfNotExist();                                                      						\
 		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val);	\
-                getThreadMemory()->applyWrite(action, size);										\
+		action->setOperatorSize(size);												\
+                getThreadMemory()->applyWrite(action);										\
 		model->switch_to_master(action); 											\
                 *((volatile uint ## size ## _t *)obj) = val;										\
+		thread_id_t tid = thread_current()->get_id();           \
+                for(int i=0;i < size / 8;i++) {                       \
+                        atomraceCheckWrite(tid, (void *)(((char *)obj)+i));          \
+                }						\
         }
 
 VOLATILESTORE(8)
@@ -60,9 +66,14 @@ VOLATILESTORE(64)
 		DEBUG("pmc_atomic_init%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val);\
                 createModelIfNotExist();                                                      \
 		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val);		\
+		action->setOperatorSize(size);												\
                 getThreadMemory()->applyRMW(action);											\
 		model->switch_to_master(action); 											\
                 *((volatile uint ## size ## _t *)obj) = val;										\
+		thread_id_t tid = thread_current()->get_id();           \
+                for(int i=0;i < size / 8;i++) {                       \
+                        atomraceCheckWrite(tid, (void *)(((char *)obj)+i));          \
+                }															\
         }
 
 PMCATOMICINT(8)
@@ -77,8 +88,13 @@ PMCATOMICINT(64)
 		DEBUG("pmc_atomic_load%u:addr = %p\n", size, obj);\
                 createModelIfNotExist();												\
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj);				\
-		getThreadMemory()->applyRead(action, size);											\
+		action->setOperatorSize(size);												\
+		getThreadMemory()->applyRead(action);											\
                 uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action); 						\
+		thread_id_t tid = thread_current()->get_id();           \
+                for(int i=0;i < size / 8;i++) {                         \
+                        atomraceCheckRead(tid, (void *)(((char *)obj)+i));    \
+                }                                                       \
                 return val;														\
         }
 
@@ -94,9 +110,14 @@ PMCATOMICLOAD(64)
 		DEBUG("pmc_atomic_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val);\
                 createModelIfNotExist();												\
 		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val);		\
-                getThreadMemory()->applyWrite(action, size);											\
+		action->setOperatorSize(size);												\
+                getThreadMemory()->applyWrite(action);											\
 		model->switch_to_master(action);											\
                 *((volatile uint ## size ## _t *)obj) = val;										\
+		thread_id_t tid = thread_current()->get_id();           \
+                for(int i=0;i < size / 8;i++) {                       \
+                        atomraceCheckWrite(tid, (void *)(((char *)obj)+i));          \
+                }                                                       \
         }
 
 PMCATOMICSTORE(8)
@@ -125,8 +146,14 @@ ModelAction* model_rmw_action_helper(void *obj, uint64_t val, int atomic_index, 
                 uint ## size ## _t _val = val;												\
                 _copy __op__ _val;													\
                 ModelAction *action = model_rmw_action_helper(addr, (uint64_t) _copy, atomic_index, position);				\
+		action->setOperatorSize(size);												\
                 getThreadMemory()->applyRMW(action);											\
 		*((volatile uint ## size ## _t *)addr) = _copy;										\
+		thread_id_t tid = thread_current()->get_id();           \
+                for(int i=0;i < size / 8;i++) {                       \
+                        atomraceCheckRead(tid,  (void *)(((char *)addr)+i));  \
+                        recordWrite(tid, (void *)(((char *)addr)+i));         \
+                }								\
                 return _old;                                            \
         })
 
@@ -220,9 +247,14 @@ void model_rmwc_action_helper(void *obj, int atomic_index, const char *position)
                 uint ## size ## _t _old = model_rmwrcas_action_helper(addr, atomic_index, _expected, sizeof(_expected), position); \
                 if (_old == _expected) {                                                                    \
                         ModelAction *action = model_rmw_action_helper(addr, (uint64_t) _desired, atomic_index, position); \
+			action->setOperatorSize(size);												\
                         *((volatile uint ## size ## _t *)addr) = desired;                        \
 			getThreadMemory()->applyRMW(action);							\
-                        return _expected; }                                     \
+                        thread_id_t tid = thread_current()->get_id();           \
+                        for(int i=0;i < size / 8;i++) {                       \
+                                recordWrite(tid, (void *)(((char *)addr)+i));         \
+                        } \
+			return _expected; }                                     \
                 else {                                                                                        \
                         model_rmwc_action_helper(addr, atomic_index, position); _expected = _old; return _old; }              \
         })

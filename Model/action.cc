@@ -8,7 +8,6 @@
 #include "clockvector.h"
 #include "common.h"
 #include "threads-model.h"
-#include "wildcard.h"
 
 #define ACTION_INITIAL_CLOCK 0
 
@@ -792,12 +791,12 @@ unsigned int ModelAction::hash() const
  * Only valid for LOCK, TRY_LOCK, UNLOCK, and WAIT operations.
  * @return The mutex operated on by this action, if any; otherwise NULL
  */
-cdsc::mutex * ModelAction::get_mutex() const
+pmc::mutex * ModelAction::get_mutex() const
 {
 	if (is_trylock() || is_lock() || is_unlock())
-		return (cdsc::mutex *)get_location();
+		return (pmc::mutex *)get_location();
 	else if (is_wait())
-		return (cdsc::mutex *)get_value();
+		return (pmc::mutex *)get_value();
 	else
 		return NULL;
 }

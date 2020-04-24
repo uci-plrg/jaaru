@@ -15,8 +15,8 @@
 class ThreadMemory{
 public:
 	ThreadMemory();
-	void applyWrite(ModelAction * write, uint size);
-	void applyRead(ModelAction *read, uint size);
+	void applyWrite(ModelAction * write);
+	void applyRead(ModelAction *read);
 	void applyCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
 	void applyRMW(ModelAction *write);

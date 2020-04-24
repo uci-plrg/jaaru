@@ -20,7 +20,7 @@ J_OBJECTS := $(J_SOURCES:%.java=$(OBJ_DIR)/%.class)
 CFLAGS := -Wall -O3 -g
 CXXFLAGS := -std=c++1y -pthread
 CFLAGS += -I. -IAPI -IMemory -IScheduler -ICollection -IModel -IUtils
-LDFLAGS := -ldl -lrt -rdynamic -g
+LDFLAGS := -ldl -lrt -rdynamic -lpthread -g
 SHARED := -shared
 
 # Mac OSX options

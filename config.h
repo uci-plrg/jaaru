@@ -14,10 +14,6 @@
  #define CONFIG_ASSERT
  #endif
 
-/** Turn on support for dumping cyclegraphs as dot files at each
- *  printed summary.*/
-#define SUPPORT_MOD_ORDER_DUMP 1
-
 /** Do we have a 48 bit virtual address (64 bit machine) or 32 bit addresses.
  * Set to 1 for 48-bit, 0 for 32-bit. */
 #ifndef BIT48
@@ -42,6 +38,9 @@
 
 /* Size of stack to allocate for a thread. */
 #define STACK_SIZE (1024 * 1024)
+
+/** How many shadow tables of memory to preallocate for data race detector. */
+#define SHADOWBASETABLES 4
 
 /** Enable debugging assertions (via ASSERT()) */
 #define CONFIG_ASSERT

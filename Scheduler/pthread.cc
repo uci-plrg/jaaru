@@ -5,7 +5,6 @@
 
 #include "snapshot-interface.h"
 #include "datarace.h"
-
 #include "mutex.h"
 #include <condition_variable>
 
@@ -72,7 +71,7 @@ int pthread_mutex_init(pthread_mutex_t *p_mutex, const pthread_mutexattr_t *) {
 		model = new ModelChecker();
 		model->startChecker();
 	}
-	cdsc::snapmutex *m = new cdsc::snapmutex();
+	pmc::snapmutex *m = new pmc::snapmutex();
 
 	ModelExecution *execution = model->get_execution();
 	execution->getMutexMap()->put(p_mutex, m);
@@ -96,7 +95,7 @@ int pthread_mutex_lock(pthread_mutex_t *p_mutex) {
 		pthread_mutex_init(p_mutex, NULL);
 	}
 
-	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
+	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 
 	if (m != NULL) {
 		m->lock();
@@ -115,12 +114,12 @@ int pthread_mutex_trylock(pthread_mutex_t *p_mutex) {
 	}
 
 	ModelExecution *execution = model->get_execution();
-	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
+	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 	return m->try_lock();
 }
 int pthread_mutex_unlock(pthread_mutex_t *p_mutex) {
 	ModelExecution *execution = model->get_execution();
-	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
+	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 
 	if (m != NULL) {
 		m->unlock();
@@ -151,7 +150,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *__restrict p_mutex,
 		pthread_mutex_init(p_mutex, NULL);
 	}
 
-	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
+	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 
 	if (m != NULL) {
 		m->lock();
@@ -177,7 +176,7 @@ int pthread_key_delete(pthread_key_t) {
 }
 
 int pthread_cond_init(pthread_cond_t *p_cond, const pthread_condattr_t *attr) {
-	cdsc::snapcondition_variable *v = new cdsc::snapcondition_variable();
+	pmc::snapcondition_variable *v = new pmc::snapcondition_variable();
 
 	ModelExecution *execution = model->get_execution();
 	execution->getCondMap()->put(p_cond, v);
@@ -191,8 +190,8 @@ int pthread_cond_wait(pthread_cond_t *p_cond, pthread_mutex_t *p_mutex) {
 	if ( !execution->getMutexMap()->contains(p_mutex) )
 		pthread_mutex_init(p_mutex, NULL);
 
-	cdsc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
-	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
+	pmc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
+	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 
 	v->wait(*m);
 	return 0;
@@ -207,8 +206,8 @@ int pthread_cond_timedwait(pthread_cond_t *p_cond,
 	if ( !execution->getMutexMap()->contains(p_mutex) )
 		pthread_mutex_init(p_mutex, NULL);
 
-	cdsc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
-	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
+	pmc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
+	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 
 	model->switch_to_master(new ModelAction(ATOMIC_TIMEDWAIT, std::memory_order_seq_cst, v, (uint64_t) m));
 	m->lock();
@@ -223,7 +222,7 @@ int pthread_cond_signal(pthread_cond_t *p_cond) {
 	if ( !execution->getCondMap()->contains(p_cond) )
 		pthread_cond_init(p_cond, NULL);
 
-	cdsc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
+	pmc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
 
 	v->notify_one();
 	return 0;
@@ -235,7 +234,7 @@ int pthread_cond_broadcast(pthread_cond_t *p_cond) {
 	if ( !execution->getCondMap()->contains(p_cond) )
 		pthread_cond_init(p_cond, NULL);
 
-	cdsc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
+	pmc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
 
 	v->notify_all();
 	return 0;
@@ -245,7 +244,7 @@ int pthread_cond_destroy(pthread_cond_t *p_cond) {
 	ModelExecution *execution = model->get_execution();
 
 	if (execution->getCondMap()->contains(p_cond)) {
-		cdsc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
+		pmc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
 		delete v;
 		execution->getCondMap()->remove(p_cond);
 	}
@@ -257,7 +256,6 @@ int pthread_getattr_np(pthread_t t, pthread_attr_t *attr)
 {
        ModelExecution *execution = model->get_execution();
        Thread *th = execution->get_pthread(t);
-
        struct pthread_attr *iattr = (struct pthread_attr *) attr;
 
        /* The sizes are subject to alignment.  */

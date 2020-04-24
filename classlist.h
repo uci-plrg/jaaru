@@ -19,24 +19,6 @@ class Scheduler;
 class ClockVector;
 class Fuzzer;
 class ModelChecker;
-//struct model_snapshot_members;
-/*
-typedef SnapList<ModelAction *> action_list_t;
-typedef SnapList<uint32_t> func_id_list_t;
-typedef SnapList<FuncInst *> func_inst_list_t;
-
-typedef HashSet<Predicate *, uintptr_t, 0, model_malloc, model_calloc, model_free> PredSet;
-typedef HSIterator<Predicate *, uintptr_t, 0, model_malloc, model_calloc, model_free> PredSetIter;
-
-typedef HashSet<uint64_t, uint64_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> value_set_t;
-typedef HSIterator<uint64_t, uint64_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> value_set_iter;
-typedef HashSet<void *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> loc_set_t;
-typedef HSIterator<void *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> loc_set_iter;
-typedef HashSet<thread_id_t, int, 0> thrd_id_set_t;
-typedef HSIterator<thread_id_t, int, 0> thrd_id_set_iter;
-
-extern volatile int modellock;
-*/
 
 typedef SnapList<ModelAction *> action_list_t;
 
@@ -48,4 +30,5 @@ typedef HSIterator<CacheLine *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, 
 typedef HashSet<uint64_t, uint64_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> ValueSet;
 typedef HSIterator<uint64_t, uint64_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> ValueSetIter;
 
+extern volatile int modellock;
 #endif
