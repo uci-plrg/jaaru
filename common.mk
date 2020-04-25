@@ -5,7 +5,7 @@ CXX := g++
 
 UNAME := $(shell uname)
 
-LIB_NAME := model
+LIB_NAME := pmcheck
 LIB_SO := lib$(LIB_NAME).so
 
 CPPFLAGS += -Wall -g -O3
