@@ -54,6 +54,10 @@ PHONY += docs
 docs: $(C_SOURCES) $(HEADERS)
 	doxygen
 
+#Special flag for compiling malloc.c
+${OBJ_DIR}/Memory/malloc.o: Memory/malloc.c
+	$(CC) -fPIC -c $< -o $@ -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=1 $(CFLAGS) -Wno-unused-variable
+
 ${OBJ_DIR}/$(LIB_SO): $(OBJECTS)
 	$(CXX) -g $(SHARED) -o ${OBJ_DIR}/$(LIB_SO) $+ $(LDFLAGS)
 

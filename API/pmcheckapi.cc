@@ -6,7 +6,7 @@
 #include "datarace.h"
 
 // PMC Non-Atomic Store
-inline ThreadMemory* getThreadMemory(){
+ThreadMemory* getThreadMemory(){
 	createModelIfNotExist();
 	return thread_current()->getMemory();
 	

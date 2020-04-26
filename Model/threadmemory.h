@@ -28,6 +28,4 @@ private:
 	ValueSet memoryBuffer;
 };
 
-ThreadMemory* getThreadMemory();
-
 #endif
