@@ -88,8 +88,8 @@ tags:
 	ctags -R
 
 tabbing:
-	uncrustify -c C.cfg --no-backup *.cc */*.cc */*/*.cc
-	uncrustify -c C.cfg --no-backup *.h */*.h */*/*.h
+	uncrustify -c C.cfg --no-backup *.cc */*.cc
+	uncrustify -c C.cfg --no-backup *.h */*.h
 
 wc:
 	wc */*.cc */*.h *.cc *.h */*/*.cc */*/*.h

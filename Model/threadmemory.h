@@ -12,7 +12,7 @@
 #include "action.h"
 
 
-class ThreadMemory{
+class ThreadMemory {
 public:
 	ThreadMemory();
 	void applyWrite(ModelAction * write);

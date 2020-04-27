@@ -254,33 +254,33 @@ int pthread_cond_destroy(pthread_cond_t *p_cond) {
 /* https://github.com/lattera/glibc/blob/master/nptl/pthread_getattr_np.c */
 int pthread_getattr_np(pthread_t t, pthread_attr_t *attr)
 {
-       ModelExecution *execution = model->get_execution();
-       Thread *th = execution->get_pthread(t);
-       struct pthread_attr *iattr = (struct pthread_attr *) attr;
+	ModelExecution *execution = model->get_execution();
+	Thread *th = execution->get_pthread(t);
+	struct pthread_attr *iattr = (struct pthread_attr *) attr;
 
-       /* The sizes are subject to alignment.  */
-       if (th != NULL) {
+	/* The sizes are subject to alignment.  */
+	if (th != NULL) {
 #if _STACK_GROWS_DOWN
-               ASSERT(false);
+		ASSERT(false);
 #else
-               iattr->stackaddr = (char *) th->get_stack_addr();
+		iattr->stackaddr = (char *) th->get_stack_addr();
 #endif
 
-       } else {
-               ASSERT(false);
-       }
+	} else {
+		ASSERT(false);
+	}
 
-       return 0;
+	return 0;
 }
 
 int pthread_setname_np(pthread_t t, const char *name)
 {
-       ModelExecution *execution = model->get_execution();
-       Thread *th = execution->get_pthread(t);
+	ModelExecution *execution = model->get_execution();
+	Thread *th = execution->get_pthread(t);
 
-       if (th != NULL)
-               return 0;
+	if (th != NULL)
+		return 0;
 
-       return 1;
+	return 1;
 }
 

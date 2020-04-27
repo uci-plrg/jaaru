@@ -38,7 +38,7 @@ struct model_snapshot_members {
 	modelclock_t used_sequence_numbers;
 	SnapVector<bug_message *> bugs;
 	/** @brief Incorrectly-ordered synchronization was made */
-        bool asserted;
+	bool asserted;
 
 	SNAPSHOTALLOC
 };
@@ -91,20 +91,20 @@ void ModelExecution::print_tail()
 	int length = 25;
 	int counter = 0;
 	SnapList<ModelAction *> list;
-	for (it = action_trace.end(); it != NULL; it = it->getPrev()) {
-	       if (counter > length)
-		       break;
+	for (it = action_trace.end();it != NULL;it = it->getPrev()) {
+		if (counter > length)
+			break;
 
-	       ModelAction * act = it->getVal();
-	       list.push_front(act);
-	       counter++;
+		ModelAction * act = it->getVal();
+		list.push_front(act);
+		counter++;
 	}
 
 	for (it = list.begin();it != NULL;it=it->getNext()) {
-	       const ModelAction *act = it->getVal();
-	       if (act->get_seq_number() > 0)
-		       act->print();
-	       hash = hash^(hash<<3)^(it->getVal()->hash());
+		const ModelAction *act = it->getVal();
+		if (act->get_seq_number() > 0)
+			act->print();
+		hash = hash^(hash<<3)^(it->getVal()->hash());
 	}
 	model_print("HASH %u\n", hash);
 	model_print("------------------------------------------------------------------------------------\n");
@@ -1494,7 +1494,7 @@ Thread * ModelExecution::get_pthread(pthread_t pid) {
 	uint32_t thread_id = x.v;
 	if (thread_id < pthread_counter + 1)
 		return pthread_map[thread_id];
-	else 
+	else
 		return NULL;
 }
 
@@ -1642,184 +1642,184 @@ void ModelExecution::fixupLastAct(ModelAction *act) {
 
 void ModelExecution::collectActions() {
 	if (priv->used_sequence_numbers < params->traceminsize)
-                return;
-	
-        //Compute minimal clock vector for all live threads
-        ClockVector *cvmin = computeMinimalCV();
-        modelclock_t maxtofree = priv->used_sequence_numbers - params->traceminsize;
+		return;
 
-        //Next walk action trace...  When we hit an action, see if it is
-        //invisible (e.g., earlier than the first before the minimum
-        //clock for the thread...  if so erase it and all previous
-        //actions in cyclegraph
+	//Compute minimal clock vector for all live threads
+	ClockVector *cvmin = computeMinimalCV();
+	modelclock_t maxtofree = priv->used_sequence_numbers - params->traceminsize;
+
+	//Next walk action trace...  When we hit an action, see if it is
+	//invisible (e.g., earlier than the first before the minimum
+	//clock for the thread...  if so erase it and all previous
+	//actions in cyclegraph
 	sllnode<ModelAction*> * it;
-        for (it = action_trace.begin();it != NULL;it=it->getNext()) {
-                ModelAction *act = it->getVal();
-                modelclock_t actseq = act->get_seq_number();
+	for (it = action_trace.begin();it != NULL;it=it->getNext()) {
+		ModelAction *act = it->getVal();
+		modelclock_t actseq = act->get_seq_number();
 
-                //See if we are done
-                if (actseq > maxtofree)
-                        break;
+		//See if we are done
+		if (actseq > maxtofree)
+			break;
 
-                thread_id_t act_tid = act->get_tid();
-                modelclock_t tid_clock = cvmin->getClock(act_tid);
+		thread_id_t act_tid = act->get_tid();
+		modelclock_t tid_clock = cvmin->getClock(act_tid);
 
-                //TODO:Free if it is invisible or we have set a flag to remove visible actions.
-                if (actseq <= tid_clock) {
-                        ModelAction * write;
-                        if (act->is_write()) {
-                                write = act;
-                        } else if (act->is_read()) {
-                                write = act->get_reads_from();
-                        } else
-                                continue;
+		//TODO:Free if it is invisible or we have set a flag to remove visible actions.
+		if (actseq <= tid_clock) {
+			ModelAction * write;
+			if (act->is_write()) {
+				write = act;
+			} else if (act->is_read()) {
+				write = act->get_reads_from();
+			} else
+				continue;
 
-                }
-        }
+		}
+	}
 	//We may need to remove read actions in the window we don't delete to preserve correctness.
 
-        for (sllnode<ModelAction*> * it2 = action_trace.end();it2 != it;) {
-                ModelAction *act = it2->getVal();
-                //Do iteration early in case we delete the act
-                it2=it2->getPrev();
-                bool islastact = false;
-                ModelAction *lastact = get_last_action(act->get_tid());
-                if (act == lastact) {
-                        Thread * th = get_thread(act);
-                        islastact = !th->is_complete();
-                }
+	for (sllnode<ModelAction*> * it2 = action_trace.end();it2 != it;) {
+		ModelAction *act = it2->getVal();
+		//Do iteration early in case we delete the act
+		it2=it2->getPrev();
+		bool islastact = false;
+		ModelAction *lastact = get_last_action(act->get_tid());
+		if (act == lastact) {
+			Thread * th = get_thread(act);
+			islastact = !th->is_complete();
+		}
 
-                if (act->is_read()) {
-                        if (act->get_reads_from()->is_free()) {
-                                if (act->is_rmw()) {
-                                        //Weaken a RMW from a freed store to a write
-                                        act->set_type(ATOMIC_WRITE);
-                                } else {
-                                        removeAction(act);
-                                        if (islastact) {
-                                                fixupLastAct(act);
-                                        }
+		if (act->is_read()) {
+			if (act->get_reads_from()->is_free()) {
+				if (act->is_rmw()) {
+					//Weaken a RMW from a freed store to a write
+					act->set_type(ATOMIC_WRITE);
+				} else {
+					removeAction(act);
+					if (islastact) {
+						fixupLastAct(act);
+					}
 
-                                        delete act;
-                                        continue;
-                                }
-                        }
-                }
-                //If we don't delete the action, we should remove references to release fences
+					delete act;
+					continue;
+				}
+			}
+		}
+		//If we don't delete the action, we should remove references to release fences
 
-                const ModelAction *rel_fence =act->get_last_fence_release();
-                if (rel_fence != NULL) {
-                        modelclock_t relfenceseq = rel_fence->get_seq_number();
-                        thread_id_t relfence_tid = rel_fence->get_tid();
-                        modelclock_t tid_clock = cvmin->getClock(relfence_tid);
-                        //Remove references to irrelevant release fences
-                        if (relfenceseq <= tid_clock)
-                                act->set_last_fence_release(NULL);
-                }
-        }
+		const ModelAction *rel_fence =act->get_last_fence_release();
+		if (rel_fence != NULL) {
+			modelclock_t relfenceseq = rel_fence->get_seq_number();
+			thread_id_t relfence_tid = rel_fence->get_tid();
+			modelclock_t tid_clock = cvmin->getClock(relfence_tid);
+			//Remove references to irrelevant release fences
+			if (relfenceseq <= tid_clock)
+				act->set_last_fence_release(NULL);
+		}
+	}
 
 	//Now we are in the window of old actions that we remove if possible
-        for (;it != NULL;) {
-                ModelAction *act = it->getVal();
-                //Do iteration early since we may delete node...
-                it=it->getPrev();
-                bool islastact = false;
-                ModelAction *lastact = get_last_action(act->get_tid());
-                if (act == lastact) {
-                        Thread * th = get_thread(act);
-                        islastact = !th->is_complete();
-                }
+	for (;it != NULL;) {
+		ModelAction *act = it->getVal();
+		//Do iteration early since we may delete node...
+		it=it->getPrev();
+		bool islastact = false;
+		ModelAction *lastact = get_last_action(act->get_tid());
+		if (act == lastact) {
+			Thread * th = get_thread(act);
+			islastact = !th->is_complete();
+		}
 
-                if (act->is_read()) {
-                        if (act->get_reads_from()->is_free()) {
-                                if (act->is_rmw()) {
-                                        act->set_type(ATOMIC_WRITE);
-                                } else {
-                                        removeAction(act);
-                                        if (islastact) {
-                                                fixupLastAct(act);
-                                        }
-                                        delete act;
-                                        continue;
-                                }
-                        }
-                } else if (act->is_free()) {
-                        removeAction(act);
-                        if (islastact) {
-                                fixupLastAct(act);
-                        }
-                        delete act;
-                        continue;
-                } else if (act->is_write()) {
-                        //Do nothing with write that hasn't been marked to be freed
-                } else if (islastact) {
-                        //Keep the last action for non-read/write actions
-                } else if (act->is_fence()) {
-                        //Note that acquire fences can always be safely
-                        //removed, but could incur extra overheads in
-                        //traversals.  Removing them before the cvmin seems
-                        //like a good compromise.
+		if (act->is_read()) {
+			if (act->get_reads_from()->is_free()) {
+				if (act->is_rmw()) {
+					act->set_type(ATOMIC_WRITE);
+				} else {
+					removeAction(act);
+					if (islastact) {
+						fixupLastAct(act);
+					}
+					delete act;
+					continue;
+				}
+			}
+		} else if (act->is_free()) {
+			removeAction(act);
+			if (islastact) {
+				fixupLastAct(act);
+			}
+			delete act;
+			continue;
+		} else if (act->is_write()) {
+			//Do nothing with write that hasn't been marked to be freed
+		} else if (islastact) {
+			//Keep the last action for non-read/write actions
+		} else if (act->is_fence()) {
+			//Note that acquire fences can always be safely
+			//removed, but could incur extra overheads in
+			//traversals.  Removing them before the cvmin seems
+			//like a good compromise.
 
-                        //Release fences before the cvmin don't do anything
-                        //because everyone has already synchronized.
+			//Release fences before the cvmin don't do anything
+			//because everyone has already synchronized.
 
-                        //Sequentially fences before cvmin are redundant
-                        //because happens-before will enforce same
-                        //orderings.
+			//Sequentially fences before cvmin are redundant
+			//because happens-before will enforce same
+			//orderings.
 
-                        modelclock_t actseq = act->get_seq_number();
-                        thread_id_t act_tid = act->get_tid();
-                        modelclock_t tid_clock = cvmin->getClock(act_tid);
-                        if (actseq <= tid_clock) {
-                                removeAction(act);
-                                // Remove reference to act from thrd_last_fence_release
-                                int thread_id = id_to_int( act->get_tid() );
-                                if (thrd_last_fence_release[thread_id] == act) {
-                                        thrd_last_fence_release[thread_id] = NULL;
-                                }
-                                delete act;
-                                continue;
-                        }
-                } else {
-                        //need to deal with lock, annotation, wait, notify, thread create, start, join, yield, finish, nops
-                        //lock, notify thread create, thread finish, yield, finish are dead as soon as they are in the trace
-                        //need to keep most recent unlock/wait for each lock
-                        if(act->is_unlock() || act->is_wait()) {
-                                ModelAction * lastlock = get_last_unlock(act);
-                                if (lastlock != act) {
-                                        removeAction(act);
-                                        delete act;
-                                        continue;
-                                }
-                        } else if (act->is_create()) {
-                                if (act->get_thread_operand()->is_complete()) {
-                                        removeAction(act);
-                                        delete act;
-                                        continue;
-                                }
-                        } else {
-                                removeAction(act);
-                                delete act;
-                                continue;
-                        }
-                }
+			modelclock_t actseq = act->get_seq_number();
+			thread_id_t act_tid = act->get_tid();
+			modelclock_t tid_clock = cvmin->getClock(act_tid);
+			if (actseq <= tid_clock) {
+				removeAction(act);
+				// Remove reference to act from thrd_last_fence_release
+				int thread_id = id_to_int( act->get_tid() );
+				if (thrd_last_fence_release[thread_id] == act) {
+					thrd_last_fence_release[thread_id] = NULL;
+				}
+				delete act;
+				continue;
+			}
+		} else {
+			//need to deal with lock, annotation, wait, notify, thread create, start, join, yield, finish, nops
+			//lock, notify thread create, thread finish, yield, finish are dead as soon as they are in the trace
+			//need to keep most recent unlock/wait for each lock
+			if(act->is_unlock() || act->is_wait()) {
+				ModelAction * lastlock = get_last_unlock(act);
+				if (lastlock != act) {
+					removeAction(act);
+					delete act;
+					continue;
+				}
+			} else if (act->is_create()) {
+				if (act->get_thread_operand()->is_complete()) {
+					removeAction(act);
+					delete act;
+					continue;
+				}
+			} else {
+				removeAction(act);
+				delete act;
+				continue;
+			}
+		}
 
-                //If we don't delete the action, we should remove references to release fences
-                const ModelAction *rel_fence =act->get_last_fence_release();
-                if (rel_fence != NULL) {
-                        modelclock_t relfenceseq = rel_fence->get_seq_number();
-                        thread_id_t relfence_tid = rel_fence->get_tid();
-                        modelclock_t tid_clock = cvmin->getClock(relfence_tid);
-                        //Remove references to irrelevant release fences
-                        if (relfenceseq <= tid_clock)
-                                act->set_last_fence_release(NULL);
-                }
-        }
+		//If we don't delete the action, we should remove references to release fences
+		const ModelAction *rel_fence =act->get_last_fence_release();
+		if (rel_fence != NULL) {
+			modelclock_t relfenceseq = rel_fence->get_seq_number();
+			thread_id_t relfence_tid = rel_fence->get_tid();
+			modelclock_t tid_clock = cvmin->getClock(relfence_tid);
+			//Remove references to irrelevant release fences
+			if (relfenceseq <= tid_clock)
+				act->set_last_fence_release(NULL);
+		}
+	}
 
-        delete cvmin;
+	delete cvmin;
 }
 
 Fuzzer * ModelExecution::getFuzzer() {
-        return fuzzer;
+	return fuzzer;
 }
 

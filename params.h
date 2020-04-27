@@ -9,7 +9,7 @@ struct model_params {
 	int maxexecutions;
 	bool nofork;
 	modelclock_t traceminsize;
-        modelclock_t checkthreshold;
+	modelclock_t checkthreshold;
 	int verbose;
 };
 

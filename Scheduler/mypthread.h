@@ -18,19 +18,19 @@ struct pthread_params {
 
 struct pthread_attr
 {
-       /* Scheduler parameters and priority.  */
-       struct sched_param schedparam;
-       int schedpolicy;
-       /* Various flags like detachstate, scope, etc.  */
-       int flags;
-       /* Size of guard area.  */
-       size_t guardsize;
-       /* Stack handling.  */
-       void *stackaddr;
-       size_t stacksize;
-       /* Affinity map.  */
-       cpu_set_t *cpuset;
-       size_t cpusetsize;
+	/* Scheduler parameters and priority.  */
+	struct sched_param schedparam;
+	int schedpolicy;
+	/* Various flags like detachstate, scope, etc.  */
+	int flags;
+	/* Size of guard area.  */
+	size_t guardsize;
+	/* Stack handling.  */
+	void *stackaddr;
+	size_t stacksize;
+	/* Affinity map.  */
+	cpu_set_t *cpuset;
+	size_t cpusetsize;
 };
 
 extern "C" {

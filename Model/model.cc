@@ -18,7 +18,7 @@
 ModelChecker *model = NULL;
 
 void placeholder(void *) {
-        ASSERT(0);
+	ASSERT(0);
 }
 
 #include <signal.h>
@@ -26,29 +26,29 @@ void placeholder(void *) {
 #define SIGSTACKSIZE 65536
 static void mprot_handle_pf(int sig, siginfo_t *si, void *unused)
 {
-       model_print("Segmentation fault at %p\n", si->si_addr);
-       model_print("For debugging, place breakpoint at: %s:%d\n",
-                                                       __FILE__, __LINE__);
-       print_trace();  // Trace printing may cause dynamic memory allocation
-       while(1)
-               ;
+	model_print("Segmentation fault at %p\n", si->si_addr);
+	model_print("For debugging, place breakpoint at: %s:%d\n",
+							__FILE__, __LINE__);
+	print_trace();	// Trace printing may cause dynamic memory allocation
+	while(1)
+		;
 }
 
 void install_handler() {
-       stack_t ss;
-       ss.ss_sp = model_malloc(SIGSTACKSIZE);
-       ss.ss_size = SIGSTACKSIZE;
-       ss.ss_flags = 0;
-       sigaltstack(&ss, NULL);
-       struct sigaction sa;
-       sa.sa_flags = SA_SIGINFO | SA_NODEFER | SA_RESTART | SA_ONSTACK;
-       sigemptyset(&sa.sa_mask);
-       sa.sa_sigaction = mprot_handle_pf;
+	stack_t ss;
+	ss.ss_sp = model_malloc(SIGSTACKSIZE);
+	ss.ss_size = SIGSTACKSIZE;
+	ss.ss_flags = 0;
+	sigaltstack(&ss, NULL);
+	struct sigaction sa;
+	sa.sa_flags = SA_SIGINFO | SA_NODEFER | SA_RESTART | SA_ONSTACK;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_sigaction = mprot_handle_pf;
 
-       if (sigaction(SIGSEGV, &sa, NULL) == -1) {
-               perror("sigaction(SIGSEGV)");
-               exit(EXIT_FAILURE);
-       }
+	if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+		perror("sigaction(SIGSEGV)");
+		exit(EXIT_FAILURE);
+	}
 
 }
 
@@ -61,8 +61,8 @@ ModelChecker::ModelChecker() :
 	execution_number(1)
 {
 	model_print("PMCheck\n"
-			"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
-			"Written by Hamed Gorjiara and Brian Demsky\n\n");
+							"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
+							"Written by Hamed Gorjiara and Brian Demsky\n\n");
 	memset(&stats,0,sizeof(struct execution_stats));
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
 	execution->add_thread(init_thread);
@@ -381,15 +381,15 @@ void ModelChecker::run()
 	modelclock_t checkfree = params.checkthreshold;
 	for(int exec = 0;exec < params.maxexecutions;exec++) {
 		Thread * t = init_thread;
-		
+
 		do {
 			/* Check whether we need to free model actions. */
 
-                        if (params.traceminsize != 0 &&
-                                        execution->get_curr_seq_num() > checkfree) {
-                                checkfree += params.checkthreshold;
-                                execution->collectActions();
-                        }
+			if (params.traceminsize != 0 &&
+					execution->get_curr_seq_num() > checkfree) {
+				checkfree += params.checkthreshold;
+				execution->collectActions();
+			}
 
 			/*
 			 * Stash next pending action(s) for thread(s). There

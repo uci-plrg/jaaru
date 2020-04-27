@@ -52,7 +52,7 @@ typedef enum action_type {
 	PTHREAD_JOIN,	// < A pthread join action
 
 	NONATOMIC_WRITE,	// Represents a non-atomic store
-	NONATOMIC_READ,		// Represents a non-atomic load
+	NONATOMIC_READ,	// Represents a non-atomic load
 
 	ATOMIC_INIT,	// < Initialization of an atomic object (e.g., atomic_init())
 	ATOMIC_WRITE,	// < An atomic write action
@@ -104,103 +104,103 @@ public:
 	void print() const;
 
 	thread_id_t get_tid() const { return tid; }
-        action_type get_type() const { return type; }
-        void set_type(action_type _type) { type = _type; }
-        void set_free() { type = READY_FREE; }
-        memory_order get_mo() const { return order; }
-        memory_order get_original_mo() const { return original_order; }
-        void set_mo(memory_order order) { this->order = order; }
-        void * get_location() const { return location; }
-        const char * get_position() const { return position; }
-        modelclock_t get_seq_number() const { return seq_number; }
-        uint64_t get_value() const { return value; }
-        uint64_t get_reads_from_value() const;
-        uint64_t get_write_value() const;
-        uint64_t get_return_value() const;
-        ModelAction * get_reads_from() const { return reads_from; }
-        uint64_t get_time() const {return time;}
-        pmc::mutex * get_mutex() const;
+	action_type get_type() const { return type; }
+	void set_type(action_type _type) { type = _type; }
+	void set_free() { type = READY_FREE; }
+	memory_order get_mo() const { return order; }
+	memory_order get_original_mo() const { return original_order; }
+	void set_mo(memory_order order) { this->order = order; }
+	void * get_location() const { return location; }
+	const char * get_position() const { return position; }
+	modelclock_t get_seq_number() const { return seq_number; }
+	uint64_t get_value() const { return value; }
+	uint64_t get_reads_from_value() const;
+	uint64_t get_write_value() const;
+	uint64_t get_return_value() const;
+	ModelAction * get_reads_from() const { return reads_from; }
+	uint64_t get_time() const {return time;}
+	pmc::mutex * get_mutex() const;
 
-        void set_read_from(ModelAction *act);
+	void set_read_from(ModelAction *act);
 
-        /** Store the most recent fence-release from the same thread
-         *  @param fence The fence-release that occured prior to this */
-        void set_last_fence_release(const ModelAction *fence) { last_fence_release = fence; }
-        /** @return The most recent fence-release from the same thread */
-        const ModelAction * get_last_fence_release() const { return last_fence_release; }
-	
+	/** Store the most recent fence-release from the same thread
+	 *  @param fence The fence-release that occured prior to this */
+	void set_last_fence_release(const ModelAction *fence) { last_fence_release = fence; }
+	/** @return The most recent fence-release from the same thread */
+	const ModelAction * get_last_fence_release() const { return last_fence_release; }
+
 	void copy_from_new(ModelAction *newaction);
-        void set_seq_number(modelclock_t num);
-        void reset_seq_number();
-        void set_try_lock(bool obtainedlock);
-        bool is_thread_start() const;
-        bool is_thread_join() const;
-        bool is_mutex_op() const;
-        bool is_lock() const;
-        bool is_sleep() const;
-        bool is_trylock() const;
-        bool is_unlock() const;
-        bool is_wait() const;
-        bool is_create() const;
-        bool is_notify() const;
-        bool is_notify_one() const;
-        bool is_success_lock() const;
-        bool is_failed_trylock() const;
-        bool is_atomic_var() const;
-        bool is_read() const;
-        bool is_write() const;
-        bool is_free() const;
-        bool is_yield() const;
-        bool could_be_write() const;
-        bool is_rmwr() const;
-        bool is_rmwrcas() const;
-        bool is_rmwc() const;
-        bool is_rmw() const;
-        bool is_fence() const;
-        bool is_initialization() const;
-        bool is_annotation() const;
-        bool is_relaxed() const;
-        bool is_acquire() const;
-        bool is_release() const;
-        bool is_seqcst() const;
-        bool same_var(const ModelAction *act) const;
-        bool same_thread(const ModelAction *act) const;
-        bool is_conflicting_lock(const ModelAction *act) const;
-        bool could_synchronize_with(const ModelAction *act) const;
-        int getSize() const;
-        Thread * get_thread_operand() const;
-        void create_cv(const ModelAction *parent = NULL);
-        ClockVector * get_cv() const { return cv; }
-        ClockVector * get_rfcv() const { return rf_cv; }
-        void set_rfcv(ClockVector * rfcv) { rf_cv = rfcv; }
-        bool synchronize_with(const ModelAction *act);
+	void set_seq_number(modelclock_t num);
+	void reset_seq_number();
+	void set_try_lock(bool obtainedlock);
+	bool is_thread_start() const;
+	bool is_thread_join() const;
+	bool is_mutex_op() const;
+	bool is_lock() const;
+	bool is_sleep() const;
+	bool is_trylock() const;
+	bool is_unlock() const;
+	bool is_wait() const;
+	bool is_create() const;
+	bool is_notify() const;
+	bool is_notify_one() const;
+	bool is_success_lock() const;
+	bool is_failed_trylock() const;
+	bool is_atomic_var() const;
+	bool is_read() const;
+	bool is_write() const;
+	bool is_free() const;
+	bool is_yield() const;
+	bool could_be_write() const;
+	bool is_rmwr() const;
+	bool is_rmwrcas() const;
+	bool is_rmwc() const;
+	bool is_rmw() const;
+	bool is_fence() const;
+	bool is_initialization() const;
+	bool is_annotation() const;
+	bool is_relaxed() const;
+	bool is_acquire() const;
+	bool is_release() const;
+	bool is_seqcst() const;
+	bool same_var(const ModelAction *act) const;
+	bool same_thread(const ModelAction *act) const;
+	bool is_conflicting_lock(const ModelAction *act) const;
+	bool could_synchronize_with(const ModelAction *act) const;
+	int getSize() const;
+	Thread * get_thread_operand() const;
+	void create_cv(const ModelAction *parent = NULL);
+	ClockVector * get_cv() const { return cv; }
+	ClockVector * get_rfcv() const { return rf_cv; }
+	void set_rfcv(ClockVector * rfcv) { rf_cv = rfcv; }
+	bool synchronize_with(const ModelAction *act);
 
-        bool has_synchronized_with(const ModelAction *act) const;
-        bool happens_before(const ModelAction *act) const;
+	bool has_synchronized_with(const ModelAction *act) const;
+	bool happens_before(const ModelAction *act) const;
 
-        inline bool operator <(const ModelAction& act) const {
-                return get_seq_number() < act.get_seq_number();
-        }
-        inline bool operator >(const ModelAction& act) const {
-                return get_seq_number() > act.get_seq_number();
-        }
+	inline bool operator <(const ModelAction& act) const {
+		return get_seq_number() < act.get_seq_number();
+	}
+	inline bool operator >(const ModelAction& act) const {
+		return get_seq_number() > act.get_seq_number();
+	}
 	inline void setOperatorSize(uint size){this->opbitsize = size;}
-	
-	void process_rmw(ModelAction * act);
-        void copy_typeandorder(ModelAction * act);
-        unsigned int hash() const;
-        bool equals(const ModelAction *x) const { return this == x; }
-        void set_value(uint64_t val) { value = val; }
 
-        /* to accomodate pthread create and join */
-        Thread * thread_operand;
-        void set_thread_operand(Thread *th) { thread_operand = th; }
+	void process_rmw(ModelAction * act);
+	void copy_typeandorder(ModelAction * act);
+	unsigned int hash() const;
+	bool equals(const ModelAction *x) const { return this == x; }
+	void set_value(uint64_t val) { value = val; }
+
+	/* to accomodate pthread create and join */
+	Thread * thread_operand;
+	void set_thread_operand(Thread *th) { thread_operand = th; }
 	void setTraceRef(sllnode<ModelAction *> *ref) { trace_ref = ref; }
-        void setThrdMapRef(sllnode<ModelAction *> *ref) { thrdmap_ref = ref; }
-        void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
-        sllnode<ModelAction *> * getTraceRef() { return trace_ref; }
-        sllnode<ModelAction *> * getThrdMapRef() { return thrdmap_ref; }
-        sllnode<ModelAction *> * getActionRef() { return action_ref; }
+	void setThrdMapRef(sllnode<ModelAction *> *ref) { thrdmap_ref = ref; }
+	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
+	sllnode<ModelAction *> * getTraceRef() { return trace_ref; }
+	sllnode<ModelAction *> * getThrdMapRef() { return thrdmap_ref; }
+	sllnode<ModelAction *> * getActionRef() { return action_ref; }
 
 	SNAPSHOTALLOC
 private:
@@ -221,24 +221,24 @@ private:
 		 */
 		ModelAction *reads_from;
 		int size;
-		uint64_t time;  //used for sleep
+		uint64_t time;	//used for sleep
 	};
 
 	/** @brief The last fence release from the same thread */
-        const ModelAction *last_fence_release;
+	const ModelAction *last_fence_release;
 
 	/**
-         * @brief The clock vector for this operation
-         *
-         * Technically, this is only needed for potentially synchronizing
-         * (e.g., non-relaxed) operations, but it is very handy to have these
-         * vectors for all operations.
-         */
+	 * @brief The clock vector for this operation
+	 *
+	 * Technically, this is only needed for potentially synchronizing
+	 * (e.g., non-relaxed) operations, but it is very handy to have these
+	 * vectors for all operations.
+	 */
 	ClockVector *cv;
-        ClockVector *rf_cv;
+	ClockVector *rf_cv;
 	sllnode<ModelAction *> * trace_ref;
-        sllnode<ModelAction *> * thrdmap_ref;
-        sllnode<ModelAction *> * action_ref;
+	sllnode<ModelAction *> * thrdmap_ref;
+	sllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
 	uint64_t value;
 
@@ -246,7 +246,7 @@ private:
 	action_type type;
 
 	/** @brief The memory order for this operation. */
-        memory_order order;
+	memory_order order;
 
 	/** @brief The original memory order parameter for this operation. */
 	memory_order original_order;
@@ -266,7 +266,7 @@ private:
 	 * If the action is write or read, we keep the size of the operation here.
 	 * (e.g. 8, 16, 32, or 64)
 	 */
-	 uint opbitsize;
+	uint opbitsize;
 };
 
 #endif	/* __ACTION_H__ */

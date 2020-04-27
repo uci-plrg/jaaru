@@ -19,7 +19,7 @@ void param_defaults(struct model_params *params)
 	params->verbose = !!DBG_ENABLED();
 	params->maxexecutions = 10;
 	params->traceminsize = 0;
-        params->checkthreshold = 500000;
+	params->checkthreshold = 500000;
 	params->nofork = false;
 }
 
@@ -44,16 +44,16 @@ static void print_usage(struct model_params *params)
 		"                              3 is noisier.\n"
 		"                              Default: %d\n"
 		"-x, --maxexec=NUM           Maximum number of executions.\n"
-                "                            Default: %u\n"
+		"                            Default: %u\n"
 		"-n                          No fork\n"
 		"-m, --minsize=NUM           Minimum number of actions to keep\n"
-                "                            Default: %u\n"
-                "-f, --freqfree=NUM          Frequency to free actions\n"
-                "                            Default: %u\n",
+		"                            Default: %u\n"
+		"-f, --freqfree=NUM          Frequency to free actions\n"
+		"                            Default: %u\n",
 		params->verbose,
 		params->maxexecutions,
 		params->traceminsize,
-                params->checkthreshold);
+		params->checkthreshold);
 	exit(EXIT_SUCCESS);
 }
 
@@ -64,7 +64,7 @@ void parse_options(struct model_params *params) {
 		{"verbose", optional_argument, NULL, 'v'},
 		{"maxexecutions", required_argument, NULL, 'x'},
 		{"minsize", required_argument, NULL, 'm'},
-                {"freqfree", required_argument, NULL, 'f'},
+		{"freqfree", required_argument, NULL, 'f'},
 		{0, 0, 0, 0}	/* Terminator */
 	};
 	int opt, longindex;
@@ -102,17 +102,17 @@ void parse_options(struct model_params *params) {
 			params->nofork = true;
 			break;
 		case 'x':
-                        params->maxexecutions = atoi(optarg);
-                        break;
+			params->maxexecutions = atoi(optarg);
+			break;
 		case 'v':
 			params->verbose = optarg ? atoi(optarg) : 1;
 			break;
 		case 'm':
-                        params->traceminsize = atoi(optarg);
-                        break;
-                case 'f':
-                        params->checkthreshold = atoi(optarg);
-                        break;
+			params->traceminsize = atoi(optarg);
+			break;
+		case 'f':
+			params->checkthreshold = atoi(optarg);
+			break;
 		default:	/* '?' */
 			error = true;
 			break;

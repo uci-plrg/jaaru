@@ -12,7 +12,7 @@
 
 #define CACHELINESIZE 64
 
-class CacheLine{
+class CacheLine {
 public:
 	CacheLine(void *address);
 	CacheLine(void *address, modelclock_t beginR);
