@@ -65,13 +65,18 @@ void pthread_exit(void *value_ptr) {
 	real_pthread_exit(NULL);
 }
 
-int pthread_mutex_init(pthread_mutex_t *p_mutex, const pthread_mutexattr_t *) {
+int pthread_mutex_init(pthread_mutex_t *p_mutex, const pthread_mutexattr_t * attr) {
 	if (!model) {
 		snapshot_system_init(10000, 1024, 1024, 40000);
 		model = new ModelChecker();
 		model->startChecker();
 	}
-	pmc::snapmutex *m = new pmc::snapmutex();
+
+	int mutex_type = PTHREAD_MUTEX_DEFAULT;
+	if (attr != NULL)
+		pthread_mutexattr_gettype(attr, &mutex_type);
+
+	pmc::snapmutex *m = new pmc::snapmutex(mutex_type);
 
 	ModelExecution *execution = model->get_execution();
 	execution->getMutexMap()->put(p_mutex, m);

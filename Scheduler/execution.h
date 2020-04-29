@@ -19,7 +19,13 @@
 #include "classlist.h"
 #include "mutex.h"
 
-typedef SnapList<ModelAction *> action_list_t;
+struct PendingFutureValue {
+	PendingFutureValue(ModelAction *writer, ModelAction *reader) :
+		writer(writer), reader(reader)
+	{ }
+	const ModelAction *writer;
+	ModelAction *reader;
+};
 
 /** @brief The central structure for model-checking */
 class ModelExecution {
@@ -91,7 +97,7 @@ private:
 	bool initialize_curr_action(ModelAction **curr);
 	bool process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
-	bool process_fence(ModelAction *curr);
+	void process_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);
 	void process_thread_action(ModelAction *curr);
 	void read_from(ModelAction *act, ModelAction *rf);
@@ -134,17 +140,17 @@ private:
 	 * to a trace of all actions performed on the object.
 	 * Used only for SC fences, unlocks, & wait.
 	 */
-	HashTable<const void *, action_list_t *, uintptr_t, 2> obj_map;
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_map;
 
 	/** Per-object list of actions. Maps an object (i.e., memory location)
 	 * to a trace of all actions performed on the object. */
-	HashTable<const void *, action_list_t *, uintptr_t, 2> condvar_waiters_map;
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
 	/** Per-object list of actions that each thread performed. */
 	HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_thrd_map;
 
 	/** Per-object list of writes that each thread performed. */
-	HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
+	HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
 
 	HashTable<const void *, ModelAction *, uintptr_t, 4> obj_last_sc_map;
 

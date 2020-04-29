@@ -19,8 +19,10 @@ class Scheduler;
 class ClockVector;
 class Fuzzer;
 class ModelChecker;
+class actionlist;
 
-typedef SnapList<ModelAction *> action_list_t;
+typedef SnapList<ModelAction *> simple_action_list_t;
+typedef actionlist action_list_t;
 
 unsigned int cacheLineHashFunction ( CacheLine * cl);
 bool cacheLineEquals(CacheLine *c1, CacheLine *c2);

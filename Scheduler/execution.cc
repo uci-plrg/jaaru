@@ -25,7 +25,8 @@ struct model_snapshot_members {
 		/* First thread created will have id INITIAL_THREAD_ID */
 		next_thread_id(INITIAL_THREAD_ID),
 		used_sequence_numbers(0),
-		bugs()
+		bugs(),
+		asserted(false)
 	{ }
 
 	~model_snapshot_members() {
@@ -46,11 +47,14 @@ struct model_snapshot_members {
 /** @brief Constructor */
 ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	model(m),
+	params(NULL),
 	scheduler(scheduler),
 	thread_map(2),	/* We'll always need at least 2 threads */
 	pthread_map(0),
 	pthread_counter(2),
 	action_trace(),
+	obj_map(),
+	condvar_waiters_map(),
 	obj_thrd_map(),
 	obj_wr_thrd_map(),
 	obj_last_sc_map(),
@@ -59,12 +63,17 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	thrd_last_action(1),
 	thrd_last_fence_release(),
 	priv(new struct model_snapshot_members ()),
+	fuzzer(new Fuzzer()),
 	isfinished(false)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
 	model_thread = new Thread(get_next_id());
 	add_thread(model_thread);
+	fuzzer->register_engine(m, this);
 	scheduler->register_engine(this);
+#ifdef TLS
+	pthread_key_create(&pthreadkey, tlsdestructor);
+#endif
 }
 
 /** @brief Destructor */
@@ -117,16 +126,6 @@ int ModelExecution::get_execution_number() const
 	return model->get_execution_number();
 }
 
-static action_list_t * get_safe_ptr_action(HashTable<const void *, action_list_t *, uintptr_t, 2> * hash, void * ptr)
-{
-	action_list_t *tmp = hash->get(ptr);
-	if (tmp == NULL) {
-		tmp = new action_list_t();
-		hash->put(ptr, tmp);
-	}
-	return tmp;
-}
-
 static SnapVector<action_list_t> * get_safe_ptr_vect_action(HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> * hash, void * ptr)
 {
 	SnapVector<action_list_t> *tmp = hash->get(ptr);
@@ -135,6 +134,40 @@ static SnapVector<action_list_t> * get_safe_ptr_vect_action(HashTable<const void
 		hash->put(ptr, tmp);
 	}
 	return tmp;
+}
+
+static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 2> * hash, void * ptr)
+{
+	simple_action_list_t *tmp = hash->get(ptr);
+	if (tmp == NULL) {
+		tmp = new simple_action_list_t();
+		hash->put(ptr, tmp);
+	}
+	return tmp;
+}
+
+static SnapVector<simple_action_list_t> * get_safe_ptr_vect_action(HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> * hash, void * ptr)
+{
+	SnapVector<simple_action_list_t> *tmp = hash->get(ptr);
+	if (tmp == NULL) {
+		tmp = new SnapVector<simple_action_list_t>();
+		hash->put(ptr, tmp);
+	}
+	return tmp;
+}
+
+/**
+ * When vectors of action lists are reallocated due to resize, the root address of
+ * action lists may change. Hence we need to fix the parent pointer of the children
+ * of root.
+ */
+static void fixup_action_list (SnapVector<action_list_t> * vec)
+{
+	for (uint i = 0;i < vec->size();i++) {
+		action_list_t * list = &(*vec)[i];
+		if (list != NULL)
+			list->fixupParent();
+	}
 }
 
 /** @return a thread ID for a new Thread */
@@ -344,6 +377,10 @@ bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 			read_from(curr, rf);
 			get_thread(curr)->set_return_value(curr->get_return_value());
 			delete priorset;
+			//Update acquire fence clock vector
+			ClockVector * hbcv = get_hb_from_write(curr->get_reads_from());
+			if (hbcv != NULL)
+				get_thread(curr)->get_acq_fence_cv()->merge(hbcv);
 			return canprune && (curr->get_type() == ATOMIC_READ);
 		}
 		priorset->clear();
@@ -391,6 +428,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		//TODO: FIND SOME BETTER WAY TO CHECK LOCK INITIALIZED OR NOT
 		//if (curr->get_cv()->getClock(state->alloc_tid) <= state->alloc_clock)
 		//	assert_bug("Lock access before initialization");
+		// TODO: lock count for recursive mutexes
 		state->locked = get_thread(curr);
 		ModelAction *unlock = get_last_unlock(curr);
 		//synchronize with the previous unlock statement
@@ -413,9 +451,17 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 
 			/* unlock the lock - after checking who was waiting on it */
 			state->locked = NULL;
+			/* remove old wait action and disable this thread */
+			simple_action_list_t * waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
+			for (sllnode<ModelAction *> * it = waiters->begin();it != NULL;it = it->getNext()) {
+				ModelAction * wait = it->getVal();
+				if (wait->get_tid() == curr->get_tid()) {
+					waiters->erase(it);
+					break;
+				}
+			}
 
-			/* disable this thread */
-			get_safe_ptr_action(&condvar_waiters_map, curr->get_location())->push_back(curr);
+			waiters->push_back(curr);
 			scheduler->sleep(get_thread(curr));
 		}
 
@@ -432,6 +478,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		//FAILS AND IN THE CASE IT DOESN'T...  TIMED WAITS
 		//MUST EVENMTUALLY RELEASE...
 
+		// TODO: lock count for recursive mutexes
 		/* wake up the other threads */
 		for (unsigned int i = 0;i < get_num_threads();i++) {
 			Thread *t = get_thread(int_to_id(i));
@@ -445,7 +492,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		break;
 	}
 	case ATOMIC_NOTIFY_ALL: {
-		action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
+		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		//activate all the waiting threads
 		for (sllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
 			scheduler->wake(get_thread(rit->getVal()));
@@ -454,7 +501,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		break;
 	}
 	case ATOMIC_NOTIFY_ONE: {
-		action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
+		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		if (waiters->size() != 0) {
 			Thread * thread = fuzzer->selectNotify(waiters);
 			scheduler->wake(thread);
@@ -484,7 +531,7 @@ void ModelExecution::process_write(ModelAction *curr)
  * @param curr The ModelAction to process
  * @return True if synchronization was updated
  */
-bool ModelExecution::process_fence(ModelAction *curr)
+void ModelExecution::process_fence(ModelAction *curr)
 {
 	/*
 	 * fence-relaxed: no-op
@@ -494,36 +541,9 @@ bool ModelExecution::process_fence(ModelAction *curr)
 	 *   sequences
 	 * fence-seq-cst: MO constraints formed in {r,w}_modification_order
 	 */
-	bool updated = false;
 	if (curr->is_acquire()) {
-		action_list_t *list = &action_trace;
-		sllnode<ModelAction *> * rit;
-		/* Find X : is_read(X) && X --sb-> curr */
-		for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
-			ModelAction *act = rit->getVal();
-			if (act == curr)
-				continue;
-			if (act->get_tid() != curr->get_tid())
-				continue;
-			/* Stop at the beginning of the thread */
-			if (act->is_thread_start())
-				break;
-			/* Stop once we reach a prior fence-acquire */
-			if (act->is_fence() && act->is_acquire())
-				break;
-			if (!act->is_read())
-				continue;
-			/* read-acquire will find its own release sequences */
-			if (act->is_acquire())
-				continue;
-
-			/* Establish hypothetical release sequences */
-			ClockVector *cv = get_hb_from_write(act->get_reads_from());
-			if (cv != NULL && curr->get_cv()->merge(cv))
-				updated = true;
-		}
+		curr->get_cv()->merge(get_thread(curr)->get_acq_fence_cv());
 	}
-	return updated;
 }
 
 /**
@@ -706,8 +726,14 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
 	if (curr->is_lock()) {
 		pmc::mutex *lock = curr->get_mutex();
 		struct pmc::mutex_state *state = lock->get_state();
-		if (state->locked)
+		if (state->locked) {
+			Thread *lock_owner = (Thread *)state->locked;
+			Thread *curr_thread = get_thread(curr);
+			if (lock_owner == curr_thread && state->type == PTHREAD_MUTEX_RECURSIVE) {
+				return true;
+			}
 			return false;
+		}
 	} else if (curr->is_thread_join()) {
 		Thread *blocking = curr->get_thread_operand();
 		if (!blocking->is_complete()) {
@@ -822,6 +848,8 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
 		thrd_lists->resize(priv->next_thread_id);
 		for(uint i = oldsize;i < priv->next_thread_id;i++)
 			new (&(*thrd_lists)[i]) action_list_t();
+
+		fixup_action_list(thrd_lists);
 	}
 
 	ModelAction *prev_same_thread = NULL;
@@ -1094,12 +1122,12 @@ void ModelExecution::add_action_to_lists(ModelAction *act, bool canprune)
 {
 	int tid = id_to_int(act->get_tid());
 	if ((act->is_fence() && act->is_seqcst()) || act->is_unlock()) {
-		action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
+		simple_action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
 		act->setActionRef(list->add_back(act));
 	}
 
 	// Update action trace, a total order of all actions
-	act->setTraceRef(action_trace.add_back(act));
+	action_trace.addAction(act);
 
 
 	// Update obj_thrd_map, a per location, per thread, order of actions
@@ -1109,9 +1137,11 @@ void ModelExecution::add_action_to_lists(ModelAction *act, bool canprune)
 		vec->resize(priv->next_thread_id);
 		for(uint i = oldsize;i < priv->next_thread_id;i++)
 			new (&(*vec)[i]) action_list_t();
+
+		fixup_action_list(vec);
 	}
 	if (!canprune && (act->is_read() || act->is_write()))
-		act->setThrdMapRef((*vec)[tid].add_back(act));
+		(*vec)[tid].addAction(act);
 
 	// Update thrd_last_action, the last action taken by each thread
 	if ((int)thrd_last_action.size() <= tid)
@@ -1131,39 +1161,13 @@ void ModelExecution::add_action_to_lists(ModelAction *act, bool canprune)
 	}
 }
 
-sllnode<ModelAction *>* insertIntoActionList(action_list_t *list, ModelAction *act) {
-	sllnode<ModelAction*> * rit = list->end();
-	modelclock_t next_seq = act->get_seq_number();
-	if (rit == NULL || (rit->getVal()->get_seq_number() <= next_seq))
-		return list->add_back(act);
-	else {
-		for(;rit != NULL;rit=rit->getPrev()) {
-			if (rit->getVal()->get_seq_number() <= next_seq) {
-				return list->insertAfter(rit, act);
-			}
-		}
-		return list->add_front(act);
-	}
+void insertIntoActionList(action_list_t *list, ModelAction *act) {
+	list->addAction(act);
 }
 
-sllnode<ModelAction *>* insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
-	sllnode<ModelAction*> * rit = list->end();
-	modelclock_t next_seq = act->get_seq_number();
-	if (rit == NULL) {
-		act->create_cv(NULL);
-		return list->add_back(act);
-	} else if (rit->getVal()->get_seq_number() <= next_seq) {
-		act->create_cv(rit->getVal());
-		return list->add_back(act);
-	} else {
-		for(;rit != NULL;rit=rit->getPrev()) {
-			if (rit->getVal()->get_seq_number() <= next_seq) {
-				act->create_cv(rit->getVal());
-				return list->insertAfter(rit, act);
-			}
-		}
-		return list->add_front(act);
-	}
+void insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
+	act->create_cv(NULL);
+	list->addAction(act);
 }
 
 /**
@@ -1177,7 +1181,7 @@ sllnode<ModelAction *>* insertIntoActionListAndSetCV(action_list_t *list, ModelA
 void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 {
 	int tid = id_to_int(act->get_tid());
-	act->setTraceRef(insertIntoActionListAndSetCV(&action_trace, act));
+	insertIntoActionListAndSetCV(&action_trace, act);
 
 	// Update obj_thrd_map, a per location, per thread, order of actions
 	SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_thrd_map, act->get_location());
@@ -1186,8 +1190,10 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 		vec->resize(priv->next_thread_id);
 		for(uint i=oldsize;i<priv->next_thread_id;i++)
 			new (&(*vec)[i]) action_list_t();
+
+		fixup_action_list(vec);
 	}
-	act->setThrdMapRef(insertIntoActionList(&(*vec)[tid],act));
+	insertIntoActionList(&(*vec)[tid],act);
 
 	ModelAction * lastact = thrd_last_action[tid];
 	// Update thrd_last_action, the last action taken by each thrad
@@ -1197,13 +1203,13 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 
 void ModelExecution::add_write_to_lists(ModelAction *write) {
-	SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, write->get_location());
+	SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, write->get_location());
 	int tid = id_to_int(write->get_tid());
 	if (tid >= (int)vec->size()) {
 		uint oldsize =vec->size();
 		vec->resize(priv->next_thread_id);
 		for(uint i=oldsize;i<priv->next_thread_id;i++)
-			new (&(*vec)[i]) action_list_t();
+			new (&(*vec)[i]) simple_action_list_t();
 	}
 	write->setActionRef((*vec)[tid].add_back(write));
 }
@@ -1261,7 +1267,7 @@ ModelAction * ModelExecution::get_last_seq_cst_write(ModelAction *curr) const
 ModelAction * ModelExecution::get_last_seq_cst_fence(thread_id_t tid, const ModelAction *before_fence) const
 {
 	/* All fences should have location FENCE_LOCATION */
-	action_list_t *list = obj_map.get(FENCE_LOCATION);
+	simple_action_list_t *list = obj_map.get(FENCE_LOCATION);
 
 	if (!list)
 		return NULL;
@@ -1297,7 +1303,7 @@ ModelAction * ModelExecution::get_last_unlock(ModelAction *curr) const
 {
 	void *location = curr->get_location();
 
-	action_list_t *list = obj_map.get(location);
+	simple_action_list_t *list = obj_map.get(location);
 	if (list == NULL)
 		return NULL;
 
@@ -1353,7 +1359,7 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
  */
 SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *curr)
 {
-	SnapVector<action_list_t> *thrd_lists = obj_wr_thrd_map.get(curr->get_location());
+	SnapVector<simple_action_list_t> *thrd_lists = obj_wr_thrd_map.get(curr->get_location());
 	unsigned int i;
 	ASSERT(curr->is_read());
 
@@ -1368,7 +1374,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 	if (thrd_lists != NULL)
 		for (i = 0;i < thrd_lists->size();i++) {
 			/* Iterate over actions in thread, starting from most recent */
-			action_list_t *list = &(*thrd_lists)[i];
+			simple_action_list_t *list = &(*thrd_lists)[i];
 			sllnode<ModelAction *> * rit;
 			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 				ModelAction *act = rit->getVal();
@@ -1382,7 +1388,19 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 				if (curr->is_seqcst() && (act->is_seqcst() || (last_sc_write != NULL && act->happens_before(last_sc_write))) && act != last_sc_write)
 					allow_read = false;
 
-				/*TODO: Need to check whether we will have two RMW reading from the same value */
+				/* Need to check whether we will have two RMW reading from the same value */
+				if (curr->is_rmwr()) {
+					/* It is okay if we have a failing CAS */
+					if (!curr->is_rmwrcas() ||
+							valequals(curr->get_value(), act->get_value(), curr->getSize())) {
+						//Need to make sure we aren't the second RMW
+						CycleNode * node = mo_graph->getNode_noCreate(act);
+						if (node != NULL && node->getRMW() != NULL) {
+							//we are the second RMW
+							allow_read = false;
+						}
+					}
+				}
 
 				if (allow_read) {
 					/* Only add feasible reads */
@@ -1570,22 +1588,16 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 
 void ModelExecution::removeAction(ModelAction *act) {
 	{
-		sllnode<ModelAction *> * listref = act->getTraceRef();
-		if (listref != NULL) {
-			action_trace.erase(listref);
-		}
+		action_trace.removeAction(act);
 	}
 	{
-		sllnode<ModelAction *> * listref = act->getThrdMapRef();
-		if (listref != NULL) {
-			SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_thrd_map, act->get_location());
-			(*vec)[act->get_tid()].erase(listref);
-		}
+		SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_thrd_map, act->get_location());
+		(*vec)[act->get_tid()].removeAction(act);
 	}
 	if ((act->is_fence() && act->is_seqcst()) || act->is_unlock()) {
 		sllnode<ModelAction *> * listref = act->getActionRef();
 		if (listref != NULL) {
-			action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
+			simple_action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
 			list->erase(listref);
 		}
 	} else if (act->is_wait()) {
@@ -1597,9 +1609,10 @@ void ModelExecution::removeAction(ModelAction *act) {
 	} else if (act->is_free()) {
 		sllnode<ModelAction *> * listref = act->getActionRef();
 		if (listref != NULL) {
-			SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, act->get_location());
+			SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, act->get_location());
 			(*vec)[act->get_tid()].erase(listref);
 		}
+
 		//Clear it from last_sc_map
 		if (obj_last_sc_map.get(act->get_location()) == act) {
 			obj_last_sc_map.remove(act->get_location());

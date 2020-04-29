@@ -15,6 +15,8 @@
 #include "execution.h"
 #include "schedule.h"
 #include "threadmemory.h"
+#include "clockvector.h"
+
 #ifdef TLS
 #include <dlfcn.h>
 uintptr_t get_tls_addr() {
@@ -359,6 +361,7 @@ void Thread::complete()
  */
 Thread::Thread(thread_id_t tid) :
 	parent(NULL),
+	acq_fence_cv(new ClockVector()),
 	creation(NULL),
 	pending(NULL),
 	start_routine(NULL),
@@ -385,6 +388,7 @@ Thread::Thread(thread_id_t tid) :
  */
 Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread *parent) :
 	parent(parent),
+	acq_fence_cv(new ClockVector()),
 	creation(NULL),
 	pending(NULL),
 	start_routine(func),
@@ -418,6 +422,7 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
  */
 Thread::Thread(thread_id_t tid, thrd_t *t, void *(*func)(void *), void *a, Thread *parent) :
 	parent(parent),
+	acq_fence_cv(new ClockVector()),
 	creation(NULL),
 	pending(NULL),
 	start_routine(NULL),
@@ -447,6 +452,8 @@ Thread::~Thread()
 {
 	if (!is_complete())
 		complete();
+
+	delete acq_fence_cv;
 }
 
 /** @return The thread_id_t corresponding to this Thread object. */
@@ -493,6 +500,14 @@ Thread * Thread::waiting_on() const
 bool Thread::is_waiting_on(const Thread *t) const
 {
 	Thread *wait;
+
+	// One thread relocks a recursive mutex
+	if (waiting_on() == t && pending->is_lock()) {
+		int mutex_type = pending->get_mutex()->get_state()->type;
+		if (mutex_type == PTHREAD_MUTEX_RECURSIVE)
+			return false;
+	}
+
 	for (wait = waiting_on();wait != NULL;wait = wait->waiting_on())
 		if (wait == t)
 			return true;

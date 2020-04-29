@@ -19,9 +19,7 @@ ThreadMemory* getThreadMemory(){
 		action->setOperatorSize(size);                                                                          \
 		getThreadMemory()->applyWrite(action);                                                                  \
 		thread_id_t tid = thread_current()->get_id();           \
-		for(int i=0;i< size/8;i++) {                                                                           \
-			raceCheckWrite(tid, (void *)(((uintptr_t)addrs) + i));                                          \
-		}                                                                                                       \
+		raceCheckWrite ## size(tid, (void *)(((uintptr_t)addrs)));                                          \
 	}
 PMCHECKSTORE(8)
 PMCHECKSTORE(16)
@@ -38,9 +36,7 @@ PMCHECKSTORE(64)
 		action->setOperatorSize(size);                                                                  \
 		getThreadMemory()->applyRead( action);                                                          \
 		thread_id_t tid = thread_current()->get_id();           \
-		for(int i=0;i< size/8;i++) {                                                                           \
-			raceCheckRead(tid, (void *)(((uintptr_t)addrs) + i));                                           \
-		}                                                                                               \
+		raceCheckRead ## size (tid, (void *)(((uintptr_t)addrs)));                                           \
 	}
 
 PMCHECKLOAD(8)

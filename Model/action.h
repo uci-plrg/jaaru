@@ -195,10 +195,7 @@ public:
 	/* to accomodate pthread create and join */
 	Thread * thread_operand;
 	void set_thread_operand(Thread *th) { thread_operand = th; }
-	void setTraceRef(sllnode<ModelAction *> *ref) { trace_ref = ref; }
-	void setThrdMapRef(sllnode<ModelAction *> *ref) { thrdmap_ref = ref; }
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
-	sllnode<ModelAction *> * getTraceRef() { return trace_ref; }
 	sllnode<ModelAction *> * getThrdMapRef() { return thrdmap_ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
 
@@ -236,8 +233,6 @@ private:
 	 */
 	ClockVector *cv;
 	ClockVector *rf_cv;
-	sllnode<ModelAction *> * trace_ref;
-	sllnode<ModelAction *> * thrdmap_ref;
 	sllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
 	uint64_t value;
