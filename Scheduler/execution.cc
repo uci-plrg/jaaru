@@ -488,7 +488,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr)
 {
-	getThreadMemory()->applyWrite();
+	getThreadMemory()->applyWrite(curr);
 	ASSERT(0);
 	w_modification_order(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
@@ -1356,19 +1356,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 				if (curr->is_seqcst() && (act->is_seqcst() || (last_sc_write != NULL && act->happens_before(last_sc_write))) && act != last_sc_write)
 					allow_read = false;
 
-				/* Need to check whether we will have two RMW reading from the same value */
-				if (curr->is_rmwr()) {
-					/* It is okay if we have a failing CAS */
-					if (!curr->is_rmwrcas() ||
-							valequals(curr->get_value(), act->get_value(), curr->getSize())) {
-						//Need to make sure we aren't the second RMW
-						CycleNode * node = mo_graph->getNode_noCreate(act);
-						if (node != NULL && node->getRMW() != NULL) {
-							//we are the second RMW
-							allow_read = false;
-						}
-					}
-				}
+				/*TODO: Need to check whether we will have two RMW reading from the same value */
 
 				if (allow_read) {
 					/* Only add feasible reads */
@@ -1681,6 +1669,7 @@ void ModelExecution::collectActions() {
 
 		//TODO:Free if it is invisible or we have set a flag to remove visible actions.
 		if (actseq <= tid_clock) {
+			ASSERT(0);
 			ModelAction * write;
 			if (act->is_write()) {
 				write = act;

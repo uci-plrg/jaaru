@@ -14,6 +14,7 @@
 #include "output.h"
 #include "execution.h"
 #include "params.h"
+#include "datarace.h"
 
 ModelChecker *model = NULL;
 

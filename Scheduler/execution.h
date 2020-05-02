@@ -18,6 +18,7 @@
 #include <condition_variable>
 #include "classlist.h"
 #include "mutex.h"
+#include "actionlist.h"
 
 struct PendingFutureValue {
 	PendingFutureValue(ModelAction *writer, ModelAction *reader) :
