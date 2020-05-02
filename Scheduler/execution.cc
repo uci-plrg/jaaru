@@ -85,41 +85,6 @@ ModelExecution::~ModelExecution()
 	delete priv;
 }
 
-void ModelExecution::print_tail()
-{
-	model_print("Execution trace %d:\n", get_execution_number());
-
-	sllnode<ModelAction*> *it;
-
-	model_print("------------------------------------------------------------------------------------\n");
-	model_print("#    t    Action type     MO       Location         Value               Rf  CV\n");
-	model_print("------------------------------------------------------------------------------------\n");
-
-	unsigned int hash = 0;
-
-	int length = 25;
-	int counter = 0;
-	SnapList<ModelAction *> list;
-	for (it = action_trace.end();it != NULL;it = it->getPrev()) {
-		if (counter > length)
-			break;
-
-		ModelAction * act = it->getVal();
-		list.push_front(act);
-		counter++;
-	}
-
-	for (it = list.begin();it != NULL;it=it->getNext()) {
-		const ModelAction *act = it->getVal();
-		if (act->get_seq_number() > 0)
-			act->print();
-		hash = hash^(hash<<3)^(it->getVal()->hash());
-	}
-	model_print("HASH %u\n", hash);
-	model_print("------------------------------------------------------------------------------------\n");
-}
-
-
 
 int ModelExecution::get_execution_number() const
 {
@@ -407,6 +372,7 @@ bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
  */
 bool ModelExecution::process_mutex(ModelAction *curr)
 {
+	ASSERT(0);
 	pmc::mutex *mutex = curr->get_mutex();
 	struct pmc::mutex_state *state = NULL;
 
@@ -522,6 +488,8 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr)
 {
+	getThreadMemory()->applyWrite();
+	ASSERT(0);
 	w_modification_order(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
@@ -1457,6 +1425,40 @@ void ModelExecution::print_summary()
 
 }
 
+void ModelExecution::print_tail()
+{
+	model_print("Execution trace %d:\n", get_execution_number());
+
+	sllnode<ModelAction*> *it;
+
+	model_print("------------------------------------------------------------------------------------\n");
+	model_print("#    t    Action type     MO       Location         Value               Rf  CV\n");
+	model_print("------------------------------------------------------------------------------------\n");
+
+	unsigned int hash = 0;
+
+	int length = 25;
+	int counter = 0;
+	SnapList<ModelAction *> list;
+	for (it = action_trace.end();it != NULL;it = it->getPrev()) {
+		if (counter > length)
+			break;
+
+		ModelAction * act = it->getVal();
+		list.push_front(act);
+		counter++;
+	}
+
+	for (it = list.begin();it != NULL;it=it->getNext()) {
+		const ModelAction *act = it->getVal();
+		if (act->get_seq_number() > 0)
+			act->print();
+		hash = hash^(hash<<3)^(it->getVal()->hash());
+	}
+	model_print("HASH %u\n", hash);
+	model_print("------------------------------------------------------------------------------------\n");
+}
+
 /**
  * Add a Thread to the system for the first time. Should only be called once
  * per thread.
@@ -1656,7 +1658,7 @@ void ModelExecution::fixupLastAct(ModelAction *act) {
 void ModelExecution::collectActions() {
 	if (priv->used_sequence_numbers < params->traceminsize)
 		return;
-
+	ASSERT(0);
 	//Compute minimal clock vector for all live threads
 	ClockVector *cvmin = computeMinimalCV();
 	modelclock_t maxtofree = priv->used_sequence_numbers - params->traceminsize;

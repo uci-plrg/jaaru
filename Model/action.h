@@ -196,7 +196,6 @@ public:
 	Thread * thread_operand;
 	void set_thread_operand(Thread *th) { thread_operand = th; }
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
-	sllnode<ModelAction *> * getThrdMapRef() { return thrdmap_ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
 
 	SNAPSHOTALLOC

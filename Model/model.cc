@@ -65,11 +65,15 @@ ModelChecker::ModelChecker() :
 							"Written by Hamed Gorjiara and Brian Demsky\n\n");
 	memset(&stats,0,sizeof(struct execution_stats));
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
+#ifdef TLS
+	init_thread->setTLS((char *)get_tls_addr());
+#endif
 	execution->add_thread(init_thread);
 	scheduler->set_current_thread(init_thread);
 	execution->setParams(&params);
 	param_defaults(&params);
 	parse_options(&params);
+	initRaceDetector();
 	/* Configure output redirection for the model-checker */
 	install_handler();
 }
