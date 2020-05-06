@@ -728,6 +728,7 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
  */
 ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 {
+	ASSERT(0);
 	ASSERT(curr);
 	bool second_part_of_rmw = curr->is_rmwc() || curr->is_rmw();
 	bool newly_explored = initialize_curr_action(&curr);
