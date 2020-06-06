@@ -1,4 +1,3 @@
-#include <cmath>
 #include "cacheline.h"
 #include "common.h"
 #include "action.h"
