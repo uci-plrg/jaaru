@@ -29,8 +29,8 @@ bool cacheLineEquals(CacheLine *c1, CacheLine *c2);
 
 typedef HashSet<CacheLine *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free, cacheLineHashFunction, cacheLineEquals> CacheLineSet;
 typedef HSIterator<CacheLine *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free, cacheLineHashFunction, cacheLineEquals> CacheLineSetIter;
-typedef HashSet<uint64_t, uint64_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> ValueSet;
-typedef HSIterator<uint64_t, uint64_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> ValueSetIter;
+typedef HashSet<uintptr_t, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> ValueSet;
+typedef HSIterator<uintptr_t, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free> ValueSetIter;
 
 extern volatile int modellock;
 #endif

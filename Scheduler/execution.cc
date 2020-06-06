@@ -26,6 +26,7 @@ struct model_snapshot_members {
 		next_thread_id(INITIAL_THREAD_ID),
 		used_sequence_numbers(0),
 		bugs(),
+		warnings(),
 		asserted(false)
 	{ }
 
@@ -33,11 +34,15 @@ struct model_snapshot_members {
 		for (unsigned int i = 0;i < bugs.size();i++)
 			delete bugs[i];
 		bugs.clear();
+		for (unsigned int i = 0;i < warnings.size();i++)
+			delete warnings[i];
+		warnings.clear();
 	}
 
 	unsigned int next_thread_id;
 	modelclock_t used_sequence_numbers;
 	SnapVector<bug_message *> bugs;
+	SnapVector<bug_message *> warnings;
 	/** @brief Incorrectly-ordered synchronization was made */
 	bool asserted;
 
@@ -214,6 +219,10 @@ void ModelExecution::wake_up_sleeping_actions(ModelAction *curr)
 	}
 }
 
+void ModelExecution::add_warning(const char *msg) {
+	priv->warnings.push_back(new bug_message(msg, false));
+}
+
 void ModelExecution::assert_bug(const char *msg)
 {
 	priv->bugs.push_back(new bug_message(msg));
@@ -224,6 +233,11 @@ void ModelExecution::assert_bug(const char *msg)
 bool ModelExecution::have_bug_reports() const
 {
 	return priv->bugs.size() != 0;
+}
+
+SnapVector<bug_message *> * ModelExecution::get_warnings() const
+{
+	return &priv->warnings;
 }
 
 SnapVector<bug_message *> * ModelExecution::get_bugs() const
@@ -495,6 +509,30 @@ void ModelExecution::process_write(ModelAction *curr)
 }
 
 /**
+ * Process a cache operation including be CLWB, CLFLUSH, CLFLUSHOPT
+ * @param curr: the cache operation that need to be processed
+ * @return Nothing is returned
+ */
+void ModelExecution::process_cache_op(ModelAction *curr)
+{
+	getThreadMemory()->applyCacheOp(curr);
+	ASSERT(0);
+	get_thread(curr)->set_return_value(VALUE_NONE);
+}
+
+/**
+ * Process a memory fence including SFENCE, MFENCE
+ * @param curr: the fence operation
+ * @return Nothing is returned
+ */
+void ModelExecution::process_memory_fence(ModelAction *curr)
+{
+	getThreadMemory()->applyFence(curr);
+	ASSERT(0);
+	get_thread(curr)->set_return_value(VALUE_NONE);
+}
+
+/**
  * Process a fence ModelAction
  * @param curr The ModelAction to process
  * @return True if synchronization was updated
@@ -509,6 +547,7 @@ void ModelExecution::process_fence(ModelAction *curr)
 	 *   sequences
 	 * fence-seq-cst: MO constraints formed in {r,w}_modification_order
 	 */
+	ASSERT(0);
 	if (curr->is_acquire()) {
 		curr->get_cv()->merge(get_thread(curr)->get_acq_fence_cv());
 	}
@@ -612,6 +651,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
  */
 bool ModelExecution::initialize_curr_action(ModelAction **curr)
 {
+	ASSERT(0);
 	if ((*curr)->is_rmwc() || (*curr)->is_rmw()) {
 		ModelAction *newcurr = process_rmw(*curr);
 		delete *curr;
@@ -646,6 +686,7 @@ bool ModelExecution::initialize_curr_action(ModelAction **curr)
 
 void ModelExecution::read_from(ModelAction *act, ModelAction *rf)
 {
+	ASSERT(0);
 	ASSERT(rf);
 	ASSERT(rf->is_write());
 
@@ -672,6 +713,7 @@ void ModelExecution::read_from(ModelAction *act, ModelAction *rf)
  */
 bool ModelExecution::synchronize(const ModelAction *first, ModelAction *second)
 {
+	ASSERT(0);
 	if (*second < *first) {
 		ASSERT(0);	//This should not happend
 		return false;
@@ -759,14 +801,25 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 	process_thread_action(curr);
 
-	if (curr->is_write())
+	if (curr->is_write()){
 		process_write(curr);
+	}
 
-	if (curr->is_fence())
+	if (curr->is_cache_op()){
+		process_cache_op(curr);
+	}
+
+	if (curr->is_memory_fence()){
+		process_memory_fence(curr);
+	}
+	
+	if (curr->is_fence()){
 		process_fence(curr);
+	}
 
-	if (curr->is_mutex_op())
+	if (curr->is_mutex_op()){
 		process_mutex(curr);
+	}
 
 	return curr;
 }
@@ -803,6 +856,7 @@ ModelAction * ModelExecution::process_rmw(ModelAction *act) {
 bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *rf,
 																					SnapVector<ModelAction *> * priorset, bool * canprune, bool check_only)
 {
+	ASSERT(0);
 	SnapVector<action_list_t> *thrd_lists = obj_thrd_map.get(curr->get_location());
 	ASSERT(curr->is_read());
 
@@ -942,6 +996,7 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
  */
 void ModelExecution::w_modification_order(ModelAction *curr)
 {
+	ASSERT(0);
 	SnapVector<action_list_t> *thrd_lists = obj_thrd_map.get(curr->get_location());
 	unsigned int i;
 	ASSERT(curr->is_write());
@@ -1035,6 +1090,7 @@ void ModelExecution::w_modification_order(ModelAction *curr)
  */
 
 ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
+	ASSERT(0);
 	SnapVector<ModelAction *> * processset = NULL;
 	for ( ;rf != NULL;rf = rf->get_reads_from()) {
 		ASSERT(rf->is_write());

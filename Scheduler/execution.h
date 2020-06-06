@@ -63,10 +63,12 @@ public:
 	bool check_action_enabled(ModelAction *curr);
 
 	void assert_bug(const char *msg);
+	void add_warning(const char *msg);
 
 	bool have_bug_reports() const;
 
 	SnapVector<bug_message *> * get_bugs() const;
+	SnapVector<bug_message *> * get_warnings() const;
 
 	bool has_asserted() const;
 	void set_assert();
@@ -98,6 +100,8 @@ private:
 	bool initialize_curr_action(ModelAction **curr);
 	bool process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
+	void process_cache_op(ModelAction *curr);
+	void process_memory_fence(ModelAction *curr);
 	void process_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);
 	void process_thread_action(ModelAction *curr);

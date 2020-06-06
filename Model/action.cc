@@ -321,6 +321,22 @@ bool ModelAction::is_write() const
 	return type == ATOMIC_WRITE || type == ATOMIC_RMW || type == ATOMIC_INIT || type == NONATOMIC_WRITE;
 }
 
+bool ModelAction::is_cache_op() const
+{
+	return type == ACTION_CLWB || type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
+}
+
+bool ModelAction::is_memory_fence() const
+{
+	return type == CACHE_MFENCE || type == CACHE_SFENCE;
+}
+
+bool ModelAction::is_clflush() const
+{
+	return type == ACTION_CLFLUSH;
+}
+
+
 bool ModelAction::is_create() const
 {
 	return type == THREAD_CREATE || type == PTHREAD_CREATE;

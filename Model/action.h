@@ -149,6 +149,9 @@ public:
 	bool is_atomic_var() const;
 	bool is_read() const;
 	bool is_write() const;
+	bool is_cache_op() const;
+	bool is_clflush() const;
+	bool is_memory_fence() const;
 	bool is_free() const;
 	bool is_yield() const;
 	bool could_be_write() const;
@@ -185,7 +188,7 @@ public:
 		return get_seq_number() > act.get_seq_number();
 	}
 	inline void setOperatorSize(uint size){this->opbitsize = size;}
-
+	inline uint getOperatorSize() { return this->opbitsize;} 
 	void process_rmw(ModelAction * act);
 	void copy_typeandorder(ModelAction * act);
 	unsigned int hash() const;

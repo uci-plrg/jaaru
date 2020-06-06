@@ -185,6 +185,14 @@ void ModelChecker::assert_user_bug(const char *msg)
 /** @brief Print bug report listing for this execution (if any bugs exist) */
 void ModelChecker::print_bugs() const
 {
+	SnapVector<bug_message *> *warnings = execution->get_warnings();
+
+	model_print("Warning report: %zu warning%s detected\n",
+							warnings->size(),
+							warnings->size() > 1 ? "s" : "");
+	for (unsigned int i = 0;i < warnings->size();i++)
+		(*warnings)[i] -> print();
+		
 	SnapVector<bug_message *> *bugs = execution->get_bugs();
 
 	model_print("Bug report: %zu bug%s detected\n",

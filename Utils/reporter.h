@@ -5,8 +5,8 @@
 #include "mymemory.h"
 
 struct bug_message {
-	bug_message(const char *str) {
-		const char *fmt = "  [BUG] %s\n";
+	bug_message(const char *str, bool bug = true) {
+		const char *fmt = bug? "  [BUG] %s\n": "  [Warning] %s\n";
 		msg = (char *)snapshot_malloc(strlen(fmt) + strlen(str));
 		sprintf(msg, fmt, str);
 	}

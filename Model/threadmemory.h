@@ -23,6 +23,12 @@ public:
 
 	SNAPSHOTALLOC;
 private:
+	void executeWrite(ModelAction *write);
+	void executeCacheOp(ModelAction *read);
+	void emptyStoreBuffer();
+	void emptyMemoryBuffer(ModelAction *op);
+	void storeBufferDequeue();
+	void persistCacheLine(uintptr_t cid, ModelAction *op);
 	SnapVector<ModelAction*> storeBuffer;
 	CacheLineSet cache;
 	ValueSet memoryBuffer;
