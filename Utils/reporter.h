@@ -6,7 +6,7 @@
 
 struct bug_message {
 	bug_message(const char *str, bool bug = true) {
-		const char *fmt = bug? "  [BUG] %s\n": "  [Warning] %s\n";
+		const char *fmt = bug ? "  [BUG] %s\n" : "  [Warning] %s\n";
 		msg = (char *)snapshot_malloc(strlen(fmt) + strlen(str));
 		sprintf(msg, fmt, str);
 	}

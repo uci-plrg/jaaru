@@ -48,14 +48,14 @@ int main() {
 	pmc_atomic_init32(&y, 0, (const char *) (&y));
 	pthread_t threads[NUMTHREADS];
 	void *(*funcptr[])(void *) = {func1, func2};
-	for (int i=0; i< NUMTHREADS; i++){
-		if( int retval = pthread_create(&threads[i], NULL, funcptr[i], NULL ) ){
+	for (int i=0;i< NUMTHREADS;i++) {
+		if( int retval = pthread_create(&threads[i], NULL, funcptr[i], NULL ) ) {
 			fprintf(stderr, "Unable to create a pthread. Return value %d\n", retval);
 			return EXIT_FAILURE;
 		}
 	}
 
-	for(int i=0; i< NUMTHREADS; i++){
+	for(int i=0;i< NUMTHREADS;i++) {
 		pthread_join(threads[i], NULL);
 	}
 

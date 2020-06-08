@@ -10,12 +10,12 @@ ThreadMemory::ThreadMemory() :
 {
 }
 
-void ThreadMemory::applyWrite(ModelAction * write) 
+void ThreadMemory::applyWrite(ModelAction * write)
 {
 	storeBuffer.push_back(write);
 }
 
-void ThreadMemory::applyRead(ModelAction *read) 
+void ThreadMemory::applyRead(ModelAction *read)
 {
 	emptyStoreBuffer();
 	ASSERT(0);
@@ -43,7 +43,7 @@ void ThreadMemory::applyRMW(ModelAction *rmw)
 void ThreadMemory::emptyStoreBuffer()
 {
 	uint bsize = storeBuffer.size();
-	for( uint i=0; i < bsize; i++) {
+	for( uint i=0;i < bsize;i++) {
 		storeBufferDequeue();
 	}
 }
@@ -51,7 +51,7 @@ void ThreadMemory::emptyStoreBuffer()
 void ThreadMemory::emptyMemoryBuffer(ModelAction *op)
 {
 	ValueSetIter *iter = memoryBuffer.iterator();
-	while(iter->hasNext()){
+	while(iter->hasNext()) {
 		uintptr_t clid = iter->next();
 		persistCacheLine(clid, op);
 	}
@@ -60,11 +60,11 @@ void ThreadMemory::emptyMemoryBuffer(ModelAction *op)
 
 void ThreadMemory::storeBufferDequeue()
 {
-	ModelAction *curr = storeBuffer.back(); 
+	ModelAction *curr = storeBuffer.back();
 	storeBuffer.pop_back();
-	if (curr->is_write()){
+	if (curr->is_write()) {
 		executeWrite(curr);
-	} else if (curr->is_cache_op()){
+	} else if (curr->is_cache_op()) {
 		executeCacheOp(curr);
 	} else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
@@ -79,7 +79,7 @@ void ThreadMemory::executeWrite(ModelAction *writeop)
 	DEBUG("Executing write size %u to memory location %p", writeop->getOperatorSize(), writeop->get_location());
 	CacheLine ctmp(writeop->get_location());
 	CacheLine *cline = cache.get(&ctmp);
-	if (cline == NULL) { // There is no write for this cache line
+	if (cline == NULL) {	// There is no write for this cache line
 		cline = new CacheLine(writeop->get_location());
 		cache.add(cline);
 	}
@@ -89,7 +89,7 @@ void ThreadMemory::executeWrite(ModelAction *writeop)
 void ThreadMemory::executeCacheOp(ModelAction *cacheop)
 {
 	uintptr_t cid = getCacheID(cacheop->get_location());
-	if(cacheop->is_clflush()){
+	if(cacheop->is_clflush()) {
 		persistCacheLine(cid, cacheop);
 	} else {
 		memoryBuffer.add(cid);

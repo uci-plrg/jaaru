@@ -188,7 +188,7 @@ public:
 		return get_seq_number() > act.get_seq_number();
 	}
 	inline void setOperatorSize(uint size){this->opbitsize = size;}
-	inline uint getOperatorSize() { return this->opbitsize;} 
+	inline uint getOperatorSize() { return this->opbitsize;}
 	void process_rmw(ModelAction * act);
 	void copy_typeandorder(ModelAction * act);
 	unsigned int hash() const;

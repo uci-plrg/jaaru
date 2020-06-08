@@ -192,13 +192,13 @@ void ModelChecker::print_bugs() const
 							warnings->size() > 1 ? "s" : "");
 	for (unsigned int i = 0;i < warnings->size();i++)
 		(*warnings)[i] -> print();
-		
+
 	SnapVector<bug_message *> *bugs = execution->get_bugs();
 
 	model_print("Bug report: %zu bug%s detected\n",
 							bugs->size(),
 							bugs->size() > 1 ? "s" : "");
-	for (unsigned int i = 0;i < bugs->size();i++)
+	for (unsigned int i = 0;i < bugs->size();i ++)
 		(*bugs)[i] -> print();
 }
 

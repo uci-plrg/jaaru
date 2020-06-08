@@ -801,23 +801,23 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 	process_thread_action(curr);
 
-	if (curr->is_write()){
+	if (curr->is_write()) {
 		process_write(curr);
 	}
 
-	if (curr->is_cache_op()){
+	if (curr->is_cache_op()) {
 		process_cache_op(curr);
 	}
 
-	if (curr->is_memory_fence()){
+	if (curr->is_memory_fence()) {
 		process_memory_fence(curr);
 	}
-	
-	if (curr->is_fence()){
+
+	if (curr->is_fence()) {
 		process_fence(curr);
 	}
 
-	if (curr->is_mutex_op()){
+	if (curr->is_mutex_op()) {
 		process_mutex(curr);
 	}
 
