@@ -1,9 +1,7 @@
 #!/bin/bash
-
-export LD_LIBRARY_PATH=../bin
+export LD_LIBRARY_PATH=/scratch/nvm/pmcheck/bin/
 # For Mac OSX
-export DYLD_LIBRARY_PATH=../bin
-# For sat_solver
-export PATH=.:$PATH
+export DYLD_LIBRARY_PATH=/scratch/nvm/pmcheck/bin/
+
 echo $@
 $@

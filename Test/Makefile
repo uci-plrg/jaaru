@@ -1,4 +1,6 @@
 BASE := ..
+LLVMCC := ./gcc
+LLVMCXX := ./g++
 
 OBJECTS := $(patsubst %.cc, ../bin/%, $(wildcard *.cc))
 COBJECTS := $(patsubst %.c, ../bin/%, $(wildcard *.c))
@@ -14,10 +16,10 @@ all: $(OBJECTS) $(COBJECTS) ../bin/run.sh $(PYOBJECT)
 -include $(DEPS)
 
 ../bin/%: %.cc
-	$(CXX) -MMD -MF $(@D)/.$(@F).d -o ../bin/$@ $< $(CPPFLAGS) -L$(BASE)/bin/ $(CFLAGS)
+	$(LLVMCXX) -MMD -MF $(@D)/.$(@F).d -o ../bin/$@ $< $(CPPFLAGS) -L$(BASE)/bin/ $(CFLAGS)
 
 ../bin/%: %.c
-	$(CC) -MMD -MF $(@D)/.$(@F).d -o ../bin/$@ $< $(CPPFLAGS) -L$(BASE)/bin/ $(CFLAGS)
+	$(LLVMCC) -MMD -MF $(@D)/.$(@F).d -o ../bin/$@ $< $(CPPFLAGS) -L$(BASE)/bin/ $(CFLAGS)
 
 ../bin/run.sh: run.sh
 	cp run.sh ../bin/run.sh
