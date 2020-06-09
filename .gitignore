@@ -1,5 +1,5 @@
 # Folders to ignore
-bin
-
+/bin
+/.vscode
 # Types to ignore
 **/*.swp

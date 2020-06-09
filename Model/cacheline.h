@@ -38,7 +38,7 @@ private:
 inline uintptr_t getCacheID(void *address){
 	ASSERT( ((uintptr_t)address & 0x3) == 0 );
 	int bitShift = static_cast<uintptr_t>(log2(static_cast<double>(CACHELINESIZE) ) );
-	DEBUG( "Address %p === Cache ID %x", address, ((uintptr_t)address >> bitShift) );
+	DEBUG( "Address %p === Cache ID %x\n", address, ((uintptr_t)address >> bitShift) );
 	return ((uintptr_t)address) >>  bitShift;
 }
 

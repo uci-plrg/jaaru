@@ -18,7 +18,7 @@ void ThreadMemory::addWrite(ModelAction * write)
 
 void ThreadMemory::applyRead(ModelAction *read)
 {
-	DEBUG("Executing read size %u to memory location %p", read->getOperatorSize(), read->get_location());
+	DEBUG("Executing read size %u to memory location %p\n", read->getOperatorSize(), read->get_location());
 	emptyStoreBuffer();
 	//TODO: decide about value that might read.
 	ASSERT(0);
@@ -31,7 +31,7 @@ void ThreadMemory::addCacheOp(ModelAction *clflush)
 
 void ThreadMemory::applyFence(ModelAction *fence)
 {
-	DEBUG("Applying memory fence...");
+	DEBUG("Applying memory fence...\n");
 	emptyStoreBuffer();
 	persistMemoryBuffer();
 	ASSERT(0);
@@ -39,7 +39,7 @@ void ThreadMemory::applyFence(ModelAction *fence)
 
 void ThreadMemory::applyRMW(ModelAction *rmw)
 {
-	DEBUG("Executing read-modify-write size %u to memory location %p", rmw->getOperatorSize(), rmw->get_location());
+	DEBUG("Executing read-modify-write size %u to memory location %p\n", rmw->getOperatorSize(), rmw->get_location());
 	emptyStoreBuffer();
 	persistMemoryBuffer();
 	//TODO: decide about read and writing the new value ...
@@ -64,7 +64,7 @@ void ThreadMemory::emptyStoreBuffer()
 
 void ThreadMemory::executeWrite(ModelAction *writeop)
 {
-	DEBUG("Executing write size %u to memory location %p", writeop->getOperatorSize(), writeop->get_location());
+	DEBUG("Executing write size %u to memory location %p\n", writeop->getOperatorSize(), writeop->get_location());
 	CacheLine ctmp(writeop->get_location());
 	CacheLine *cline = cache.get(&ctmp);
 	if (cline == NULL) {	// There is no write for this cache line
@@ -81,7 +81,7 @@ void ThreadMemory::executeCacheOp(ModelAction *cacheop)
 		memoryBuffer.remove(cacheop);
 	} else {
 		if(memoryBuffer.contains(cacheop)) {
-			model->get_execution()->add_warning("Warning: Redundant cache opeartion for the cache id = %x", getCacheID(cacheop->get_location()) );
+			model->get_execution()->add_warning("Warning: Redundant cache opeartion for the cache id = %x\n", getCacheID(cacheop->get_location()) );
 			memoryBuffer.remove(cacheop);
 		}
 		memoryBuffer.add(cacheop);

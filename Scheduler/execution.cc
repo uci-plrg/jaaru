@@ -219,7 +219,13 @@ void ModelExecution::wake_up_sleeping_actions(ModelAction *curr)
 	}
 }
 
-void ModelExecution::add_warning(const char *msg) {
+void ModelExecution::add_warning(const char *msg, ...) {
+	char str[1024];
+
+	va_list ap;
+	va_start(ap, msg);
+	vsnprintf(str, sizeof(str), msg, ap);
+	va_end(ap);
 	priv->warnings.push_back(new bug_message(msg, false));
 }
 
@@ -625,7 +631,6 @@ void ModelExecution::process_thread_action(ModelAction *curr)
  */
 bool ModelExecution::initialize_curr_action(ModelAction **curr)
 {
-	ASSERT(0);
 	if ((*curr)->is_rmwc() || (*curr)->is_rmw()) {
 		ModelAction *newcurr = process_rmw(*curr);
 		delete *curr;
@@ -744,7 +749,6 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
  */
 ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 {
-	ASSERT(0);
 	ASSERT(curr);
 	bool second_part_of_rmw = curr->is_rmwc() || curr->is_rmw();
 	bool newly_explored = initialize_curr_action(&curr);
@@ -1202,6 +1206,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 
 void ModelExecution::add_write_to_lists(ModelAction *write) {
+	ASSERT(0);
 	SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, write->get_location());
 	int tid = id_to_int(write->get_tid());
 	if (tid >= (int)vec->size()) {
@@ -1358,6 +1363,8 @@ ModelAction * ModelExecution::get_last_write_before(ModelAction *op)
 {
 	ThreadMemory * threadMem = get_thread(op->get_tid())->getMemory();
 	modelclock_t clock_number = threadMem->getCacheLineBeginRange(op->get_location());
+	ASSERT(obj_wr_thrd_map.get(op->get_location()) != NULL);
+	ASSERT(obj_wr_thrd_map.get(op->get_location())->size() > (uint)id_to_int(op->get_tid()) );
 	simple_action_list_t *list = &(*obj_wr_thrd_map.get(op->get_location()))[id_to_int( op->get_tid())];
 	sllnode<ModelAction *> * rit;
 	for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
@@ -1650,6 +1657,7 @@ void ModelExecution::removeAction(ModelAction *act) {
 	} else if (act->is_free()) {
 		sllnode<ModelAction *> * listref = act->getActionRef();
 		if (listref != NULL) {
+			ASSERT(0);
 			SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, act->get_location());
 			(*vec)[act->get_tid()].erase(listref);
 		}
@@ -1689,7 +1697,7 @@ void ModelExecution::fixupLastAct(ModelAction *act) {
 	newact->set_seq_number(get_next_seq_num());
 	newact->create_cv(act);
 	newact->set_last_fence_release(act->get_last_fence_release());
-	add_action_to_lists(newact, false);
+	add_action_to_lists(newact);
 }
 
 /** Compute which actions to free.  */
