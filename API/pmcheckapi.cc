@@ -17,7 +17,7 @@ ThreadMemory* getThreadMemory(){
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);                                                          \
 		ModelAction *action = new ModelAction(NONATOMIC_WRITE, memory_order_seq_cst, addrs);                    \
 		action->setOperatorSize(size);                                                                          \
-		getThreadMemory()->applyWrite(action);                                                                  \
+		getThreadMemory()->addWrite(action);                                                                  \
 		thread_id_t tid = thread_current()->get_id();           \
 		raceCheckWrite ## size(tid, (void *)(((uintptr_t)addrs)));                                          \
 	}
@@ -50,17 +50,17 @@ PMCHECKLOAD(64)
 
 void pmc_clwb(void * addrs){
 	DEBUG("pmc_clwb:addr = %p\n",addrs);
-	getThreadMemory()->applyCacheOp(new ModelAction(ACTION_CLWB, memory_order_seq_cst, addrs) );
+	getThreadMemory()->addCacheOp(new ModelAction(ACTION_CLWB, memory_order_seq_cst, addrs) );
 }
 
 void pmc_clflushopt(void * addrs){
 	DEBUG("pmc_clflushopt:addr = %p\n",addrs);
-	getThreadMemory()->applyCacheOp(new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs) );
+	getThreadMemory()->addCacheOp(new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs) );
 }
 
 void pmc_clflush(void * addrs){
 	DEBUG("pmc_clflush:addr = %p\n",addrs);
-	getThreadMemory()->applyCacheOp(new ModelAction(ACTION_CLFLUSH, memory_order_seq_cst, addrs) );
+	getThreadMemory()->addCacheOp(new ModelAction(ACTION_CLFLUSH, memory_order_seq_cst, addrs) );
 }
 
 void pmc_mfence(){

@@ -23,5 +23,14 @@ void CacheLine::applyWrite(ModelAction *write)
 	ASSERT( ((uintptr_t)write->get_location() & 0x3) == 0);
 	if(beginR == UNDEFINED && endR == UNDEFINED) {
 		beginR = write->get_seq_number();
+	} else if (beginR != UNDEFINED && endR != UNDEFINED) {
+		beginR = endR;
+		endR = UNDEFINED;
 	}
+}
+
+
+bool CacheLine::nonpersistentWriteExist()
+{
+	return beginR != UNDEFINED && endR == UNDEFINED;
 }

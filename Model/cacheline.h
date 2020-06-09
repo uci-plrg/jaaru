@@ -23,9 +23,12 @@ public:
 	void setBeginRange(modelclock_t begin) { beginR =begin;}
 	void setEndRange (modelclock_t end) { endR = end; }
 	void applyWrite(ModelAction *write);
+	bool nonpersistentWriteExist();
 	SNAPSHOTALLOC;
 private:
+	//Only contains the clock time of 1) the write that a read may read from 2) read clock
 	modelclock_t beginR;
+	// It should the clock of the FENCE or RMW operation.
 	modelclock_t endR;
 
 	uintptr_t id;

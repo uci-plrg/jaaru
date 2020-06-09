@@ -322,50 +322,24 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  * @param rf_set is the set of model actions we can possibly read from
  * @return True if the read can be pruned from the thread map list.
  */
-bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
+void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
-	getThreadMemory()->applyRead(curr);
-	ASSERT(0);
-	SnapVector<ModelAction *> * priorset = new SnapVector<ModelAction *>();
+	ASSERT(curr->is_read());
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
+		ASSERT(0);
 		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
 		rf_set->push_back(nonatomicstore);
 	}
-
-	// Remove writes that violate read modification order
-	/*
-	   uint i = 0;
-	   while (i < rf_set->size()) {
-	        ModelAction * rf = (*rf_set)[i];
-	        if (!r_modification_order(curr, rf, NULL, NULL, true)) {
-	                (*rf_set)[i] = rf_set->back();
-	                rf_set->pop_back();
-	        } else
-	                i++;
-	   }*/
-
-	while(true) {
-		int index = fuzzer->selectWrite(curr, rf_set);
-
-		ModelAction *rf = (*rf_set)[index];
-
-		ASSERT(rf);
-		bool canprune = false;
-		if (r_modification_order(curr, rf, priorset, &canprune)) {
-			read_from(curr, rf);
-			get_thread(curr)->set_return_value(curr->get_return_value());
-			delete priorset;
-			//Update acquire fence clock vector
-			ClockVector * hbcv = get_hb_from_write(curr->get_reads_from());
-			if (hbcv != NULL)
-				get_thread(curr)->get_acq_fence_cv()->merge(hbcv);
-			return canprune && (curr->get_type() == ATOMIC_READ);
-		}
-		priorset->clear();
-		(*rf_set)[index] = rf_set->back();
-		rf_set->pop_back();
-	}
+	int index = fuzzer->selectWrite(curr, rf_set);
+	ModelAction *rf = (*rf_set)[index];
+	ASSERT(rf);
+	read_from(curr, rf);
+	get_thread(curr)->set_return_value(curr->get_return_value());
+	//Update acquire fence clock vector
+	ClockVector * hbcv = get_hb_from_write(curr->get_reads_from());
+	if (hbcv != NULL)
+		get_thread(curr)->get_acq_fence_cv()->merge(hbcv);
 }
 
 /**
@@ -502,7 +476,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr)
 {
-	getThreadMemory()->applyWrite(curr);
+	getThreadMemory()->addWrite(curr);
 	ASSERT(0);
 	w_modification_order(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
@@ -515,9 +489,9 @@ void ModelExecution::process_write(ModelAction *curr)
  */
 void ModelExecution::process_cache_op(ModelAction *curr)
 {
-	getThreadMemory()->applyCacheOp(curr);
-	ASSERT(0);
+	getThreadMemory()->addCacheOp(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
+	ASSERT(0);
 }
 
 /**
@@ -528,8 +502,8 @@ void ModelExecution::process_cache_op(ModelAction *curr)
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
 	getThreadMemory()->applyFence(curr);
-	ASSERT(0);
 	get_thread(curr)->set_return_value(VALUE_NONE);
+	ASSERT(0);
 }
 
 /**
@@ -787,14 +761,14 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	bool canprune = false;
 
 	if (curr->is_read() && !second_part_of_rmw) {
-		canprune = process_read(curr, rf_set);
+		process_read(curr, rf_set);
 		delete rf_set;
 	} else
 		ASSERT(rf_set == NULL);
 
 	/* Add the action to lists */
 	if (!second_part_of_rmw)
-		add_action_to_lists(curr, canprune);
+		add_action_to_lists(curr);
 
 	if (curr->is_write())
 		add_write_to_lists(curr);
@@ -826,8 +800,8 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 /** Close out a RMWR by converting previous RMWR into a RMW or READ. */
 ModelAction * ModelExecution::process_rmw(ModelAction *act) {
-	getThreadMemory()->applyRMW(act);
 	ASSERT(0);
+	getThreadMemory()->applyRMW(act);
 	ModelAction *lastread = get_last_action(act->get_tid());
 	lastread->process_rmw(act);
 	return lastread;
@@ -1143,7 +1117,7 @@ ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
  *
  * @param act is the ModelAction to add.
  */
-void ModelExecution::add_action_to_lists(ModelAction *act, bool canprune)
+void ModelExecution::add_action_to_lists(ModelAction *act)
 {
 	int tid = id_to_int(act->get_tid());
 	if ((act->is_fence() && act->is_seqcst()) || act->is_unlock()) {
@@ -1165,7 +1139,7 @@ void ModelExecution::add_action_to_lists(ModelAction *act, bool canprune)
 
 		fixup_action_list(vec);
 	}
-	if (!canprune && (act->is_read() || act->is_write()))
+	if (act->is_read() || act->is_write())
 		(*vec)[tid].addAction(act);
 
 	// Update thrd_last_action, the last action taken by each thread
@@ -1376,6 +1350,27 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
 }
 
 /**
+ * Finds the last write operation in the current thread that happened
+ * before operation 'op'.
+ * @param op operation
+ */
+ModelAction * ModelExecution::get_last_write_before(ModelAction *op)
+{
+	ThreadMemory * threadMem = get_thread(op->get_tid())->getMemory();
+	modelclock_t clock_number = threadMem->getCacheLineBeginRange(op->get_location());
+	simple_action_list_t *list = &(*obj_wr_thrd_map.get(op->get_location()))[id_to_int( op->get_tid())];
+	sllnode<ModelAction *> * rit;
+	for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
+		ModelAction *before = rit->getVal();
+		ASSERT(before->is_write());
+		if(before->get_seq_number() < op->get_seq_number()) {
+			return before;
+		}
+	}
+	return NULL;
+}
+
+/**
  * Build up an initial set of all past writes that this 'read' action may read
  * from, as well as any previously-observed future values that must still be valid.
  *
@@ -1400,29 +1395,28 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 		for (i = 0;i < thrd_lists->size();i++) {
 			/* Iterate over actions in thread, starting from most recent */
 			simple_action_list_t *list = &(*thrd_lists)[i];
+			ThreadMemory * threadMem = get_thread(int_to_id(i))->getMemory();
+			threadMem->applyRead(curr);
+			modelclock_t beginR = threadMem->getCacheLineBeginRange(curr->get_location());
 			sllnode<ModelAction *> * rit;
 			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 				ModelAction *act = rit->getVal();
-
 				if (act == curr)
 					continue;
-
+				ASSERT(act->is_write());
+				/* Stop when the write happens before the valid range*/
+				if (act->get_seq_number() < beginR) {
+					break;
+				}
 				/* Don't consider more than one seq_cst write if we are a seq_cst read. */
 				bool allow_read = true;
-
 				if (curr->is_seqcst() && (act->is_seqcst() || (last_sc_write != NULL && act->happens_before(last_sc_write))) && act != last_sc_write)
 					allow_read = false;
-
 				/*TODO: Need to check whether we will have two RMW reading from the same value */
-
 				if (allow_read) {
 					/* Only add feasible reads */
 					rf_set->push_back(act);
 				}
-
-				/* Include at most one act per-thread that "happens before" curr */
-				if (act->happens_before(curr))
-					break;
 			}
 		}
 

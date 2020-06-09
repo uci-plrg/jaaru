@@ -49,7 +49,7 @@ VOLATILELOAD(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val);        \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->applyWrite(action);                                                                          \
+		getThreadMemory()->addWrite(action);                                                                          \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -114,7 +114,7 @@ PMCATOMICLOAD(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val);              \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->applyWrite(action);                                                                                  \
+		getThreadMemory()->addWrite(action);                                                                                  \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -293,7 +293,6 @@ void pmc_atomic_thread_fence(int atomic_index, const char * position) {
 	DEBUG("pmc_atomic_thread_fence\n"); \
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(ATOMIC_FENCE, position, orders[atomic_index], FENCE_LOCATION);
-	getThreadMemory()->applyFence(action);
 	model->switch_to_master(action);
 }
 

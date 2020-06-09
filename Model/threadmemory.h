@@ -15,23 +15,23 @@
 class ThreadMemory {
 public:
 	ThreadMemory();
-	void applyWrite(ModelAction * write);
+	void addWrite(ModelAction * write);
 	void applyRead(ModelAction *read);
-	void applyCacheOp(ModelAction *clflush);
+	void addCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
 	void applyRMW(ModelAction *write);
-
+	modelclock_t getCacheLineBeginRange(void * location);
 	SNAPSHOTALLOC;
 private:
 	void executeWrite(ModelAction *write);
 	void executeCacheOp(ModelAction *read);
 	void emptyStoreBuffer();
-	void emptyMemoryBuffer(ModelAction *op);
-	void storeBufferDequeue();
-	void persistCacheLine(uintptr_t cid, ModelAction *op);
+	void persistMemoryBuffer();
+	void persistCacheLine(ModelAction *cacheOp);
+
 	SnapVector<ModelAction*> storeBuffer;
 	CacheLineSet cache;
-	ValueSet memoryBuffer;
+	MemoryBufferSet memoryBuffer;
 };
 
 #endif

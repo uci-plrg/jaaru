@@ -54,6 +54,7 @@ public:
 
 	thread_id_t get_next_id();
 	unsigned int get_num_threads() const;
+	ModelAction * get_last_write_before(ModelAction *op);
 
 	ClockVector * get_cv(thread_id_t tid) const;
 	ModelAction * get_parent_action(thread_id_t tid) const;
@@ -98,7 +99,7 @@ private:
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	bool initialize_curr_action(ModelAction **curr);
-	bool process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
+	void process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
 	void process_cache_op(ModelAction *curr);
 	void process_memory_fence(ModelAction *curr);
@@ -107,7 +108,7 @@ private:
 	void process_thread_action(ModelAction *curr);
 	void read_from(ModelAction *act, ModelAction *rf);
 	bool synchronize(const ModelAction *first, ModelAction *second);
-	void add_action_to_lists(ModelAction *act, bool canprune);
+	void add_action_to_lists(ModelAction *act);
 	void add_normal_write_to_lists(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
 	ModelAction * get_last_fence_release(thread_id_t tid) const;
