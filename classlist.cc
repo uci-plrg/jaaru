@@ -2,6 +2,7 @@
 #include "classlist.h"
 #include "cacheline.h"
 #include "action.h"
+#include "varrange.h"
 
 unsigned int cacheLineHashFunction ( CacheLine *cl)
 {
@@ -19,20 +20,20 @@ bool cacheLineEquals(CacheLine *c1, CacheLine *c2)
 	return c1->getId() == c2->getId();
 }
 
-unsigned int cacheLineIDHashFunction ( ModelAction* a1)
+unsigned int varRangeHashFunction ( VarRange *v1)
 {
-	if(a1 == NULL) {
+	if(v1 == NULL){
 		return 0;
 	}
-	return (unsigned int) getCacheID(a1->get_location() ) ;
+	return static_cast<unsigned int> ((uintptr_t) v1->getVarAddress());
 }
 
-bool cacheLineIDEquals(ModelAction *a1, ModelAction *a2)
+bool varRangeEquals(VarRange *v1, VarRange *v2)
 {
-	if( a1 == NULL && a2 == NULL) {
+	if( v1 == NULL && v2 == NULL){
 		return true;
-	} else if( a1 == NULL || a2 == NULL ) {
+	} else if (v1 == NULL || v2 == NULL){
 		return false;
 	}
-	return getCacheID(a1->get_location()) == getCacheID(a2->get_location());
+	return v1->getVarAddress() == v2->getVarAddress();
 }

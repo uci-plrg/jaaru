@@ -15,6 +15,9 @@
 #include "datarace.h"
 #include "mutex.h"
 #include "threadmemory.h"
+#include "cacheline.h"
+#include "varrange.h"
+
 #define INITIAL_THREAD_ID       0
 
 /**
@@ -330,7 +333,6 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  */
 void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
-	ASSERT(0);
 	ASSERT(curr->is_read());
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
@@ -663,10 +665,20 @@ bool ModelExecution::initialize_curr_action(ModelAction **curr)
 
 void ModelExecution::read_from(ModelAction *act, ModelAction *rf)
 {
-	ASSERT(0);
 	ASSERT(rf);
 	ASSERT(rf->is_write());
-
+	ASSERT(act->is_read());
+	ThreadMemory *readMem = get_thread( act->get_tid() )->getMemory();
+	ThreadMemory *writeMem = get_thread( act->get_tid() )->getMemory();
+	if(readMem == writeMem){
+		//Reading from a write in the same thread.
+		readMem->persistUntil(rf->get_seq_number());
+	} else{
+		//Reading from the write in another thread.
+		readMem->persistUntil(act->get_seq_number());
+		writeMem->persistUntil(rf->get_seq_number());
+	}
+	//UPDATE read from set
 	act->set_read_from(rf);
 	if (act->is_acquire()) {
 		ClockVector *cv = get_hb_from_write(rf);
@@ -1356,15 +1368,17 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
  * before operation 'op'.
  * @param op operation
  */
-ModelAction * ModelExecution::get_last_write_before(ModelAction *op)
+ModelAction * ModelExecution::get_last_write_before_op(void *writeAddress, ModelAction *op)
 {
-	ThreadMemory * threadMem = get_thread(op->get_tid())->getMemory();
-	modelclock_t clock_number = threadMem->getCacheLineBeginRange(op->get_location());
-	ASSERT(obj_wr_thrd_map.get(op->get_location()) != NULL);
-	ASSERT(obj_wr_thrd_map.get(op->get_location())->size() > (uint)id_to_int(op->get_tid()) );
-	simple_action_list_t *list = &(*obj_wr_thrd_map.get(op->get_location()))[id_to_int( op->get_tid())];
+	ASSERT(writeAddress);
+	ASSERT(op->is_cache_op());
+	uint threadIndex = (uint)id_to_int(op->get_tid());
+	ASSERT(obj_wr_thrd_map.get(writeAddress) != NULL);
+	ASSERT(obj_wr_thrd_map.get(writeAddress)->size() > threadIndex );
+	simple_action_list_t *writelist = &(*obj_wr_thrd_map.get(writeAddress))[threadIndex];
+	ASSERT(writelist);
 	sllnode<ModelAction *> * rit;
-	for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
+	for (rit = writelist->end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *before = rit->getVal();
 		ASSERT(before->is_write());
 		if(before->get_seq_number() < op->get_seq_number()) {
@@ -1401,7 +1415,12 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 			simple_action_list_t *list = &(*thrd_lists)[i];
 			ThreadMemory * threadMem = get_thread(int_to_id(i))->getMemory();
 			threadMem->applyRead(curr);
-			modelclock_t beginR = threadMem->getCacheLineBeginRange(curr->get_location());
+			VarRange *variable = threadMem->getVarRange(curr->get_location());
+			if(variable == NULL){
+				//This thread haven't executed any write on on the given address
+				continue;
+			}
+			modelclock_t beginR = variable->getBeginRange();
 			sllnode<ModelAction *> * rit;
 			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 				ModelAction *act = rit->getVal();

@@ -20,18 +20,18 @@ public:
 	void addCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
 	void applyRMW(ModelAction *write);
-	modelclock_t getCacheLineBeginRange(void * location);
+	VarRange* getVarRange(void * writeAddress);
+	void persistUntil(modelclock_t opclock);
 	SNAPSHOTALLOC;
 private:
 	void executeWrite(ModelAction *write);
 	void executeCacheOp(ModelAction *read);
 	void emptyStoreBuffer();
 	void persistMemoryBuffer();
-	void persistCacheLine(ModelAction *cacheOp);
 
 	SnapVector<ModelAction*> storeBuffer;
 	CacheLineSet cache;
-	MemoryBufferSet memoryBuffer;
+	CacheLineSet memoryBuffer;
 };
 
 #endif

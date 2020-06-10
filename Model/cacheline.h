@@ -6,7 +6,6 @@
 
 #ifndef CACHELINE_H
 #define CACHELINE_H
-#include <cmath>
 #include "mymemory.h"
 #include "action.h"
 #include "stl-model.h"
@@ -16,30 +15,25 @@
 class CacheLine {
 public:
 	CacheLine(void *address);
-	CacheLine(uintptr_t _id);
-	uintptr_t getId() {return id;}
-	modelclock_t getBeginRange(){ return beginR;}
-	modelclock_t getEndRange(){ return endR;}
-	void setBeginRange(modelclock_t begin) { beginR =begin;}
-	void setEndRange (modelclock_t end) { endR = end; }
+	uintptr_t getId() { return id; }
+	void setLastCacheOp(ModelAction *cacheop) { lastCacheOp = cacheop; }
+	ModelAction *getLastCacheOp() { return lastCacheOp; }
 	void applyWrite(ModelAction *write);
-	bool nonpersistentWriteExist();
+	void persistCacheLine();
+	void persistUntil(modelclock_t opclock);
+	VarRange* getVariable(void *address);
 	SNAPSHOTALLOC;
 private:
-	//Only contains the clock time of 1) the write that a read may read from 2) read clock
-	modelclock_t beginR;
-	// It should the clock of the FENCE or RMW operation.
-	modelclock_t endR;
-
+	
+	VarRangeSet varSet;
 	uintptr_t id;
-
+	//Last cache operation that read from store buffer for this cache line
+	ModelAction *lastCacheOp;
 };
 
 inline uintptr_t getCacheID(void *address){
-	ASSERT( ((uintptr_t)address & 0x3) == 0 );
-	int bitShift = static_cast<uintptr_t>(log2(static_cast<double>(CACHELINESIZE) ) );
-	DEBUG( "Address %p === Cache ID %x\n", address, ((uintptr_t)address >> bitShift) );
-	return ((uintptr_t)address) >>  bitShift;
+	DEBUG( "Address %p === Cache ID %x\n", address, ((uintptr_t)address) & ~(CACHELINESIZE - 1) );
+	return ((uintptr_t)address) & ~(CACHELINESIZE - 1);
 }
 
 #endif

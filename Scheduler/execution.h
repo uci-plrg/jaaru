@@ -54,7 +54,7 @@ public:
 
 	thread_id_t get_next_id();
 	unsigned int get_num_threads() const;
-	ModelAction * get_last_write_before(ModelAction *op);
+	ModelAction * get_last_write_before_op(void * location, ModelAction *op);
 
 	ClockVector * get_cv(thread_id_t tid) const;
 	ModelAction * get_parent_action(thread_id_t tid) const;
