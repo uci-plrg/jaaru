@@ -87,6 +87,14 @@ bool pmc_atomic_compare_exchange64_v2(void* addr, uint64_t* expected, uint64_t d
 // pmc atomic thread fence
 void pmc_atomic_thread_fence(int atomic_index, const char * position);
 
+// PMC NVM operations
+void pmc_clwb(void * addrs);
+void pmc_clflushopt(void * addrs);
+void pmc_clflush(void * addrs);
+void pmc_mfence();
+void pmc_lfence();
+void pmc_sfence();
+
 #if __cplusplus
 }
 #endif

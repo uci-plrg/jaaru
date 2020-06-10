@@ -86,5 +86,5 @@ private:
 extern ModelChecker *model;
 void createModelIfNotExist();
 void parse_options(struct model_params *params);
-ThreadMemory* getThreadMemory();
+
 #endif	/* __MODEL_H__ */

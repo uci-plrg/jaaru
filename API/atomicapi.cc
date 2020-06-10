@@ -4,12 +4,9 @@
 #include "model.h"
 #include "snapshot-interface.h"
 #include "common.h"
-#include "pmcheckapi.h"
-#include "threadmemory.h"
+#include "action.h"
 #include "datarace.h"
 #include "threads-model.h"
-
-ThreadMemory* getThreadMemory();
 
 memory_order orders[7] = {
 	memory_order_relaxed, memory_order_consume, memory_order_acquire,
@@ -33,7 +30,6 @@ void createModelIfNotExist() {
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj);                          \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->applyRead(action);                                                                                   \
 		return (uint ## size ## _t)model->switch_to_master(action);                                                             \
 	}
 
@@ -49,7 +45,6 @@ VOLATILELOAD(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val);        \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->addWrite(action);                                                                          \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -70,7 +65,6 @@ VOLATILESTORE(64)
 		createModelIfNotExist();                                                      \
 		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val);                \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->applyRMW(action);                                                                                    \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -92,7 +86,6 @@ PMCATOMICINT(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj);                                \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->applyRead(action);                                                                                   \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                           \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                         \
@@ -114,7 +107,6 @@ PMCATOMICLOAD(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val);              \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->addWrite(action);                                                                                  \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -150,7 +142,6 @@ ModelAction* model_rmw_action_helper(void *obj, uint64_t val, int atomic_index, 
 		_copy __op__ _val;                                                                                                      \
 		ModelAction *action = model_rmw_action_helper(addr, (uint64_t) _copy, atomic_index, position);                          \
 		action->setOperatorSize(size);                                                                                          \
-		getThreadMemory()->applyRMW(action);                                                                                    \
 		*((volatile uint ## size ## _t *)addr) = _copy;                                                                         \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                       \
@@ -252,7 +243,6 @@ void model_rmwc_action_helper(void *obj, int atomic_index, const char *position)
 			ModelAction *action = model_rmw_action_helper(addr, (uint64_t) _desired, atomic_index, position); \
 			action->setOperatorSize(size);                                                                                          \
 			*((volatile uint ## size ## _t *)addr) = desired;                        \
-			getThreadMemory()->applyRMW(action);                                                    \
 			thread_id_t tid = thread_current()->get_id();           \
 			for(int i=0;i < size / 8;i++) {                       \
 				recordWrite(tid, (void *)(((char *)addr)+i));         \
@@ -293,6 +283,50 @@ void pmc_atomic_thread_fence(int atomic_index, const char * position) {
 	DEBUG("pmc_atomic_thread_fence\n"); \
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(ATOMIC_FENCE, position, orders[atomic_index], FENCE_LOCATION);
+	model->switch_to_master(action);
+}
+
+// PMC NVM operations
+
+
+
+void pmc_clwb(void * addrs){
+	DEBUG("pmc_clwb:addr = %p\n",addrs);
+	createModelIfNotExist();
+	ModelAction *action = new ModelAction(ACTION_CLWB, memory_order_seq_cst, addrs);
+	model->switch_to_master(action);
+}
+
+void pmc_clflushopt(void * addrs){
+	DEBUG("pmc_clflushopt:addr = %p\n",addrs);
+	createModelIfNotExist();
+	ModelAction *action = new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs);
+	model->switch_to_master(action);
+}
+
+void pmc_clflush(void * addrs){
+	DEBUG("pmc_clflush:addr = %p\n",addrs);
+	createModelIfNotExist();
+	ModelAction *action = new ModelAction(ACTION_CLFLUSH, memory_order_seq_cst, addrs);
+	model->switch_to_master(action);
+}
+
+void pmc_mfence(){
+	DEBUG("pmc_mfence\n");
+	createModelIfNotExist();
+	ModelAction *action = new ModelAction(CACHE_MFENCE) ;
+	model->switch_to_master(action);
+}
+
+void pmc_lfence(){
+	DEBUG("pmc_lfence\n");
+	ASSERT(0);
+}
+
+void pmc_sfence(){
+	DEBUG("pmc_sfence\n");
+	createModelIfNotExist();
+	ModelAction *action = new ModelAction(CACHE_SFENCE) ;
 	model->switch_to_master(action);
 }
 

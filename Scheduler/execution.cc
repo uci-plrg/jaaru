@@ -330,6 +330,7 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  */
 void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
+	ASSERT(0);
 	ASSERT(curr->is_read());
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
@@ -482,9 +483,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr)
 {
-	getThreadMemory()->addWrite(curr);
-	ASSERT(0);
-	w_modification_order(curr);
+	get_thread(curr)->getMemory()->addWrite(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
 
@@ -495,9 +494,9 @@ void ModelExecution::process_write(ModelAction *curr)
  */
 void ModelExecution::process_cache_op(ModelAction *curr)
 {
-	getThreadMemory()->addCacheOp(curr);
+	ASSERT(curr->is_cache_op());
+	get_thread(curr)->getMemory()->addCacheOp(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
-	ASSERT(0);
 }
 
 /**
@@ -507,9 +506,8 @@ void ModelExecution::process_cache_op(ModelAction *curr)
  */
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
-	getThreadMemory()->applyFence(curr);
+	get_thread(curr)->getMemory()->applyFence(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
-	ASSERT(0);
 }
 
 /**
@@ -805,7 +803,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 /** Close out a RMWR by converting previous RMWR into a RMW or READ. */
 ModelAction * ModelExecution::process_rmw(ModelAction *act) {
 	ASSERT(0);
-	getThreadMemory()->applyRMW(act);
+	get_thread(act)->getMemory()->applyRMW(act);
 	ModelAction *lastread = get_last_action(act->get_tid());
 	lastread->process_rmw(act);
 	return lastread;
@@ -1206,7 +1204,6 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 
 void ModelExecution::add_write_to_lists(ModelAction *write) {
-	ASSERT(0);
 	SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, write->get_location());
 	int tid = id_to_int(write->get_tid());
 	if (tid >= (int)vec->size()) {

@@ -22,14 +22,6 @@ void pmc_store16(void *addr);
 void pmc_store32(void *addr);
 void pmc_store64(void *addr);
 
-// PMC NVM operations
-void pmc_clwb(void * addrs);
-void pmc_clflushopt(void * addrs);
-void pmc_clflush(void * addrs);
-void pmc_mfence();
-void pmc_lfence();
-void pmc_sfence();
-
 #if __cplusplus
 }
 #endif
