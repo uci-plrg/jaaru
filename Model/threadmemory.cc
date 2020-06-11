@@ -18,7 +18,7 @@ void ThreadMemory::addWrite(ModelAction * write)
 
 void ThreadMemory::applyRead(ModelAction *read)
 {
-	DEBUG("Executing read size %u to memory location %p\n", read->getOperatorSize(), read->get_location());
+	//DEBUG("Executing read size %u to memory location %p\n", read->getOperatorSize(), read->get_location());
 	emptyStoreBuffer();
 }
 
@@ -29,14 +29,14 @@ void ThreadMemory::addCacheOp(ModelAction *clflush)
 
 void ThreadMemory::applyFence(ModelAction *fence)
 {
-	DEBUG("Applying memory fence...\n");
+	//DEBUG("Applying memory fence...\n");
 	emptyStoreBuffer();
 	persistMemoryBuffer();
 }
 
 void ThreadMemory::applyRMW(ModelAction *rmw)
 {
-	DEBUG("Executing read-modify-write size %u to memory location %p\n", rmw->getOperatorSize(), rmw->get_location());
+	//DEBUG("Executing read-modify-write size %u to memory location %p\n", rmw->getOperatorSize(), rmw->get_location());
 	emptyStoreBuffer();
 	persistMemoryBuffer();
 	//TODO: decide about read and writing the new value ...
@@ -61,7 +61,7 @@ void ThreadMemory::emptyStoreBuffer()
 
 void ThreadMemory::executeWrite(ModelAction *writeop)
 {
-	DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
+	//DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
 	CacheLine ctmp(writeop->get_location());
 	CacheLine *cline = cache.get(&ctmp);
 	if (cline == NULL) {	// There is no write for this cache line
@@ -73,7 +73,7 @@ void ThreadMemory::executeWrite(ModelAction *writeop)
 
 void ThreadMemory::executeCacheOp(ModelAction *cacheop)
 {
-	DEBUG("Executing cache operation for address %p (Cache ID = %u)\n", cacheop->get_location(), getCacheID(cacheop->get_location()));
+	//DEBUG("Executing cache operation for address %p (Cache ID = %u)\n", cacheop->get_location(), getCacheID(cacheop->get_location()));
 	CacheLine tmp(cacheop->get_location());
 	CacheLine *cacheline = cache.get(&tmp);
 	if(cacheline == NULL){

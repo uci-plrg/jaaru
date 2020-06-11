@@ -312,6 +312,7 @@ bool ModelExecution::is_complete_execution() const
 }
 
 ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
+	ASSERT(0);
 	uint64_t value = *((const uint64_t *) location);
 	modelclock_t storeclock;
 	thread_id_t storethread;
@@ -321,7 +322,7 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
 	act->set_seq_number(storeclock);
 	add_normal_write_to_lists(act);
 	add_write_to_lists(act);
-	w_modification_order(act);
+	analyze_write_order(act);
 	return act;
 }
 
@@ -340,6 +341,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
 		rf_set->push_back(nonatomicstore);
 	}
+	ASSERT(rf_set->size() > 0);
 	int index = fuzzer->selectWrite(curr, rf_set);
 	ModelAction *rf = (*rf_set)[index];
 	ASSERT(rf);
@@ -486,6 +488,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 void ModelExecution::process_write(ModelAction *curr)
 {
 	get_thread(curr)->getMemory()->addWrite(curr);
+	analyze_write_order(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
 
@@ -702,7 +705,6 @@ void ModelExecution::read_from(ModelAction *act, ModelAction *rf)
  */
 bool ModelExecution::synchronize(const ModelAction *first, ModelAction *second)
 {
-	ASSERT(0);
 	if (*second < *first) {
 		ASSERT(0);	//This should not happend
 		return false;
@@ -982,91 +984,16 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *
  * value. If NULL, then don't record any future values.
  * @return True if modification order edges were added; false otherwise
  */
-void ModelExecution::w_modification_order(ModelAction *curr)
+void ModelExecution::analyze_write_order(ModelAction *curr)
 {
-	ASSERT(0);
-	SnapVector<action_list_t> *thrd_lists = obj_thrd_map.get(curr->get_location());
-	unsigned int i;
 	ASSERT(curr->is_write());
-
-	SnapList<ModelAction *> edgeset;
-
 	if (curr->is_seqcst()) {
 		/* We have to at least see the last sequentially consistent write,
 		         so we are initialized. */
 		ModelAction *last_seq_cst = get_last_seq_cst_write(curr);
-		if (last_seq_cst != NULL) {
-			edgeset.push_back(last_seq_cst);
-		}
 		//update map for next query
 		obj_last_sc_map.put(curr->get_location(), curr);
 	}
-
-	/* Last SC fence in the current thread */
-	ModelAction *last_sc_fence_local = get_last_seq_cst_fence(curr->get_tid(), NULL);
-
-	/* Iterate over all threads */
-	for (i = 0;i < thrd_lists->size();i++) {
-		/* Last SC fence in thread i, before last SC fence in current thread */
-		ModelAction *last_sc_fence_thread_before = NULL;
-		if (last_sc_fence_local && int_to_id((int)i) != curr->get_tid())
-			last_sc_fence_thread_before = get_last_seq_cst_fence(int_to_id(i), last_sc_fence_local);
-
-		/* Iterate over actions in thread, starting from most recent */
-		action_list_t *list = &(*thrd_lists)[i];
-		sllnode<ModelAction*>* rit;
-		for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
-			ModelAction *act = rit->getVal();
-			if (act == curr) {
-				/*
-				 * 1) If RMW and it actually read from something, then we
-				 * already have all relevant edges, so just skip to next
-				 * thread.
-				 *
-				 * 2) If RMW and it didn't read from anything, we should
-				 * whatever edge we can get to speed up convergence.
-				 *
-				 * 3) If normal write, we need to look at earlier actions, so
-				 * continue processing list.
-				 */
-				if (curr->is_rmw()) {
-					if (curr->get_reads_from() != NULL)
-						break;
-					else
-						continue;
-				} else
-					continue;
-			}
-
-			/* C++, Section 29.3 statement 7 */
-			if (last_sc_fence_thread_before && act->is_write() &&
-					*act < *last_sc_fence_thread_before) {
-				edgeset.push_back(act);
-				break;
-			}
-
-			/*
-			 * Include at most one act per-thread that "happens
-			 * before" curr
-			 */
-			if (act->happens_before(curr)) {
-				/*
-				 * Note: if act is RMW, just add edge:
-				 *   act --mo--> curr
-				 * The following edge should be handled elsewhere:
-				 *   readfrom(act) --mo--> act
-				 */
-				if (act->is_write())
-					edgeset.push_back(act);
-				else if (act->is_read()) {
-					//if previous read accessed a null, just keep going
-					edgeset.push_back(act->get_reads_from());
-				}
-				break;
-			}
-		}
-	}
-
 }
 
 /**
@@ -1078,7 +1005,6 @@ void ModelExecution::w_modification_order(ModelAction *curr)
  */
 
 ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
-	ASSERT(0);
 	SnapVector<ModelAction *> * processset = NULL;
 	for ( ;rf != NULL;rf = rf->get_reads_from()) {
 		ASSERT(rf->is_write());
@@ -1279,6 +1205,7 @@ ModelAction * ModelExecution::get_last_seq_cst_write(ModelAction *curr) const
  */
 ModelAction * ModelExecution::get_last_seq_cst_fence(thread_id_t tid, const ModelAction *before_fence) const
 {
+	ASSERT(0);
 	/* All fences should have location FENCE_LOCATION */
 	simple_action_list_t *list = obj_map.get(FENCE_LOCATION);
 

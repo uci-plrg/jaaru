@@ -7,7 +7,7 @@
 #ifndef CACHELINE_H
 #define CACHELINE_H
 #include "mymemory.h"
-#include "action.h"
+#include "classlist.h"
 #include "stl-model.h"
 
 #define CACHELINESIZE 64
@@ -32,7 +32,7 @@ private:
 };
 
 inline uintptr_t getCacheID(void *address){
-	DEBUG( "Address %p === Cache ID %x\n", address, ((uintptr_t)address) & ~(CACHELINESIZE - 1) );
+	//DEBUG( "Address %p === Cache ID %x\n", address, ((uintptr_t)address) & ~(CACHELINESIZE - 1) );
 	return ((uintptr_t)address) & ~(CACHELINESIZE - 1);
 }
 
