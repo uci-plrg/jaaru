@@ -16,7 +16,7 @@ class ThreadMemory {
 public:
 	ThreadMemory();
 	void addWrite(ModelAction * write);
-	void applyRead(ModelAction *read);
+	void getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set);
 	void addCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
 	void applyRMW(ModelAction *write);

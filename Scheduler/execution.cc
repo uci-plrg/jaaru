@@ -1341,7 +1341,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 			/* Iterate over actions in thread, starting from most recent */
 			simple_action_list_t *list = &(*thrd_lists)[i];
 			ThreadMemory * threadMem = get_thread(int_to_id(i))->getMemory();
-			threadMem->applyRead(curr);
+			threadMem->getWritesFromStoreBuffer(curr, rf_set);
 			VarRange *variable = threadMem->getVarRange(curr->get_location());
 			if(variable == NULL){
 				//This thread haven't executed any write on on the given address
