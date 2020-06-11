@@ -10,7 +10,7 @@
 #include "stl-model.h"
 #include "hashset.h"
 #include "action.h"
-
+#include "actionlist.h"
 
 class ThreadMemory {
 public:
@@ -29,7 +29,7 @@ private:
 	void emptyStoreBuffer();
 	void persistMemoryBuffer();
 
-	SnapVector<ModelAction*> storeBuffer;
+	actionlist storeBuffer;
 	CacheLineSet cache;
 	CacheLineSet memoryBuffer;
 };

@@ -13,7 +13,7 @@ ThreadMemory::ThreadMemory() :
 
 void ThreadMemory::addWrite(ModelAction * write)
 {
-	storeBuffer.push_back(write);
+	storeBuffer.addAction(write);
 }
 /**
  * Getting all the stores to the location from the store buffer.
@@ -21,8 +21,9 @@ void ThreadMemory::addWrite(ModelAction * write)
 void ThreadMemory::getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set)
 {
 	//DEBUG("Executing read size %u to memory location %p\n", read->getOperatorSize(), read->get_location());
-	for(uint i=0; i< storeBuffer.size(); i++){
-		ModelAction *write = storeBuffer[i];
+	sllnode<ModelAction *> * rit;
+	for (rit = storeBuffer.end(); rit != NULL; rit=rit->getPrev()) {
+		ModelAction *write = rit->getVal();
 		if(write->is_write() && write->get_location() == address){
 			rf_set->push_back(write);
 		}
@@ -31,7 +32,7 @@ void ThreadMemory::getWritesFromStoreBuffer(void *address, SnapVector<ModelActio
 
 void ThreadMemory::addCacheOp(ModelAction *clflush)
 {
-	storeBuffer.push_back(clflush);
+	storeBuffer.addAction(clflush);
 }
 
 void ThreadMemory::applyFence(ModelAction *fence)
@@ -52,8 +53,9 @@ void ThreadMemory::applyRMW(ModelAction *rmw)
 
 void ThreadMemory::emptyStoreBuffer()
 {
-	for(uint i=0; i < storeBuffer.size(); i++) {
-		ModelAction *curr = storeBuffer[i];
+	sllnode<ModelAction *> * rit;
+	for (rit = storeBuffer.end(); rit != NULL; rit=rit->getPrev()) {
+		ModelAction *curr = rit->getVal();
 		if (curr->is_write()) {
 			executeWrite(curr);
 		} else if (curr->is_cache_op()) {
