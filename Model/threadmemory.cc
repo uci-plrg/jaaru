@@ -63,7 +63,7 @@ void ThreadMemory::emptyStoreBuffer()
 			ASSERT(0);
 		}
 	}
-	storeBuffer.empty();
+	storeBuffer.clear();
 }
 
 void ThreadMemory::executeWrite(ModelAction *writeop)
