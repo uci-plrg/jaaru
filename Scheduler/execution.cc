@@ -1334,23 +1334,33 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 		last_sc_write = get_last_seq_cst_write(curr);
 
 	SnapVector<ModelAction *> * rf_set = new SnapVector<ModelAction *>();
-
+	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromSoreBuffer(curr->get_location());
+	if(lastWrite != NULL){
+		//There is a write in the current thread that the read is going to read from that
+		rf_set->push_back(lastWrite);
+		return rf_set;
+	}
 	/* Iterate over all threads */
 	if (thrd_lists != NULL)
 		for (i = 0;i < thrd_lists->size();i++) {
 			/* Iterate over actions in thread, starting from most recent */
-			simple_action_list_t *list = &(*thrd_lists)[i];
 			ThreadMemory * threadMem = get_thread(int_to_id(i))->getMemory();
-			threadMem->getWritesFromStoreBuffer(curr, rf_set);
+			simple_action_list_t *list = &(*thrd_lists)[i];
+			if(int_to_id(i) != curr->get_tid()){
+				//The current thread already checked and it didn't have any writesin its storeBuffer.
+				threadMem->getWritesFromStoreBuffer(curr, rf_set);	
+			}
 			VarRange *variable = threadMem->getVarRange(curr->get_location());
 			if(variable == NULL){
-				//This thread haven't executed any write on on the given address
+				//This thread haven't executed any write on the given address
 				continue;
 			}
 			modelclock_t beginR = variable->getBeginRange();
 			sllnode<ModelAction *> * rit;
+			model_print("*************\n");
 			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 				ModelAction *act = rit->getVal();
+				model_print("[%p] = %u, ", act->get_location(), act->get_value());
 				if (act == curr)
 					continue;
 				ASSERT(act->is_write());
@@ -1368,6 +1378,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 					rf_set->push_back(act);
 				}
 			}
+			model_print("\n\n");
 		}
 
 	if (DBG_ENABLED()) {

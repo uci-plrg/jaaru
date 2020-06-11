@@ -17,6 +17,7 @@ public:
 	ThreadMemory();
 	void addWrite(ModelAction * write);
 	void getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set);
+	ModelAction * getLastWriteFromSoreBuffer(void *address);
 	void addCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
 	void applyRMW(ModelAction *write);

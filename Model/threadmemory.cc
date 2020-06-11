@@ -15,6 +15,19 @@ void ThreadMemory::addWrite(ModelAction * write)
 {
 	storeBuffer.addAction(write);
 }
+
+ModelAction * ThreadMemory::getLastWriteFromSoreBuffer(void *address)
+{
+	sllnode<ModelAction *> * rit;
+	for (rit = storeBuffer.end(); rit != NULL; rit=rit->getPrev()) {
+		ModelAction *write = rit->getVal();
+		if(write->is_write() && write->get_location() == address){
+			return write;
+		}
+	}
+	return NULL;
+}
+
 /**
  * Getting all the stores to the location from the store buffer.
  * */
@@ -54,7 +67,7 @@ void ThreadMemory::applyRMW(ModelAction *rmw)
 void ThreadMemory::emptyStoreBuffer()
 {
 	sllnode<ModelAction *> * rit;
-	for (rit = storeBuffer.end(); rit != NULL; rit=rit->getPrev()) {
+	for (rit = storeBuffer.begin(); rit != NULL; rit=rit->getNext()) {
 		ModelAction *curr = rit->getVal();
 		if (curr->is_write()) {
 			executeWrite(curr);
