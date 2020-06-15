@@ -28,17 +28,20 @@ using std::memory_order_seq_cst;
  */
 #define VALUE_NONE 0xdeadbeef
 #define WRITE_REFERENCED ((void *)0x1)
-/**
- * @brief The "location" at which a fence occurs
- *
- * We need a non-zero memory location to associate with fences, since our hash
- * tables don't handle NULL-pointer keys. HACK: Hopefully this doesn't collide
- * with any legitimate memory locations.
- */
-#define FENCE_LOCATION ((void *)0x7)
 
 /** @brief Represents an action type, identifying one of several types of
  * ModelAction */
+
+typedef enum RMWTYPE {
+	RMW_EXCHANGE,
+	RMW_ADD,
+	RMW_SUB,
+	RMW_AND,
+	RMW_OR,
+	RMW_XOR,
+	NOT_RMW
+} RMWTYPE;
+
 typedef enum action_type {
 	THREAD_CREATE,	// < A thread creation action
 	THREAD_START,	// < First action in each thread
@@ -58,9 +61,6 @@ typedef enum action_type {
 	ATOMIC_WRITE,	// < An atomic write action
 	ATOMIC_RMW,	// < The write part of an atomic RMW action
 	ATOMIC_READ,	// < An atomic read action
-	ATOMIC_RMWR,	// < The read part of an atomic RMW action
-	ATOMIC_RMWRCAS,	// < The read part of an atomic RMW action
-	ATOMIC_RMWC,	// < Convert an atomic RMW action into a READ
 
 	ACTION_CLWB,
 	ACTION_CLFLUSH,
@@ -69,7 +69,6 @@ typedef enum action_type {
 	CACHE_MFENCE,
 	CACHE_SFENCE,
 
-	ATOMIC_FENCE,	// < A fence action
 	ATOMIC_LOCK,	// < A lock action
 	ATOMIC_TRYLOCK,	// < A trylock action
 	ATOMIC_UNLOCK,	// < An unlock action
@@ -79,7 +78,6 @@ typedef enum action_type {
 	ATOMIC_WAIT,	// < A wait action
 	ATOMIC_TIMEDWAIT,	// < A timed wait action
 	ATOMIC_ANNOTATION,	// < An annotation action to pass information to a trace analysis
-	READY_FREE,	// < Write is ready to be freed
 	ATOMIC_NOP	// < Placeholder
 } action_type_t;
 
@@ -95,9 +93,9 @@ typedef enum action_type {
 class ModelAction {
 public:
 	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
-	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, int size);
-	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size);
-	ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t time);
+	// ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, int size);
+	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size, RMWTYPE rmw_type = NOT_RMW);
+	// ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t time);
 	ModelAction(action_type_t type);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
 	~ModelAction();
@@ -106,9 +104,7 @@ public:
 	thread_id_t get_tid() const { return tid; }
 	action_type get_type() const { return type; }
 	void set_type(action_type _type) { type = _type; }
-	void set_free() { type = READY_FREE; }
 	memory_order get_mo() const { return order; }
-	memory_order get_original_mo() const { return original_order; }
 	void set_mo(memory_order order) { this->order = order; }
 	void * get_location() const { return location; }
 	const char * get_position() const { return position; }
@@ -122,12 +118,6 @@ public:
 	pmc::mutex * get_mutex() const;
 
 	void set_read_from(ModelAction *act);
-
-	/** Store the most recent fence-release from the same thread
-	 *  @param fence The fence-release that occured prior to this */
-	void set_last_fence_release(const ModelAction *fence) { last_fence_release = fence; }
-	/** @return The most recent fence-release from the same thread */
-	const ModelAction * get_last_fence_release() const { return last_fence_release; }
 
 	void copy_from_new(ModelAction *newaction);
 	void set_seq_number(modelclock_t num);
@@ -146,31 +136,21 @@ public:
 	bool is_notify_one() const;
 	bool is_success_lock() const;
 	bool is_failed_trylock() const;
-	bool is_atomic_var() const;
 	bool is_read() const;
 	bool is_write() const;
 	bool is_cache_op() const;
 	bool is_clflush() const;
 	bool is_memory_fence() const;
-	bool is_free() const;
 	bool is_yield() const;
-	bool could_be_write() const;
-	bool is_rmwr() const;
-	bool is_rmwrcas() const;
-	bool is_rmwc() const;
 	bool is_rmw() const;
-	bool is_fence() const;
 	bool is_initialization() const;
 	bool is_annotation() const;
-	bool is_relaxed() const;
-	bool is_acquire() const;
-	bool is_release() const;
 	bool is_seqcst() const;
 	bool same_var(const ModelAction *act) const;
 	bool same_thread(const ModelAction *act) const;
 	bool is_conflicting_lock(const ModelAction *act) const;
 	bool could_synchronize_with(const ModelAction *act) const;
-	int getSize() const;
+	int getOpSize() const;
 	Thread * get_thread_operand() const;
 	void create_cv(const ModelAction *parent = NULL);
 	ClockVector * get_cv() const { return cv; }
@@ -187,9 +167,6 @@ public:
 	inline bool operator >(const ModelAction& act) const {
 		return get_seq_number() > act.get_seq_number();
 	}
-	inline void setOperatorSize(uint size){this->opbitsize = size;}
-	inline uint getOperatorSize() { return this->opbitsize;}
-	void process_rmw(ModelAction * act);
 	void copy_typeandorder(ModelAction * act);
 	unsigned int hash() const;
 	bool equals(const ModelAction *x) const { return this == x; }
@@ -200,7 +177,7 @@ public:
 	void set_thread_operand(Thread *th) { thread_operand = th; }
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
-
+	
 	SNAPSHOTALLOC
 private:
 	const char * get_type_str() const;
@@ -211,22 +188,15 @@ private:
 
 	/** @brief A pointer to the source line for this atomic action. */
 	const char * position;
-
-	union {
-		/**
-		 * @brief The store that this action reads from
-		 *
-		 * Only valid for reads
-		 */
-		ModelAction *reads_from;
-		int size;
-		uint64_t time;	//used for sleep
-	};
-
-	/** @brief The last fence release from the same thread */
-	const ModelAction *last_fence_release;
-
 	/**
+	 * @brief The store that this action reads from
+	 *
+	 * Only valid for reads
+	 */
+	ModelAction *reads_from;
+	uint64_t time;	//used for sleep
+
+/**
 	 * @brief The clock vector for this operation
 	 *
 	 * Technically, this is only needed for potentially synchronizing
@@ -245,9 +215,6 @@ private:
 	/** @brief The memory order for this operation. */
 	memory_order order;
 
-	/** @brief The original memory order parameter for this operation. */
-	memory_order original_order;
-
 	/** @brief The thread id that performed this action. */
 	thread_id_t tid;
 
@@ -263,7 +230,11 @@ private:
 	 * If the action is write or read, we keep the size of the operation here.
 	 * (e.g. 8, 16, 32, or 64)
 	 */
-	uint opbitsize;
+	uint size;
+	/**
+	 * Shows what kind of RMW this action is.
+	 **/
+	RMWTYPE rmw_type;
 };
 
 #endif	/* __ACTION_H__ */

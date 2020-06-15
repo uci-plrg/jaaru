@@ -20,14 +20,6 @@
 #include "mutex.h"
 #include "actionlist.h"
 
-struct PendingFutureValue {
-	PendingFutureValue(ModelAction *writer, ModelAction *reader) :
-		writer(writer), reader(reader)
-	{ }
-	const ModelAction *writer;
-	ModelAction *reader;
-};
-
 /** @brief The central structure for model-checking */
 class ModelExecution {
 public:
@@ -86,7 +78,6 @@ public:
 	bool isFinished() {return isfinished;}
 	void setFinished() {isfinished = true;}
 	void restore_last_seq_num();
-	void collectActions();
 	modelclock_t get_curr_seq_num();
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
@@ -98,12 +89,11 @@ private:
 	void wake_up_sleeping_actions(ModelAction *curr);
 	modelclock_t get_next_seq_num();
 	bool next_execution();
-	bool initialize_curr_action(ModelAction **curr);
+	void initialize_curr_action(ModelAction *curr);
 	void process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
 	void process_cache_op(ModelAction *curr);
 	void process_memory_fence(ModelAction *curr);
-	void process_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);
 	void process_thread_action(ModelAction *curr);
 	void read_from(ModelAction *act, ModelAction *rf);
@@ -111,19 +101,11 @@ private:
 	void add_action_to_lists(ModelAction *act);
 	void add_normal_write_to_lists(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
-	ModelAction * get_last_fence_release(thread_id_t tid) const;
-	ModelAction * get_last_seq_cst_write(ModelAction *curr) const;
-	ModelAction * get_last_seq_cst_fence(thread_id_t tid, const ModelAction *before_fence) const;
 	ModelAction * get_last_unlock(ModelAction *curr) const;
 	SnapVector<ModelAction *> * build_may_read_from(ModelAction *curr);
-	ModelAction * process_rmw(ModelAction *curr);
-	bool r_modification_order(ModelAction *curr, const ModelAction *rf, SnapVector<ModelAction *> *priorset, bool *canprune, bool check_only = false);
-	void analyze_write_order(ModelAction *curr);
 	ClockVector * get_hb_from_write(ModelAction *rf) const;
 	ModelAction * convertNonAtomicStore(void*);
 	ClockVector * computeMinimalCV();
-	void removeAction(ModelAction *act);
-	void fixupLastAct(ModelAction *act);
 
 #ifdef TLS
 	pthread_key_t pthreadkey;
@@ -141,14 +123,14 @@ private:
 
 	action_list_t action_trace;
 
-
+	
 	/** Per-object list of actions. Maps an object (i.e., memory location)
 	 * to a trace of all actions performed on the object.
 	 * Used only for SC fences, unlocks, & wait.
 	 */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_map;
 
-	/** Per-object list of actions. Maps an object (i.e., memory location)
+/** Per-object list of actions. Maps an object (i.e., memory location)
 	 * to a trace of all actions performed on the object. */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
@@ -158,21 +140,10 @@ private:
 	/** Per-object list of writes that each thread performed. */
 	HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
 
-	HashTable<const void *, ModelAction *, uintptr_t, 4> obj_last_sc_map;
-
-
 	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;
 	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;
 
-	/**
-	 * List of pending release sequences. Release sequences might be
-	 * determined lazily as promises are fulfilled and modification orders
-	 * are established. Each entry in the list may only be partially
-	 * filled, depending on its pending status.
-	 */
-
 	SnapVector<ModelAction *> thrd_last_action;
-	SnapVector<ModelAction *> thrd_last_fence_release;
 
 	/** A special model-checker Thread; used for associating with
 	 *  model-checker-related ModelAcitons */

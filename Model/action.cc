@@ -31,23 +31,22 @@
  */
 
 
-ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
-												 uint64_t value, Thread *thread) :
+ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, Thread *thread) :
 	location(loc),
 	position(NULL),
 	reads_from(NULL),
-	last_fence_release(NULL),
 	cv(NULL),
 	rf_cv(NULL),
 	action_ref(NULL),
 	value(value),
 	type(type),
 	order(order),
-	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	size(0),
+	rmw_type(NOT_RMW)
 {
 	/* References to NULL atomic variables can end up here */
-	ASSERT(loc || type == ATOMIC_FENCE || type == ATOMIC_NOP);
+	ASSERT(loc || type == ATOMIC_NOP);
 
 	Thread *t = thread ? thread : thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
@@ -65,23 +64,25 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
  * @param _time The this sleep action is constructed
  */
 
-ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t _time) :
-	location(NULL),
-	position(NULL),
-	time(_time),
-	last_fence_release(NULL),
-	cv(NULL),
-	rf_cv(NULL),
-	action_ref(NULL),
-	value(value),
-	type(type),
-	order(order),
-	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
-{
-	Thread *t = thread_current();
-	this->tid = t!= NULL ? t->get_id() : -1;
-}
+// ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t _time) :
+// 	location(NULL),
+// 	position(NULL),
+// 	time(_time),
+// 	last_fence_release(NULL),
+// 	cv(NULL),
+// 	rf_cv(NULL),
+// 	action_ref(NULL),
+// 	value(value),
+// 	type(type),
+// 	order(order),
+// 	original_order(order),
+// 	seq_number(ACTION_INITIAL_CLOCK),
+// 	size(0),
+// 	rmw_type(NOT_RMW)
+// {
+// 	Thread *t = thread_current();
+// 	this->tid = t!= NULL ? t->get_id() : -1;
+// }
 
 /**
  * @brief Construct a new ModelAction for cache fence
@@ -93,15 +94,15 @@ ModelAction::ModelAction(action_type_t type) :
 	location(NULL),
 	position(NULL),
 	time(0),
-	last_fence_release(NULL),
 	cv(NULL),
 	rf_cv(NULL),
 	action_ref(NULL),
 	value(0),
 	type(type),
 	order(memory_order_seq_cst),
-	original_order(memory_order_seq_cst),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	size(0),
+	rmw_type(NOT_RMW)
 {
 	Thread *t = thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
@@ -119,27 +120,25 @@ ModelAction::ModelAction(action_type_t type) :
  * @param size (optional) The Thread in which this action occurred. If NULL
  * (default), then a Thread is assigned according to the scheduler.
  */
-ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
-												 uint64_t value, int size) :
-	location(loc),
-	position(NULL),
-	reads_from(NULL),
-	last_fence_release(NULL),
-	cv(NULL),
-	rf_cv(NULL),
-	action_ref(NULL),
-	value(value),
-	type(type),
-	order(order),
-	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
-{
-	/* References to NULL atomic variables can end up here */
-	ASSERT(loc);
-	this->size = size;
-	Thread *t = thread_current();
-	this->tid = t->get_id();
-}
+// ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, int _size, RMWTYPE _rmw_type) :
+// 	location(loc),
+// 	position(NULL),
+// 	reads_from(NULL),
+// 	cv(NULL),
+// 	rf_cv(NULL),
+// 	action_ref(NULL),
+// 	value(value),
+// 	type(type),
+// 	order(order),
+// 	seq_number(ACTION_INITIAL_CLOCK),
+// 	size(_size),
+// 	rmw_type(_rmw_type)
+// {
+// 	/* References to NULL atomic variables can end up here */
+// 	ASSERT(loc);
+// 	Thread *t = thread_current();
+// 	this->tid = t->get_id();
+// }
 
 
 /**
@@ -154,24 +153,22 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
  * @param size (optional) The Thread in which this action occurred. If NULL
  * (default), then a Thread is assigned according to the scheduler.
  */
-ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc,
-												 uint64_t value, int size) :
+ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int _size, RMWTYPE _rmw_type) :
 	location(loc),
 	position(position),
 	reads_from(NULL),
-	last_fence_release(NULL),
 	cv(NULL),
 	rf_cv(NULL),
 	action_ref(NULL),
 	value(value),
 	type(type),
 	order(order),
-	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	size(_size),
+	rmw_type(_rmw_type)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
-	this->size = size;
 	Thread *t = thread_current();
 	this->tid = t->get_id();
 }
@@ -190,23 +187,22 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
  * @param thread (optional) The Thread in which this action occurred. If NULL
  * (default), then a Thread is assigned according to the scheduler.
  */
-ModelAction::ModelAction(action_type_t type, const char * position, memory_order order,
-												 void *loc, uint64_t value, Thread *thread) :
+ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, Thread *thread) :
 	location(loc),
 	position(position),
 	reads_from(NULL),
-	last_fence_release(NULL),
 	cv(NULL),
 	rf_cv(NULL),
 	action_ref(NULL),
 	value(value),
 	type(type),
 	order(order),
-	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	size(0),
+	rmw_type(NOT_RMW)
 {
 	/* References to NULL atomic variables can end up here */
-	ASSERT(loc || type == ATOMIC_FENCE);
+	ASSERT(loc);
 
 	Thread *t = thread ? thread : thread_current();
 	this->tid = t->get_id();
@@ -216,19 +212,9 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 /** @brief ModelAction destructor */
 ModelAction::~ModelAction()
 {
-	/**
-	 * We can't free the clock vector:
-	 * Clock vectors are snapshotting state. When we delete model actions,
-	 * they are at the end of the node list and have invalid old clock
-	 * vectors which have already been rolled back to an unallocated state.
-	 */
-
-	/*
-	   if (cv)
-	        delete cv; */
 }
 
-int ModelAction::getSize() const {
+int ModelAction::getOpSize() const {
 	return size;
 }
 
@@ -305,15 +291,9 @@ bool ModelAction::is_failed_trylock() const
 	return (type == ATOMIC_TRYLOCK && value == VALUE_TRYFAILED);
 }
 
-/** @return True if this operation is performed on a C/C++ atomic variable */
-bool ModelAction::is_atomic_var() const
-{
-	return is_read() || could_be_write();
-}
-
 bool ModelAction::is_read() const
 {
-	return type == ATOMIC_READ || type == ATOMIC_RMWR || type == ATOMIC_RMWRCAS || type == ATOMIC_RMW;
+	return type == ATOMIC_READ || type == ATOMIC_RMW;
 }
 
 bool ModelAction::is_write() const
@@ -342,44 +322,14 @@ bool ModelAction::is_create() const
 	return type == THREAD_CREATE || type == PTHREAD_CREATE;
 }
 
-bool ModelAction::is_free() const
-{
-	return type == READY_FREE;
-}
-
-bool ModelAction::could_be_write() const
-{
-	return is_write() || is_rmwr();
-}
-
 bool ModelAction::is_yield() const
 {
 	return type == THREAD_YIELD;
 }
 
-bool ModelAction::is_rmwr() const
-{
-	return type == ATOMIC_RMWR || type == ATOMIC_RMWRCAS;
-}
-
-bool ModelAction::is_rmwrcas() const
-{
-	return type == ATOMIC_RMWRCAS;
-}
-
 bool ModelAction::is_rmw() const
 {
 	return type == ATOMIC_RMW;
-}
-
-bool ModelAction::is_rmwc() const
-{
-	return type == ATOMIC_RMWC;
-}
-
-bool ModelAction::is_fence() const
-{
-	return type == ATOMIC_FENCE;
 }
 
 bool ModelAction::is_initialization() const
@@ -390,35 +340,6 @@ bool ModelAction::is_initialization() const
 bool ModelAction::is_annotation() const
 {
 	return type == ATOMIC_ANNOTATION;
-}
-
-bool ModelAction::is_relaxed() const
-{
-	return order == std::memory_order_relaxed;
-}
-
-bool ModelAction::is_acquire() const
-{
-	switch (order) {
-	case std::memory_order_acquire:
-	case std::memory_order_acq_rel:
-	case std::memory_order_seq_cst:
-		return true;
-	default:
-		return false;
-	}
-}
-
-bool ModelAction::is_release() const
-{
-	switch (order) {
-	case std::memory_order_release:
-	case std::memory_order_acq_rel:
-	case std::memory_order_seq_cst:
-		return true;
-	default:
-		return false;
-	}
 }
 
 bool ModelAction::is_seqcst() const
@@ -485,28 +406,6 @@ Thread * ModelAction::get_thread_operand() const
 		return NULL;
 }
 
-/**
- * @brief Convert the read portion of an RMW
- *
- * Changes an existing read part of an RMW action into either:
- *  -# a full RMW action in case of the completed write or
- *  -# a READ action in case a failed action.
- *
- * @todo  If the memory_order changes, we may potentially need to update our
- * clock vector.
- *
- * @param act The second half of the RMW (either RMWC or RMW)
- */
-void ModelAction::process_rmw(ModelAction *act)
-{
-	this->order = act->order;
-	if (act->is_rmwc())
-		this->type = ATOMIC_READ;
-	else if (act->is_rmw()) {
-		this->type = ATOMIC_RMW;
-		this->value = act->value;
-	}
-}
 
 /**
  * @brief Check if this action should be backtracked with another, due to
@@ -527,18 +426,11 @@ bool ModelAction::could_synchronize_with(const ModelAction *act) const
 	if (same_thread(act))
 		return false;
 
-	// Different locations commute
-	if (!same_var(act) && !is_fence() && !act->is_fence())
-		return false;
-
 	// Explore interleavings of seqcst writes/fences to guarantee total
 	// order of seq_cst operations that don't commute
-	if ((could_be_write() || act->could_be_write() || is_fence() || act->is_fence()) && is_seqcst() && act->is_seqcst())
+	if (is_write() || act->is_write() )
 		return true;
-
-	// Explore synchronizing read/write pairs
-	if (is_acquire() && act->is_release() && is_read() && act->could_be_write())
-		return true;
+		
 
 	// lock just released...we can grab lock
 	if ((is_lock() || is_trylock()) && (act->is_unlock() || act->is_wait()))
@@ -723,10 +615,6 @@ const char * ModelAction::get_type_str() const
 	case ATOMIC_READ: return "atomic read";
 	case ATOMIC_WRITE: return "atomic write";
 	case ATOMIC_RMW: return "atomic rmw";
-	case ATOMIC_FENCE: return "fence";
-	case ATOMIC_RMWR: return "atomic rmwr";
-	case ATOMIC_RMWRCAS: return "atomic rmwrcas";
-	case ATOMIC_RMWC: return "atomic rmwc";
 	case ATOMIC_INIT: return "init atomic";
 	case ATOMIC_LOCK: return "lock";
 	case ATOMIC_UNLOCK: return "unlock";

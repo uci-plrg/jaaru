@@ -65,11 +65,9 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	condvar_waiters_map(),
 	obj_thrd_map(),
 	obj_wr_thrd_map(),
-	obj_last_sc_map(),
 	mutex_map(),
 	cond_map(),
 	thrd_last_action(1),
-	thrd_last_fence_release(),
 	priv(new struct model_snapshot_members ()),
 	fuzzer(new Fuzzer()),
 	isfinished(false)
@@ -183,21 +181,9 @@ void ModelExecution::restore_last_seq_num()
 bool ModelExecution::should_wake_up(const ModelAction *curr, const Thread *thread) const
 {
 	const ModelAction *asleep = thread->get_pending();
-	/* Don't allow partial RMW to wake anyone up */
-	if (curr->is_rmwr())
-		return false;
 	/* Synchronizing actions may have been backtracked */
 	if (asleep->could_synchronize_with(curr))
 		return true;
-	/* All acquire/release fences and fence-acquire/store-release */
-	if (asleep->is_fence() && asleep->is_acquire() && curr->is_release())
-		return true;
-	/* Fence-release + store can awake load-acquire on the same location */
-	if (asleep->is_read() && asleep->is_acquire() && curr->same_var(asleep) && curr->is_write()) {
-		ModelAction *fence_release = get_last_fence_release(curr->get_tid());
-		if (fence_release && *(get_last_action(thread->get_id())) < *fence_release)
-			return true;
-	}
 	/* The sleep is literally sleeping */
 	if (asleep->is_sleep()) {
 		if (fuzzer->shouldWake(asleep))
@@ -322,7 +308,6 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
 	act->set_seq_number(storeclock);
 	add_normal_write_to_lists(act);
 	add_write_to_lists(act);
-	analyze_write_order(act);
 	return act;
 }
 
@@ -488,8 +473,10 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 void ModelExecution::process_write(ModelAction *curr)
 {
 	get_thread(curr)->getMemory()->addWrite(curr);
-	analyze_write_order(curr);
-	get_thread(curr)->set_return_value(VALUE_NONE);
+	if(!curr->is_rmw()){
+		get_thread(curr)->set_return_value(VALUE_NONE);
+	}
+	
 }
 
 /**
@@ -513,27 +500,6 @@ void ModelExecution::process_memory_fence(ModelAction *curr)
 {
 	get_thread(curr)->getMemory()->applyFence(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
-}
-
-/**
- * Process a fence ModelAction
- * @param curr The ModelAction to process
- * @return True if synchronization was updated
- */
-void ModelExecution::process_fence(ModelAction *curr)
-{
-	/*
-	 * fence-relaxed: no-op
-	 * fence-release: only log the occurence (not in this function), for
-	 *   use in later synchronization
-	 * fence-acquire (this function): search for hypothetical release
-	 *   sequences
-	 * fence-seq-cst: MO constraints formed in {r,w}_modification_order
-	 */
-	ASSERT(0);
-	if (curr->is_acquire()) {
-		curr->get_cv()->merge(get_thread(curr)->get_acq_fence_cv());
-	}
 }
 
 /**
@@ -632,28 +598,12 @@ void ModelExecution::process_thread_action(ModelAction *curr)
  * action "returned" its place (pass-by-reference)
  * @return True if curr is a newly-explored action; false otherwise
  */
-bool ModelExecution::initialize_curr_action(ModelAction **curr)
+void ModelExecution::initialize_curr_action(ModelAction *curr)
 {
-	if ((*curr)->is_rmwc() || (*curr)->is_rmw()) {
-		ModelAction *newcurr = process_rmw(*curr);
-		delete *curr;
-
-		*curr = newcurr;
-		return false;
-	} else {
-		ModelAction *newcurr = *curr;
-
-		newcurr->set_seq_number(get_next_seq_num());
+		curr->set_seq_number(get_next_seq_num());
 		/* Always compute new clock vector */
-		newcurr->create_cv(get_parent_action(newcurr->get_tid()));
-
-		/* Assign most recent release fence */
-		newcurr->set_last_fence_release(get_last_fence_release(newcurr->get_tid()));
-
-		return true;	/* This was a new ModelAction */
-	}
+		curr->create_cv(get_parent_action(curr->get_tid()));
 }
-
 /**
  * @brief Establish reads-from relation between two actions
  *
@@ -683,10 +633,8 @@ void ModelExecution::read_from(ModelAction *act, ModelAction *rf)
 	}
 	//UPDATE read from set
 	act->set_read_from(rf);
-	if (act->is_acquire()) {
-		ClockVector *cv = get_hb_from_write(rf);
-		if (cv == NULL)
-			return;
+	ClockVector *cv = get_hb_from_write(rf);
+	if (cv != NULL){
 		act->get_cv()->merge(cv);
 	}
 }
@@ -762,29 +710,27 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
 ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 {
 	ASSERT(curr);
-	bool second_part_of_rmw = curr->is_rmwc() || curr->is_rmw();
-	bool newly_explored = initialize_curr_action(&curr);
-
+	initialize_curr_action(curr);
+	if(curr->is_rmw()) {
+		get_thread(curr)->getMemory()->applyRMW(curr);
+	}
 	DBG();
 
 	wake_up_sleeping_actions(curr);
 
 	SnapVector<ModelAction *> * rf_set = NULL;
 	/* Build may_read_from set for newly-created actions */
-	if (newly_explored && curr->is_read())
+	if (curr->is_read())
 		rf_set = build_may_read_from(curr);
 
-	bool canprune = false;
-
-	if (curr->is_read() && !second_part_of_rmw) {
+	if (curr->is_read()) {
 		process_read(curr, rf_set);
 		delete rf_set;
 	} else
 		ASSERT(rf_set == NULL);
 
 	/* Add the action to lists */
-	if (!second_part_of_rmw)
-		add_action_to_lists(curr);
+	add_action_to_lists(curr);
 
 	if (curr->is_write())
 		add_write_to_lists(curr);
@@ -803,197 +749,11 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		process_memory_fence(curr);
 	}
 
-	if (curr->is_fence()) {
-		process_fence(curr);
-	}
-
 	if (curr->is_mutex_op()) {
 		process_mutex(curr);
 	}
 
 	return curr;
-}
-
-/** Close out a RMWR by converting previous RMWR into a RMW or READ. */
-ModelAction * ModelExecution::process_rmw(ModelAction *act) {
-	ASSERT(0);
-	get_thread(act)->getMemory()->applyRMW(act);
-	ModelAction *lastread = get_last_action(act->get_tid());
-	lastread->process_rmw(act);
-	return lastread;
-}
-
-/**
- * @brief Updates the mo_graph with the constraints imposed from the current
- * read.
- *
- * Basic idea is the following: Go through each other thread and find
- * the last action that happened before our read.  Two cases:
- *
- * -# The action is a write: that write must either occur before
- * the write we read from or be the write we read from.
- * -# The action is a read: the write that that action read from
- * must occur before the write we read from or be the same write.
- *
- * @param curr The current action. Must be a read.
- * @param rf The ModelAction or Promise that curr reads from. Must be a write.
- * @param check_only If true, then only check whether the current action satisfies
- *        read modification order or not, without modifiying priorset and canprune.
- *        False by default.
- * @return True if modification order edges were added; false otherwise
- */
-
-bool ModelExecution::r_modification_order(ModelAction *curr, const ModelAction *rf,
-																					SnapVector<ModelAction *> * priorset, bool * canprune, bool check_only)
-{
-	ASSERT(0);
-	SnapVector<action_list_t> *thrd_lists = obj_thrd_map.get(curr->get_location());
-	ASSERT(curr->is_read());
-
-	/* Last SC fence in the current thread */
-	ModelAction *last_sc_fence_local = get_last_seq_cst_fence(curr->get_tid(), NULL);
-
-	int tid = curr->get_tid();
-
-	/* Need to ensure thrd_lists is big enough because we have not added the curr actions yet.  */
-	if ((int)thrd_lists->size() <= tid) {
-		uint oldsize = thrd_lists->size();
-		thrd_lists->resize(priv->next_thread_id);
-		for(uint i = oldsize;i < priv->next_thread_id;i++)
-			new (&(*thrd_lists)[i]) action_list_t();
-
-		fixup_action_list(thrd_lists);
-	}
-
-	ModelAction *prev_same_thread = NULL;
-	/* Iterate over all threads */
-	for (unsigned int i = 0;i < thrd_lists->size();i++, tid = (((unsigned int)(tid+1)) == thrd_lists->size()) ? 0 : tid + 1) {
-		/* Last SC fence in thread tid */
-		ModelAction *last_sc_fence_thread_local = NULL;
-		if (i != 0)
-			last_sc_fence_thread_local = get_last_seq_cst_fence(int_to_id(tid), NULL);
-
-		/* Last SC fence in thread tid, before last SC fence in current thread */
-		ModelAction *last_sc_fence_thread_before = NULL;
-		if (last_sc_fence_local)
-			last_sc_fence_thread_before = get_last_seq_cst_fence(int_to_id(tid), last_sc_fence_local);
-
-		//Only need to iterate if either hb has changed for thread in question or SC fence after last operation...
-		if (prev_same_thread != NULL &&
-				(prev_same_thread->get_cv()->getClock(tid) == curr->get_cv()->getClock(tid)) &&
-				(last_sc_fence_thread_local == NULL || *last_sc_fence_thread_local < *prev_same_thread)) {
-			continue;
-		}
-
-		/* Iterate over actions in thread, starting from most recent */
-		action_list_t *list = &(*thrd_lists)[tid];
-		sllnode<ModelAction *> * rit;
-		for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
-			ModelAction *act = rit->getVal();
-
-			/* Skip curr */
-			if (act == curr)
-				continue;
-			/* Don't want to add reflexive edges on 'rf' */
-			if (act->equals(rf)) {
-				if (act->happens_before(curr))
-					break;
-				else
-					continue;
-			}
-			ASSERT(0);
-			if (act->is_write()) {
-				/* C++, Section 29.3 statement 5 */
-				if (curr->is_seqcst() && last_sc_fence_thread_local &&
-						*act < *last_sc_fence_thread_local) {
-					if (!check_only)
-						priorset->push_back(act);
-					break;
-				}
-				/* C++, Section 29.3 statement 4 */
-				else if (act->is_seqcst() && last_sc_fence_local &&
-								 *act < *last_sc_fence_local) {
-					if (!check_only)
-						priorset->push_back(act);
-					break;
-				}
-				/* C++, Section 29.3 statement 6 */
-				else if (last_sc_fence_thread_before &&
-								 *act < *last_sc_fence_thread_before) {
-					if (!check_only)
-						priorset->push_back(act);
-					break;
-				}
-			}
-
-			/*
-			 * Include at most one act per-thread that "happens
-			 * before" curr
-			 */
-			if (act->happens_before(curr)) {
-				if (i==0) {
-					if (last_sc_fence_local == NULL ||
-							(*last_sc_fence_local < *act)) {
-						prev_same_thread = act;
-					}
-				}
-				if (act->is_write()) {
-					if (!check_only)
-						priorset->push_back(act);
-				} else {
-					ModelAction *prevrf = act->get_reads_from();
-					if (!prevrf->equals(rf)) {
-						if (!check_only)
-							priorset->push_back(prevrf);
-					} else {
-						if (act->get_tid() == curr->get_tid()) {
-							//Can prune curr from obj list
-							if (!check_only)
-								*canprune = true;
-						}
-					}
-				}
-				break;
-			}
-		}
-	}
-	return true;
-}
-
-/**
- * Updates the mo_graph with the constraints imposed from the current write.
- *
- * Basic idea is the following: Go through each other thread and find
- * the lastest action that happened before our write.  Two cases:
- *
- * (1) The action is a write => that write must occur before
- * the current write
- *
- * (2) The action is a read => the write that that action read from
- * must occur before the current write.
- *
- * This method also handles two other issues:
- *
- * (I) Sequential Consistency: Making sure that if the current write is
- * seq_cst, that it occurs after the previous seq_cst write.
- *
- * (II) Sending the write back to non-synchronizing reads.
- *
- * @param curr The current action. Must be a write.
- * @param send_fv A vector for stashing reads to which we may pass our future
- * value. If NULL, then don't record any future values.
- * @return True if modification order edges were added; false otherwise
- */
-void ModelExecution::analyze_write_order(ModelAction *curr)
-{
-	ASSERT(curr->is_write());
-	if (curr->is_seqcst()) {
-		/* We have to at least see the last sequentially consistent write,
-		         so we are initialized. */
-		ModelAction *last_seq_cst = get_last_seq_cst_write(curr);
-		//update map for next query
-		obj_last_sc_map.put(curr->get_location(), curr);
-	}
 }
 
 /**
@@ -1008,7 +768,7 @@ ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
 	SnapVector<ModelAction *> * processset = NULL;
 	for ( ;rf != NULL;rf = rf->get_reads_from()) {
 		ASSERT(rf->is_write());
-		if (!rf->is_rmw() || (rf->is_acquire() && rf->is_release()) || rf->get_rfcv() != NULL)
+		if (!rf->is_rmw() || rf->get_rfcv() != NULL)
 			break;
 		if (processset == NULL)
 			processset = new SnapVector<ModelAction *>();
@@ -1021,23 +781,11 @@ ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
 	while(true) {
 		if (rf->get_rfcv() != NULL) {
 			vec = rf->get_rfcv();
-		} else if (rf->is_acquire() && rf->is_release()) {
-			vec = rf->get_cv();
-		} else if (rf->is_release() && !rf->is_rmw()) {
-			vec = rf->get_cv();
-		} else if (rf->is_release()) {
-			//have rmw that is release and doesn't have a rfcv
+		} else if (rf->is_write()) {
 			(vec = new ClockVector(vec, NULL))->merge(rf->get_cv());
 			rf->set_rfcv(vec);
 		} else {
-			//operation that isn't release
-			if (rf->get_last_fence_release()) {
-				if (vec == NULL)
-					vec = rf->get_last_fence_release()->get_cv();
-				else
-					(vec=new ClockVector(vec, NULL))->merge(rf->get_last_fence_release()->get_cv());
-			}
-			rf->set_rfcv(vec);
+			ASSERT(0);
 		}
 		i--;
 		if (i >= 0) {
@@ -1060,11 +808,11 @@ ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
 void ModelExecution::add_action_to_lists(ModelAction *act)
 {
 	int tid = id_to_int(act->get_tid());
-	if ((act->is_fence() && act->is_seqcst()) || act->is_unlock()) {
+	if (act->is_seqcst() || act->is_unlock()) {
 		simple_action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
 		act->setActionRef(list->add_back(act));
-	}
-
+	}	
+	
 	// Update action trace, a total order of all actions
 	action_trace.addAction(act);
 
@@ -1087,13 +835,6 @@ void ModelExecution::add_action_to_lists(ModelAction *act)
 		thrd_last_action.resize(get_num_threads());
 	thrd_last_action[tid] = act;
 
-	// Update thrd_last_fence_release, the last release fence taken by each thread
-	if (act->is_fence() && act->is_release()) {
-		if ((int)thrd_last_fence_release.size() <= tid)
-			thrd_last_fence_release.resize(get_num_threads());
-		thrd_last_fence_release[tid] = act;
-	}
-
 	if (act->is_wait()) {
 		void *mutex_loc = (void *) act->get_value();
 		act->setActionRef(get_safe_ptr_action(&obj_map, mutex_loc)->add_back(act));
@@ -1103,12 +844,6 @@ void ModelExecution::add_action_to_lists(ModelAction *act)
 void insertIntoActionList(action_list_t *list, ModelAction *act) {
 	list->addAction(act);
 }
-
-void insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
-	act->create_cv(NULL);
-	list->addAction(act);
-}
-
 /**
  * Performs various bookkeeping operations for a normal write.  The
  * complication is that we are typically inserting a normal write
@@ -1120,7 +855,7 @@ void insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
 void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 {
 	int tid = id_to_int(act->get_tid());
-	insertIntoActionListAndSetCV(&action_trace, act);
+	action_trace.addAction(act);
 
 	// Update obj_thrd_map, a per location, per thread, order of actions
 	SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_thrd_map, act->get_location());
@@ -1165,70 +900,6 @@ ModelAction * ModelExecution::get_last_action(thread_id_t tid) const
 		return thrd_last_action[id_to_int(tid)];
 	else
 		return NULL;
-}
-
-/**
- * @brief Get the last fence release performed by a particular Thread
- * @param tid The thread ID of the Thread in question
- * @return The last fence release in the thread, if one exists; NULL otherwise
- */
-ModelAction * ModelExecution::get_last_fence_release(thread_id_t tid) const
-{
-	int threadid = id_to_int(tid);
-	if (threadid < (int)thrd_last_fence_release.size())
-		return thrd_last_fence_release[id_to_int(tid)];
-	else
-		return NULL;
-}
-
-/**
- * Gets the last memory_order_seq_cst write (in the total global sequence)
- * performed on a particular object (i.e., memory location), not including the
- * current action.
- * @param curr The current ModelAction; also denotes the object location to
- * check
- * @return The last seq_cst write
- */
-ModelAction * ModelExecution::get_last_seq_cst_write(ModelAction *curr) const
-{
-	void *location = curr->get_location();
-	return obj_last_sc_map.get(location);
-}
-
-/**
- * Gets the last memory_order_seq_cst fence (in the total global sequence)
- * performed in a particular thread, prior to a particular fence.
- * @param tid The ID of the thread to check
- * @param before_fence The fence from which to begin the search; if NULL, then
- * search for the most recent fence in the thread.
- * @return The last prior seq_cst fence in the thread, if exists; otherwise, NULL
- */
-ModelAction * ModelExecution::get_last_seq_cst_fence(thread_id_t tid, const ModelAction *before_fence) const
-{
-	ASSERT(0);
-	/* All fences should have location FENCE_LOCATION */
-	simple_action_list_t *list = obj_map.get(FENCE_LOCATION);
-
-	if (!list)
-		return NULL;
-
-	sllnode<ModelAction*>* rit = list->end();
-
-	if (before_fence) {
-		for (;rit != NULL;rit=rit->getPrev())
-			if (rit->getVal() == before_fence)
-				break;
-
-		ASSERT(rit->getVal() == before_fence);
-		rit=rit->getPrev();
-	}
-
-	for (;rit != NULL;rit=rit->getPrev()) {
-		ModelAction *act = rit->getVal();
-		if (act->is_fence() && (tid == act->get_tid()) && act->is_seqcst())
-			return act;
-	}
-	return NULL;
 }
 
 /**
@@ -1328,11 +999,6 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 	unsigned int i;
 	ASSERT(curr->is_read());
 
-	ModelAction *last_sc_write = NULL;
-
-	if (curr->is_seqcst())
-		last_sc_write = get_last_seq_cst_write(curr);
-
 	SnapVector<ModelAction *> * rf_set = new SnapVector<ModelAction *>();
 	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromSoreBuffer(curr->get_location());
 	if(lastWrite != NULL){
@@ -1368,15 +1034,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 				if (act->get_seq_number() < beginR) {
 					break;
 				}
-				/* Don't consider more than one seq_cst write if we are a seq_cst read. */
-				bool allow_read = true;
-				if (curr->is_seqcst() && (act->is_seqcst() || (last_sc_write != NULL && act->happens_before(last_sc_write))) && act != last_sc_write)
-					allow_read = false;
-				/*TODO: Need to check whether we will have two RMW reading from the same value */
-				if (allow_read) {
-					/* Only add feasible reads */
-					rf_set->push_back(act);
-				}
+				rf_set->push_back(act);
 			}
 			model_print("\n\n");
 		}
@@ -1551,9 +1209,6 @@ bool ModelExecution::is_enabled(thread_id_t tid) const
  */
 Thread * ModelExecution::action_select_next_thread(const ModelAction *curr) const
 {
-	/* Do not split atomic RMW */
-	if (curr->is_rmwr())
-		return get_thread(curr);
 	/* Follow CREATE with the created thread */
 	/* which is not needed, because model.cc takes care of this */
 	if (curr->get_type() == THREAD_CREATE)
@@ -1586,44 +1241,6 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 	return action_select_next_thread(curr);
 }
 
-/** This method removes references to an Action before we delete it. */
-
-void ModelExecution::removeAction(ModelAction *act) {
-	{
-		action_trace.removeAction(act);
-	}
-	{
-		SnapVector<action_list_t> *vec = get_safe_ptr_vect_action(&obj_thrd_map, act->get_location());
-		(*vec)[act->get_tid()].removeAction(act);
-	}
-	if ((act->is_fence() && act->is_seqcst()) || act->is_unlock()) {
-		sllnode<ModelAction *> * listref = act->getActionRef();
-		if (listref != NULL) {
-			simple_action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
-			list->erase(listref);
-		}
-	} else if (act->is_wait()) {
-		sllnode<ModelAction *> * listref = act->getActionRef();
-		if (listref != NULL) {
-			void *mutex_loc = (void *) act->get_value();
-			get_safe_ptr_action(&obj_map, mutex_loc)->erase(listref);
-		}
-	} else if (act->is_free()) {
-		sllnode<ModelAction *> * listref = act->getActionRef();
-		if (listref != NULL) {
-			ASSERT(0);
-			SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, act->get_location());
-			(*vec)[act->get_tid()].erase(listref);
-		}
-
-		//Clear it from last_sc_map
-		if (obj_last_sc_map.get(act->get_location()) == act) {
-			obj_last_sc_map.remove(act->get_location());
-		}
-
-	}
-}
-
 /** Computes clock vector that all running threads have already synchronized to.  */
 
 ClockVector * ModelExecution::computeMinimalCV() {
@@ -1641,199 +1258,6 @@ ClockVector * ModelExecution::computeMinimalCV() {
 			cvmin->minmerge(cv);
 	}
 	return cvmin;
-}
-
-
-/** Sometimes we need to remove an action that is the most recent in the thread.  This happens if it is mo before action in other threads.  In that case we need to create a replacement latest ModelAction */
-
-void ModelExecution::fixupLastAct(ModelAction *act) {
-	ModelAction *newact = new ModelAction(ATOMIC_NOP, std::memory_order_seq_cst, NULL, VALUE_NONE, get_thread(act->get_tid()));
-	newact->set_seq_number(get_next_seq_num());
-	newact->create_cv(act);
-	newact->set_last_fence_release(act->get_last_fence_release());
-	add_action_to_lists(newact);
-}
-
-/** Compute which actions to free.  */
-
-void ModelExecution::collectActions() {
-	if (priv->used_sequence_numbers < params->traceminsize)
-		return;
-	ASSERT(0);
-	//Compute minimal clock vector for all live threads
-	ClockVector *cvmin = computeMinimalCV();
-	modelclock_t maxtofree = priv->used_sequence_numbers - params->traceminsize;
-
-	//Next walk action trace...  When we hit an action, see if it is
-	//invisible (e.g., earlier than the first before the minimum
-	//clock for the thread...  if so erase it and all previous
-	//actions in cyclegraph
-	sllnode<ModelAction*> * it;
-	for (it = action_trace.begin();it != NULL;it=it->getNext()) {
-		ModelAction *act = it->getVal();
-		modelclock_t actseq = act->get_seq_number();
-
-		//See if we are done
-		if (actseq > maxtofree)
-			break;
-
-		thread_id_t act_tid = act->get_tid();
-		modelclock_t tid_clock = cvmin->getClock(act_tid);
-
-		//TODO:Free if it is invisible or we have set a flag to remove visible actions.
-		if (actseq <= tid_clock) {
-			ASSERT(0);
-			ModelAction * write;
-			if (act->is_write()) {
-				write = act;
-			} else if (act->is_read()) {
-				write = act->get_reads_from();
-			} else
-				continue;
-
-		}
-	}
-	//We may need to remove read actions in the window we don't delete to preserve correctness.
-
-	for (sllnode<ModelAction*> * it2 = action_trace.end();it2 != it;) {
-		ModelAction *act = it2->getVal();
-		//Do iteration early in case we delete the act
-		it2=it2->getPrev();
-		bool islastact = false;
-		ModelAction *lastact = get_last_action(act->get_tid());
-		if (act == lastact) {
-			Thread * th = get_thread(act);
-			islastact = !th->is_complete();
-		}
-
-		if (act->is_read()) {
-			if (act->get_reads_from()->is_free()) {
-				if (act->is_rmw()) {
-					//Weaken a RMW from a freed store to a write
-					act->set_type(ATOMIC_WRITE);
-				} else {
-					removeAction(act);
-					if (islastact) {
-						fixupLastAct(act);
-					}
-
-					delete act;
-					continue;
-				}
-			}
-		}
-		//If we don't delete the action, we should remove references to release fences
-
-		const ModelAction *rel_fence =act->get_last_fence_release();
-		if (rel_fence != NULL) {
-			modelclock_t relfenceseq = rel_fence->get_seq_number();
-			thread_id_t relfence_tid = rel_fence->get_tid();
-			modelclock_t tid_clock = cvmin->getClock(relfence_tid);
-			//Remove references to irrelevant release fences
-			if (relfenceseq <= tid_clock)
-				act->set_last_fence_release(NULL);
-		}
-	}
-
-	//Now we are in the window of old actions that we remove if possible
-	for (;it != NULL;) {
-		ModelAction *act = it->getVal();
-		//Do iteration early since we may delete node...
-		it=it->getPrev();
-		bool islastact = false;
-		ModelAction *lastact = get_last_action(act->get_tid());
-		if (act == lastact) {
-			Thread * th = get_thread(act);
-			islastact = !th->is_complete();
-		}
-
-		if (act->is_read()) {
-			if (act->get_reads_from()->is_free()) {
-				if (act->is_rmw()) {
-					act->set_type(ATOMIC_WRITE);
-				} else {
-					removeAction(act);
-					if (islastact) {
-						fixupLastAct(act);
-					}
-					delete act;
-					continue;
-				}
-			}
-		} else if (act->is_free()) {
-			removeAction(act);
-			if (islastact) {
-				fixupLastAct(act);
-			}
-			delete act;
-			continue;
-		} else if (act->is_write()) {
-			//Do nothing with write that hasn't been marked to be freed
-		} else if (islastact) {
-			//Keep the last action for non-read/write actions
-		} else if (act->is_fence()) {
-			//Note that acquire fences can always be safely
-			//removed, but could incur extra overheads in
-			//traversals.  Removing them before the cvmin seems
-			//like a good compromise.
-
-			//Release fences before the cvmin don't do anything
-			//because everyone has already synchronized.
-
-			//Sequentially fences before cvmin are redundant
-			//because happens-before will enforce same
-			//orderings.
-
-			modelclock_t actseq = act->get_seq_number();
-			thread_id_t act_tid = act->get_tid();
-			modelclock_t tid_clock = cvmin->getClock(act_tid);
-			if (actseq <= tid_clock) {
-				removeAction(act);
-				// Remove reference to act from thrd_last_fence_release
-				int thread_id = id_to_int( act->get_tid() );
-				if (thrd_last_fence_release[thread_id] == act) {
-					thrd_last_fence_release[thread_id] = NULL;
-				}
-				delete act;
-				continue;
-			}
-		} else {
-			//need to deal with lock, annotation, wait, notify, thread create, start, join, yield, finish, nops
-			//lock, notify thread create, thread finish, yield, finish are dead as soon as they are in the trace
-			//need to keep most recent unlock/wait for each lock
-			if(act->is_unlock() || act->is_wait()) {
-				ModelAction * lastlock = get_last_unlock(act);
-				if (lastlock != act) {
-					removeAction(act);
-					delete act;
-					continue;
-				}
-			} else if (act->is_create()) {
-				if (act->get_thread_operand()->is_complete()) {
-					removeAction(act);
-					delete act;
-					continue;
-				}
-			} else {
-				removeAction(act);
-				delete act;
-				continue;
-			}
-		}
-
-		//If we don't delete the action, we should remove references to release fences
-		const ModelAction *rel_fence =act->get_last_fence_release();
-		if (rel_fence != NULL) {
-			modelclock_t relfenceseq = rel_fence->get_seq_number();
-			thread_id_t relfence_tid = rel_fence->get_tid();
-			modelclock_t tid_clock = cvmin->getClock(relfence_tid);
-			//Remove references to irrelevant release fences
-			if (relfenceseq <= tid_clock)
-				act->set_last_fence_release(NULL);
-		}
-	}
-
-	delete cvmin;
 }
 
 Fuzzer * ModelExecution::getFuzzer() {
