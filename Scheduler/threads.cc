@@ -452,7 +452,7 @@ Thread::~Thread()
 {
 	if (!is_complete())
 		complete();
-
+	delete memory;
 	delete acq_fence_cv;
 }
 
