@@ -42,6 +42,7 @@ In case you want to debug the project, open common.h and define CONFIG_DEBUG. If
     cd bin
     ./run.sh gdb test1
 
+Set a breakpoint in gdb and use 'set follow-fork-mode child' to debug your program.
 
 Contact
 -------
