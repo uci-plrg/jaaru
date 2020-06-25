@@ -108,7 +108,7 @@ public:
 	void set_mo(memory_order order) { this->order = order; }
 	void * get_location() const { return location; }
 	const char * get_position() const { return position; }
-	modelclock_t get_seq_number() const { return seq_number; }
+	modelclock_t get_seq_number() const ;
 	uint64_t get_value() const { return value; }
 	uint64_t get_reads_from_value() const;
 	uint64_t get_write_value() const;

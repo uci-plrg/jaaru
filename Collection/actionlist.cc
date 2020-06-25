@@ -247,15 +247,3 @@ bool actionlist::isEmpty() {
 	return root.count == 0;
 }
 
-/**
- * Fix the parent pointer of root when root address changes (possible
- * due to vector<action_list_t> resize)
- */
-void actionlist::fixupParent()
-{
-	for (int i = 0;i < ALLNODESIZE;i++) {
-		allnode * child = root.children[i];
-		if (child != NULL && child->parent != &root)
-			child->parent = &root;
-	}
-}

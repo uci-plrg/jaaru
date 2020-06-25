@@ -41,7 +41,6 @@ public:
 	uint size() {return _size;}
 	sllnode<ModelAction *> * begin() {return head;}
 	sllnode<ModelAction *> * end() {return tail;}
-	void fixupParent();
 
 	SNAPSHOTALLOC;
 

@@ -498,6 +498,15 @@ void ModelAction::set_try_lock(bool obtainedlock)
 {
 	value = obtainedlock ? VALUE_TRYSUCCESS : VALUE_TRYFAILED;
 }
+/**
+ * returning the action's seq_number. Making we never use an action
+ * that the clock has not initialized yet.
+ */
+modelclock_t ModelAction::get_seq_number() const 
+{
+	ASSERT(seq_number != ACTION_INITIAL_CLOCK);
+	return seq_number; 
+}
 
 /**
  * @brief Get the value read by this load

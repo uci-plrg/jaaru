@@ -15,19 +15,25 @@
 class CacheLine {
 public:
 	CacheLine(void *address);
+	CacheLine(uintptr_t id);
 	uintptr_t getId() { return id; }
-	void setLastCacheOp(ModelAction *cacheop) { lastCacheOp = cacheop; }
-	ModelAction *getLastCacheOp() { return lastCacheOp; }
 	void applyWrite(ModelAction *write);
 	void persistCacheLine();
 	void persistUntil(modelclock_t opclock);
-	VarRange* getVariable(void *address);
+	modelclock_t getBeginRange(){ return beginR;}
+	modelclock_t getEndRange(){ return endR;}
+	void setLastCacheOp(ModelAction *clop) {lastCacheOp = clop;}
+	void setBeginRange(modelclock_t begin) { beginR =begin;}
+	void setEndRange (modelclock_t end) { endR = end; }
+
 	SNAPSHOTALLOC;
 private:
 	
-	VarRangeSet varSet;
 	uintptr_t id;
-	//Last cache operation that read from store buffer for this cache line
+	//Only contains the clock time of 1) the write that a read may read from 2) read clock
+	modelclock_t beginR;
+	// It should the clock of the last CLWB, when there is a RMW or Fence
+	modelclock_t endR;
 	ModelAction *lastCacheOp;
 };
 

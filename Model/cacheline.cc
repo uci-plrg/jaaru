@@ -1,56 +1,48 @@
 #include "cacheline.h"
 #include "common.h"
 #include "action.h"
-#include "varrange.h"
 #include "model.h"
 #include "execution.h"
 
+#define RANGEUNDEFINED (modelclock_t)-1
+
 CacheLine::CacheLine(void *address) :
-	varSet(),
+	
 	id(getCacheID(address)),
+	beginR(RANGEUNDEFINED),
+	endR(RANGEUNDEFINED),
 	lastCacheOp(NULL)
 {
 }
 
-void CacheLine::applyWrite(ModelAction *write)
+CacheLine::CacheLine(uintptr_t _id) :
+	id(_id),
+	beginR(RANGEUNDEFINED),
+	endR(RANGEUNDEFINED),
+	lastCacheOp(NULL)
 {
-	ASSERT( ((uintptr_t)write->get_location() & 0x3) == 0);
-	VarRange tmp(write->get_location());
-	VarRange* variable = varSet.get(&tmp);
-	if(variable == NULL) {
-		//First time writing to the variable.
-		variable = new VarRange(write->get_location());
-		varSet.add(variable);
-	} 
-	variable->applyWrite(write);
+}
+
+void CacheLine::applyWrite(ModelAction * write){
+    if(beginR == RANGEUNDEFINED && endR == RANGEUNDEFINED) {
+		beginR = write->get_seq_number();
+	} else if (beginR != RANGEUNDEFINED && endR != RANGEUNDEFINED) {
+		// There's a write on a cache line that already persist.
+		ASSERT(0);
+	}
 }
 
 void CacheLine::persistCacheLine()
 {
 	ASSERT(lastCacheOp);
-	VarRangeSetIter *iter = varSet.iterator();
-	while(iter->hasNext()){
-		VarRange *variable = iter->next();
-		ModelAction* prevWrite = model->get_execution()->get_last_write_before_op(variable->getVarAddress(), lastCacheOp);
-		ASSERT(prevWrite);
-		variable->setEndRange(prevWrite->get_seq_number());
-	}
-	delete iter;
-}
-
-
-VarRange* CacheLine::getVariable(void *address) 
-{
-	VarRange tmp(address);
-	return varSet.get(&tmp);
+	ASSERT(endR == RANGEUNDEFINED);
+	endR = lastCacheOp->get_seq_number();
 }
 
 void CacheLine::persistUntil(modelclock_t opclock)
 {
-	VarRangeSetIter *iter = varSet.iterator();
-	while(iter->hasNext()){
-		VarRange *variable = iter->next();
-		variable->persistUntil(opclock);
-	}
-	delete iter;
+    ASSERT(beginR != RANGEUNDEFINED);
+    if(beginR < opclock){
+        beginR = opclock;
+    }
 }

@@ -46,7 +46,6 @@ public:
 
 	thread_id_t get_next_id();
 	unsigned int get_num_threads() const;
-	ModelAction * get_last_write_before_op(void * location, ModelAction *op);
 
 	ClockVector * get_cv(thread_id_t tid) const;
 	ModelAction * get_parent_action(thread_id_t tid) const;
@@ -69,7 +68,6 @@ public:
 
 	bool is_deadlocked() const;
 
-	action_list_t * get_action_trace() { return &action_trace; }
 	Fuzzer * getFuzzer();
 	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> * getCondMap() {return &cond_map;}
 	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> * getMutexMap() {return &mutex_map;}
@@ -79,6 +77,9 @@ public:
 	void setFinished() {isfinished = true;}
 	void restore_last_seq_num();
 	modelclock_t get_curr_seq_num();
+	void initialize_curr_action(ModelAction *curr);
+	void add_write_to_lists(ModelAction *act);
+
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
@@ -89,20 +90,17 @@ private:
 	void wake_up_sleeping_actions(ModelAction *curr);
 	modelclock_t get_next_seq_num();
 	bool next_execution();
-	void initialize_curr_action(ModelAction *curr);
 	void process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
 	void process_cache_op(ModelAction *curr);
 	void process_memory_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);
 	void process_thread_action(ModelAction *curr);
-	void read_from(ModelAction *act, ModelAction *rf);
 	bool synchronize(const ModelAction *first, ModelAction *second);
-	void add_action_to_lists(ModelAction *act);
+	void update_thread_local_data(ModelAction *act);
 	void add_normal_write_to_lists(ModelAction *act);
-	void add_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
-	SnapVector<ModelAction *> * build_may_read_from(ModelAction *curr);
+	void build_may_read_from(ModelAction *curr, SnapVector<ModelAction *> *rf_set);
 	ClockVector * get_hb_from_write(ModelAction *rf) const;
 	ModelAction * convertNonAtomicStore(void*);
 	ClockVector * computeMinimalCV();
@@ -126,7 +124,7 @@ private:
 	
 	/** Per-object list of actions. Maps an object (i.e., memory location)
 	 * to a trace of all actions performed on the object.
-	 * Used only for SC fences, unlocks, & wait.
+	 * Used only for unlocks, & wait.
 	 */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_map;
 
@@ -134,10 +132,7 @@ private:
 	 * to a trace of all actions performed on the object. */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
-	/** Per-object list of actions that each thread performed. */
-	HashTable<const void *, SnapVector<action_list_t> *, uintptr_t, 2> obj_thrd_map;
-
-	/** Per-object list of writes that each thread performed. */
+	/** Per-object list of writes that each thread performed. These writes are available to all threads */
 	HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
 
 	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;

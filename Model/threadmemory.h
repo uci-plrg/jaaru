@@ -8,7 +8,7 @@
 #ifndef THREADMEMORY_H
 #define THREADMEMORY_H
 #include "stl-model.h"
-#include "hashset.h"
+#include "hashtable.h"
 #include "action.h"
 #include "actionlist.h"
 
@@ -20,18 +20,20 @@ public:
 	ModelAction * getLastWriteFromSoreBuffer(void *address);
 	void addCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
-	void applyRMW(ModelAction *write);
-	VarRange* getVarRange(void * writeAddress);
 	void persistUntil(modelclock_t opclock);
+	SnapList<CacheLine*>* getCacheLines(void * address) {return obj_to_cachelines.get(address);}
+
 	SNAPSHOTALLOC;
 private:
 	void executeWrite(ModelAction *write);
 	void executeCacheOp(ModelAction *read);
+	void persistCacheLine(CacheLine *cl);
 	void emptyStoreBuffer();
 	void persistMemoryBuffer();
-
+	
+	HashTable<const void *, SnapList<CacheLine*> *, uintptr_t, 2> obj_to_cachelines;
+	CacheLineSet activeCacheLines;
 	actionlist storeBuffer;
-	CacheLineSet cache;
 	CacheLineSet memoryBuffer;
 };
 

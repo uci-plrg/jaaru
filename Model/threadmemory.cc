@@ -5,8 +5,9 @@
 #include "execution.h"
 
 ThreadMemory::ThreadMemory() :
+	obj_to_cachelines(),
+	activeCacheLines(),
 	storeBuffer(),
-	cache(),
 	memoryBuffer()
 {
 }
@@ -55,15 +56,6 @@ void ThreadMemory::applyFence(ModelAction *fence)
 	persistMemoryBuffer();
 }
 
-void ThreadMemory::applyRMW(ModelAction *rmw)
-{
-	//DEBUG("Executing read-modify-write size %u to memory location %p\n", rmw->getOperatorSize(), rmw->get_location());
-	emptyStoreBuffer();
-	persistMemoryBuffer();
-	//TODO: decide about read and writing the new value ...
-	ASSERT(0);
-}
-
 void ThreadMemory::emptyStoreBuffer()
 {
 	sllnode<ModelAction *> * rit;
@@ -84,27 +76,40 @@ void ThreadMemory::emptyStoreBuffer()
 void ThreadMemory::executeWrite(ModelAction *writeop)
 {
 	//DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
+	//Initializing the sequence number
+	model->get_execution()->initialize_curr_action(writeop);
 	CacheLine ctmp(writeop->get_location());
-	CacheLine *cline = cache.get(&ctmp);
-	if (cline == NULL) {	// There is no write for this cache line
-		cline = new CacheLine(writeop->get_location());
-		cache.add(cline);
+	CacheLine* activeCline = activeCacheLines.get(&ctmp);
+	if(activeCline == NULL){ //This cacheline is being touched for the first time.
+		activeCline = new CacheLine(writeop->get_location());
+		activeCacheLines.add(activeCline);
 	}
-	cline->applyWrite(writeop);
+	SnapList<CacheLine*>* clines = obj_to_cachelines.get(writeop->get_location());
+	if(clines == NULL){
+		clines = new SnapList<CacheLine*>();
+	}
+	if( clines->size() == 0 || clines->back() != activeCline){
+		// This cache line is modified by writing to other variables.
+		clines->push_back(activeCline);
+	}
+	activeCline->applyWrite(writeop);
+	model->get_execution()->add_write_to_lists(writeop);
 }
 
 void ThreadMemory::executeCacheOp(ModelAction *cacheop)
 {
 	//DEBUG("Executing cache operation for address %p (Cache ID = %u)\n", cacheop->get_location(), getCacheID(cacheop->get_location()));
+	//Initializing the sequence number
+	model->get_execution()->initialize_curr_action(cacheop);
 	CacheLine tmp(cacheop->get_location());
-	CacheLine *cacheline = cache.get(&tmp);
+	CacheLine *cacheline = activeCacheLines.get(&tmp);
 	if(cacheline == NULL){
 		model->get_execution()->add_warning("Warning: Redundant cache opeartion for unmodified cache id = %x\n", getCacheID(cacheop->get_location()) );
 		return;
 	}
 	cacheline->setLastCacheOp(cacheop);
 	if(cacheop->is_clflush()) {
-		cacheline->persistCacheLine();
+		persistCacheLine(cacheline);
 		memoryBuffer.remove(cacheline);
 	} else {
 		if(memoryBuffer.contains(cacheline)) {
@@ -115,34 +120,33 @@ void ThreadMemory::executeCacheOp(ModelAction *cacheop)
 	}
 }
 
+void ThreadMemory::persistCacheLine(CacheLine *cacheline)
+{
+	ASSERT(activeCacheLines.remove(cacheline));
+	cacheline->persistCacheLine();
+	CacheLine * newCL = new CacheLine(cacheline->getId());
+	newCL->setBeginRange(cacheline->getEndRange());
+	activeCacheLines.add(newCL);
+}
+
 void ThreadMemory::persistMemoryBuffer()
 {
 	CacheLineSetIter *iter = memoryBuffer.iterator();
 	while(iter->hasNext()) {
 		CacheLine *cacheline = iter->next();
-		cacheline->persistCacheLine();
+		persistCacheLine(cacheline);
 	}
 	memoryBuffer.reset();
 	delete iter;
 }
 
-VarRange* ThreadMemory::getVarRange(void * writeAddress)
-{
-	ASSERT(writeAddress);
-	CacheLine tmp(writeAddress);
-	CacheLine *cline = cache.get(&tmp);
-	if(cline == NULL){
-		return NULL;
-	}
-	return cline->getVariable(writeAddress);
-}
 
 void ThreadMemory::persistUntil(modelclock_t opclock)
 {
-	CacheLineSetIter *iter = cache.iterator();
+	CacheLineSetIter *iter = activeCacheLines.iterator();
 	while(iter->hasNext()){
-		CacheLine *line = iter->next();
-		line->persistUntil(opclock);
+		CacheLine *cl = iter->next();
+		cl->persistUntil(opclock);
 	}
 	delete iter;
 }
