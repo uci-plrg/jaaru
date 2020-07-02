@@ -299,6 +299,7 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
 void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
 	ASSERT(curr->is_read());
+	initialize_curr_action(curr);
 	// Check to read from non-atomic stores if there is one
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
@@ -318,8 +319,6 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 		writeMem->persistUntil(rf->get_seq_number());
 	}
 	curr->set_read_from(rf);
-	// Initializing write after persisting reads and before enforcing the clock. Curr is RMW, and read operation
-	initialize_curr_action(curr);
 	ClockVector *cv = get_hb_from_write(rf);
 	if (cv != NULL){
 		curr->get_cv()->merge(cv);

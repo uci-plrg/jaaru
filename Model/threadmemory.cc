@@ -93,6 +93,7 @@ void ThreadMemory::writeToCacheLine(ModelAction *writeop)
 	SnapList<CacheLine*>* clines = obj_to_cachelines.get(writeop->get_location());
 	if(clines == NULL){
 		clines = new SnapList<CacheLine*>();
+		obj_to_cachelines.put(writeop->get_location(), clines);
 	}
 	if( clines->size() == 0 || clines->back() != activeCline){
 		// This cache line is modified by writing to other variables.
@@ -121,11 +122,11 @@ void ThreadMemory::executeWriteOperation(ModelAction *_write)
 
 void ThreadMemory::evictWrite(ModelAction *writeop)
 {
-	//DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
-	writeToCacheLine(writeop);
 	//Initializing the sequence number
 	ModelExecution *execution = model->get_execution();
 	execution->remove_action_from_store_buffer(writeop);
+	//DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
+	writeToCacheLine(writeop);
 	execution->add_write_to_lists(writeop);
 	executeWriteOperation(writeop);
 	for(int i=0;i < writeop->getOpSize() / 8;i++) {

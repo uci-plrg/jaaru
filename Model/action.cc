@@ -492,7 +492,7 @@ void ModelAction::set_try_lock(bool obtainedlock)
  */
 modelclock_t ModelAction::get_seq_number() const 
 {
-	ASSERT(seq_number != ACTION_INITIAL_CLOCK);
+	ASSERT(seq_number != ACTION_INITIAL_CLOCK || is_thread_start());
 	return seq_number; 
 }
 
