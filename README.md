@@ -13,6 +13,9 @@ Checkout the LLVM pass and copy and paste the pass to the LLVM pass directory:
     git clone ssh://plrg.ics.uci.edu/home/git/PMCPass.git
     mv PMCPass llvm-project/llvm/lib/Transforms/
 
+Register our pass in LLVM by adding the following line to 'llvm-project/llvm/lib/Transforms/CMakeLists.txt':
+    add_subdirectory(PMCPass)
+    
 Then compile the our pass:
     cd llvm-project
     mkdir build
