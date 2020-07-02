@@ -9,7 +9,7 @@
 	void pmc_store ## size (void *addrs){                                                  		 		\
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);                                 					\
 		if(!model)																						\
-			return;																						\																								\
+			return;																						\
 		thread_id_t tid = thread_current()->get_id();           										\
 		raceCheckWrite ## size(tid, (void *)(((uintptr_t)addrs)));                                      \
 	}
