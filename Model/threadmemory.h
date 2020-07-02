@@ -22,10 +22,12 @@ public:
 	void applyFence(ModelAction *fence);
 	void persistUntil(modelclock_t opclock);
 	SnapList<CacheLine*>* getCacheLines(void * address) {return obj_to_cachelines.get(address);}
+	void writeToCacheLine(ModelAction *write);
 
 	SNAPSHOTALLOC;
 private:
-	void executeWrite(ModelAction *write);
+	void evictWrite(ModelAction *write);
+	void executeWriteOperation(ModelAction *write);
 	void executeCacheOp(ModelAction *read);
 	void persistCacheLine(CacheLine *cl);
 	void emptyStoreBuffer();
@@ -33,7 +35,7 @@ private:
 	
 	HashTable<const void *, SnapList<CacheLine*> *, uintptr_t, 2> obj_to_cachelines;
 	CacheLineSet activeCacheLines;
-	actionlist storeBuffer;
+	SnapList<ModelAction*> storeBuffer;
 	CacheLineSet memoryBuffer;
 };
 

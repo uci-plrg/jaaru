@@ -77,7 +77,7 @@ public:
 	void setFinished() {isfinished = true;}
 	void restore_last_seq_num();
 	modelclock_t get_curr_seq_num();
-	void initialize_curr_action(ModelAction *curr);
+	void remove_action_from_store_buffer(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
 
 #ifdef TLS
@@ -90,8 +90,10 @@ private:
 	void wake_up_sleeping_actions(ModelAction *curr);
 	modelclock_t get_next_seq_num();
 	bool next_execution();
+	void initialize_curr_action(ModelAction *curr);
 	void process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
+	ModelAction * swap_rmw_write_part(ModelAction *act);
 	void process_cache_op(ModelAction *curr);
 	void process_memory_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);

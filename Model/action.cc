@@ -42,8 +42,7 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(0),
-	rmw_type(NOT_RMW)
+	size(0)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_NOP);
@@ -52,37 +51,6 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	this->tid = t!= NULL ? t->get_id() : -1;
 }
 
-
-/**
- * @brief Construct a new ModelAction for sleep actions
- *
- * @param type The type of action: THREAD_SLEEP
- * @param order The memory order of this action. A "don't care" for non-ATOMIC
- * actions (e.g., THREAD_* or MODEL_* actions).
- * @param loc The location that this action acts upon
- * @param value The time duration a thread is scheduled to sleep.
- * @param _time The this sleep action is constructed
- */
-
-// ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t _time) :
-// 	location(NULL),
-// 	position(NULL),
-// 	time(_time),
-// 	last_fence_release(NULL),
-// 	cv(NULL),
-// 	rf_cv(NULL),
-// 	action_ref(NULL),
-// 	value(value),
-// 	type(type),
-// 	order(order),
-// 	original_order(order),
-// 	seq_number(ACTION_INITIAL_CLOCK),
-// 	size(0),
-// 	rmw_type(NOT_RMW)
-// {
-// 	Thread *t = thread_current();
-// 	this->tid = t!= NULL ? t->get_id() : -1;
-// }
 
 /**
  * @brief Construct a new ModelAction for cache fence
@@ -101,44 +69,11 @@ ModelAction::ModelAction(action_type_t type) :
 	type(type),
 	order(memory_order_seq_cst),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(0),
-	rmw_type(NOT_RMW)
+	size(0)
 {
 	Thread *t = thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
 }
-
-/**
- * @brief Construct a new ModelAction
- *
- * @param type The type of action
- * @param order The memory order of this action. A "don't care" for non-ATOMIC
- * actions (e.g., THREAD_* or MODEL_* actions).
- * @param loc The location that this action acts upon
- * @param value (optional) A value associated with the action (e.g., the value
- * read or written). Defaults to a given macro constant, for debugging purposes.
- * @param size (optional) The Thread in which this action occurred. If NULL
- * (default), then a Thread is assigned according to the scheduler.
- */
-// ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, int _size, RMWTYPE _rmw_type) :
-// 	location(loc),
-// 	position(NULL),
-// 	reads_from(NULL),
-// 	cv(NULL),
-// 	rf_cv(NULL),
-// 	action_ref(NULL),
-// 	value(value),
-// 	type(type),
-// 	order(order),
-// 	seq_number(ACTION_INITIAL_CLOCK),
-// 	size(_size),
-// 	rmw_type(_rmw_type)
-// {
-// 	/* References to NULL atomic variables can end up here */
-// 	ASSERT(loc);
-// 	Thread *t = thread_current();
-// 	this->tid = t->get_id();
-// }
 
 
 /**
@@ -153,7 +88,7 @@ ModelAction::ModelAction(action_type_t type) :
  * @param size (optional) The Thread in which this action occurred. If NULL
  * (default), then a Thread is assigned according to the scheduler.
  */
-ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int _size, RMWTYPE _rmw_type) :
+ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int _size) :
 	location(loc),
 	position(position),
 	reads_from(NULL),
@@ -164,8 +99,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(_size),
-	rmw_type(_rmw_type)
+	size(_size)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -198,8 +132,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(0),
-	rmw_type(NOT_RMW)
+	size(0)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -293,7 +226,7 @@ bool ModelAction::is_failed_trylock() const
 
 bool ModelAction::is_read() const
 {
-	return type == ATOMIC_READ || type == ATOMIC_RMW;
+	return type == ATOMIC_READ || type == ATOMIC_RMWR || type == ATOMIC_RMW;
 }
 
 bool ModelAction::is_write() const
@@ -316,6 +249,29 @@ bool ModelAction::is_clflush() const
 	return type == ACTION_CLFLUSH;
 }
 
+bool ModelAction::is_locked_operation() const
+{
+	switch(type)
+	{
+		case PTHREAD_CREATE:
+		case PTHREAD_JOIN:
+		case THREAD_CREATE:
+		case THREAD_JOIN:
+		case ATOMIC_RMWR:
+		case ATOMIC_LOCK:
+		case ATOMIC_TRYLOCK:
+		case ATOMIC_UNLOCK:
+		case ATOMIC_NOTIFY_ONE:
+		case ATOMIC_NOTIFY_ALL:
+		case ATOMIC_WAIT:
+		case ATOMIC_TIMEDWAIT:
+			return true;
+		default:
+			return false;
+	}
+	return false;
+}
+
 
 bool ModelAction::is_create() const
 {
@@ -325,6 +281,16 @@ bool ModelAction::is_create() const
 bool ModelAction::is_yield() const
 {
 	return type == THREAD_YIELD;
+}
+
+bool ModelAction::is_rmw_read() const
+{
+	return type == ATOMIC_RMWR;
+}
+
+bool ModelAction::is_rmw_cas_fail() const 
+{
+	return type == ATOMIC_CAS_FAILED;
 }
 
 bool ModelAction::is_rmw() const
@@ -406,6 +372,28 @@ Thread * ModelAction::get_thread_operand() const
 		return NULL;
 }
 
+/**
+ * @brief Convert the read portion of an RMW
+ *
+ * Changes an existing read part of an RMW action into either:
+ *  -# a full RMW action in case of the completed write or
+ *  -# a READ action in case a failed action.
+ *
+ * @todo  If the memory_order changes, we may potentially need to update our
+ * clock vector.
+ *
+ * @param act The second half of the RMW (either RMWC or RMW)
+ */
+void ModelAction::process_rmw(ModelAction *act)
+{
+	this->order = act->order;
+	if (act->is_rmw_cas_fail())
+		this->type = ATOMIC_READ;
+	else if (act->is_rmw()) {
+		this->type = ATOMIC_RMW;
+		this->value = act->value;
+	}
+}
 
 /**
  * @brief Check if this action should be backtracked with another, due to
@@ -545,6 +533,12 @@ uint64_t ModelAction::get_write_value() const
 	return value;
 }
 
+uint64_t ModelAction::get_value() const 
+{ 
+	ASSERT(value != 0);
+	return value; 
+}
+
 /**
  * @brief Get the value returned by this action
  *
@@ -624,6 +618,7 @@ const char * ModelAction::get_type_str() const
 	case ATOMIC_READ: return "atomic read";
 	case ATOMIC_WRITE: return "atomic write";
 	case ATOMIC_RMW: return "atomic rmw";
+	case ATOMIC_RMWR: return "atomic rmwr";
 	case ATOMIC_INIT: return "init atomic";
 	case ATOMIC_LOCK: return "lock";
 	case ATOMIC_UNLOCK: return "unlock";
@@ -633,6 +628,11 @@ const char * ModelAction::get_type_str() const
 	case ATOMIC_NOTIFY_ONE: return "notify one";
 	case ATOMIC_NOTIFY_ALL: return "notify all";
 	case ATOMIC_ANNOTATION: return "annotation";
+	case ACTION_CLWB: return "clwb";
+	case ACTION_CLFLUSH: return "clflush";
+	case ACTION_CLFLUSHOPT: return "clflushopt";
+	case CACHE_MFENCE: return "mfence";
+	case CACHE_SFENCE: return "sfence";
 	default: return "unknown type";
 	};
 }

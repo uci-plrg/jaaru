@@ -3,6 +3,10 @@
 #include "common.h"
 #include "model.h"
 #include "execution.h"
+#include "datarace.h"
+
+#define APPLYWRITE(size, obj, val) \
+	*((volatile uint ## size ## _t *)obj) = val;
 
 ThreadMemory::ThreadMemory() :
 	obj_to_cachelines(),
@@ -14,7 +18,7 @@ ThreadMemory::ThreadMemory() :
 
 void ThreadMemory::addWrite(ModelAction * write)
 {
-	storeBuffer.addAction(write);
+	storeBuffer.push_back(write);
 }
 
 ModelAction * ThreadMemory::getLastWriteFromSoreBuffer(void *address)
@@ -46,7 +50,7 @@ void ThreadMemory::getWritesFromStoreBuffer(void *address, SnapVector<ModelActio
 
 void ThreadMemory::addCacheOp(ModelAction *clflush)
 {
-	storeBuffer.addAction(clflush);
+	storeBuffer.push_back(clflush);
 }
 
 void ThreadMemory::applyFence(ModelAction *fence)
@@ -61,8 +65,9 @@ void ThreadMemory::emptyStoreBuffer()
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.begin(); rit != NULL; rit=rit->getNext()) {
 		ModelAction *curr = rit->getVal();
+		curr->print();
 		if (curr->is_write()) {
-			executeWrite(curr);
+			evictWrite(curr);
 		} else if (curr->is_cache_op()) {
 			executeCacheOp(curr);
 		} else {
@@ -73,11 +78,12 @@ void ThreadMemory::emptyStoreBuffer()
 	storeBuffer.clear();
 }
 
-void ThreadMemory::executeWrite(ModelAction *writeop)
+/**
+ * executing the actual RMW operation. Then adding checks for datarace.
+ * @param rmw a rmw operation
+ */
+void ThreadMemory::writeToCacheLine(ModelAction *writeop)
 {
-	//DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
-	//Initializing the sequence number
-	model->get_execution()->initialize_curr_action(writeop);
 	CacheLine ctmp(writeop->get_location());
 	CacheLine* activeCline = activeCacheLines.get(&ctmp);
 	if(activeCline == NULL){ //This cacheline is being touched for the first time.
@@ -93,14 +99,45 @@ void ThreadMemory::executeWrite(ModelAction *writeop)
 		clines->push_back(activeCline);
 	}
 	activeCline->applyWrite(writeop);
-	model->get_execution()->add_write_to_lists(writeop);
+}
+
+void ThreadMemory::executeWriteOperation(ModelAction *_write)
+{
+	switch(_write->getOpSize()){
+		case 8: APPLYWRITE(8, _write->get_location(), _write->get_value()); break;
+		case 16: APPLYWRITE(16, _write->get_location(), _write->get_value()); break;
+		case 32: APPLYWRITE(32, _write->get_location(), _write->get_value()); break;
+		case 64: APPLYWRITE(64, _write->get_location(), _write->get_value()); break; 
+		default:
+			model_print("Unsupported write size\n");
+			ASSERT(0);
+	}
+	
+	thread_id_t tid = _write->get_tid();
+	for(int i=0;i < _write->getOpSize() / 8;i++) {
+		atomraceCheckWrite(tid, (void *)(((char *)_write->get_location())+i));
+	}
+}
+
+void ThreadMemory::evictWrite(ModelAction *writeop)
+{
+	//DEBUG("Executing write size %u W[%p] = %" PRIu64 "\n", writeop->getOperatorSize(), writeop->get_location(), writeop->get_value());
+	writeToCacheLine(writeop);
+	//Initializing the sequence number
+	ModelExecution *execution = model->get_execution();
+	execution->remove_action_from_store_buffer(writeop);
+	execution->add_write_to_lists(writeop);
+	executeWriteOperation(writeop);
+	for(int i=0;i < writeop->getOpSize() / 8;i++) {
+		atomraceCheckWrite(writeop->get_tid(), (void *)(((char *)writeop->get_location())+i));
+	} 
 }
 
 void ThreadMemory::executeCacheOp(ModelAction *cacheop)
 {
 	//DEBUG("Executing cache operation for address %p (Cache ID = %u)\n", cacheop->get_location(), getCacheID(cacheop->get_location()));
-	//Initializing the sequence number
-	model->get_execution()->initialize_curr_action(cacheop);
+	
+	model->get_execution()->remove_action_from_store_buffer(cacheop);
 	CacheLine tmp(cacheop->get_location());
 	CacheLine *cacheline = activeCacheLines.get(&tmp);
 	if(cacheline == NULL){

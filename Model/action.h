@@ -27,20 +27,9 @@ using std::memory_order_seq_cst;
  * iteself does not indicate no value.
  */
 #define VALUE_NONE 0xdeadbeef
-#define WRITE_REFERENCED ((void *)0x1)
 
 /** @brief Represents an action type, identifying one of several types of
  * ModelAction */
-
-typedef enum RMWTYPE {
-	RMW_EXCHANGE,
-	RMW_ADD,
-	RMW_SUB,
-	RMW_AND,
-	RMW_OR,
-	RMW_XOR,
-	NOT_RMW
-} RMWTYPE;
 
 typedef enum action_type {
 	THREAD_CREATE,	// < A thread creation action
@@ -59,6 +48,8 @@ typedef enum action_type {
 
 	ATOMIC_INIT,	// < Initialization of an atomic object (e.g., atomic_init())
 	ATOMIC_WRITE,	// < An atomic write action
+	ATOMIC_RMWR, // Read part of an atomic RMW action
+	ATOMIC_CAS_FAILED,
 	ATOMIC_RMW,	// < The write part of an atomic RMW action
 	ATOMIC_READ,	// < An atomic read action
 
@@ -80,7 +71,7 @@ typedef enum action_type {
 	ATOMIC_ANNOTATION,	// < An annotation action to pass information to a trace analysis
 	ATOMIC_NOP	// < Placeholder
 } action_type_t;
-
+ 
 
 /**
  * @brief Represents a single atomic action
@@ -93,9 +84,7 @@ typedef enum action_type {
 class ModelAction {
 public:
 	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
-	// ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, int size);
-	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size, RMWTYPE rmw_type = NOT_RMW);
-	// ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t time);
+	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size);
 	ModelAction(action_type_t type);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
 	~ModelAction();
@@ -109,7 +98,7 @@ public:
 	void * get_location() const { return location; }
 	const char * get_position() const { return position; }
 	modelclock_t get_seq_number() const ;
-	uint64_t get_value() const { return value; }
+	uint64_t get_value() const;
 	uint64_t get_reads_from_value() const;
 	uint64_t get_write_value() const;
 	uint64_t get_return_value() const;
@@ -142,7 +131,10 @@ public:
 	bool is_clflush() const;
 	bool is_memory_fence() const;
 	bool is_yield() const;
+	bool is_locked_operation() const;
 	bool is_rmw() const;
+	bool is_rmw_cas_fail() const;
+	bool is_rmw_read() const;
 	bool is_initialization() const;
 	bool is_annotation() const;
 	bool is_seqcst() const;
@@ -167,6 +159,7 @@ public:
 	inline bool operator >(const ModelAction& act) const {
 		return get_seq_number() > act.get_seq_number();
 	}
+	void process_rmw(ModelAction * act);
 	void copy_typeandorder(ModelAction * act);
 	unsigned int hash() const;
 	bool equals(const ModelAction *x) const { return this == x; }
@@ -231,10 +224,6 @@ private:
 	 * (e.g. 8, 16, 32, or 64)
 	 */
 	uint size;
-	/**
-	 * Shows what kind of RMW this action is.
-	 **/
-	RMWTYPE rmw_type;
 };
 
 #endif	/* __ACTION_H__ */

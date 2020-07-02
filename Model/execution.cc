@@ -155,6 +155,9 @@ void ModelExecution::restore_last_seq_num()
 bool ModelExecution::should_wake_up(const ModelAction *curr, const Thread *thread) const
 {
 	const ModelAction *asleep = thread->get_pending();
+	/* Don't allow partial RMW to wake anyone up */
+	if (curr->is_rmw_read())
+		return false;
 	/* Synchronizing actions may have been backtracked */
 	if (asleep->could_synchronize_with(curr))
 		return true;
@@ -451,19 +454,22 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 }
 
 /**
- * Process a write ModelAction
- * @param curr The ModelAction to process
+ * Process a write ModelAction. If 'curr' is a write, it will be added to the write buffer.
+ * If 'curr' is a RMW, it is already initialized in process_read and return value is set already.
+ * Here, for rmw operation, it will be added to the write list and execute it.
+ * @param curr write or RMW operation
  * @return True if the mo_graph was updated or promises were resolved
  */
 void ModelExecution::process_write(ModelAction *curr)
 {
-	if(!curr->is_rmw()){ //curr is just an atomic write
-		get_thread(curr)->getMemory()->addWrite(curr);
-		get_thread(curr)->set_return_value(VALUE_NONE);
-	} else{ // curr is a RMW and must be recorded
+	ASSERT(curr->is_write());
+	if(curr->is_rmw()){ // curr is modified second part of a RMW and must be recorded
 		add_write_to_lists(curr);
+		get_thread(curr)->getMemory()->writeToCacheLine(curr);
+		get_thread(curr)->set_return_value(VALUE_NONE);
+	} else{ //curr is just an atomic write
+		get_thread(curr)->getMemory()->addWrite(curr);
 	}
-	
 }
 
 /**
@@ -475,7 +481,6 @@ void ModelExecution::process_cache_op(ModelAction *curr)
 {
 	ASSERT(curr->is_cache_op());
 	get_thread(curr)->getMemory()->addCacheOp(curr);
-	get_thread(curr)->set_return_value(VALUE_NONE);
 }
 
 /**
@@ -576,7 +581,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 }
 
 /**
- * initializing clock vectors. sequantial number. Also, this function
+ * initializing sequantial number. Also, this function
  * records this action in the action trace.
  *
  * @param curr The current action, as passed from the user context; may be
@@ -585,10 +590,11 @@ void ModelExecution::process_thread_action(ModelAction *curr)
  */
 void ModelExecution::initialize_curr_action(ModelAction *curr)
 {
-	action_trace.addAction(curr);
 	curr->set_seq_number(get_next_seq_num());
 	/* Always compute new clock vector */
 	curr->create_cv(get_parent_action(curr->get_tid()));
+
+	action_trace.addAction(curr);
 }
 
 /**
@@ -652,10 +658,9 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
  * This is the heart of the model checker routine. It performs model-checking
  * actions corresponding to a given "current action." Among other processes, it
  * calculates reads-from relationships, updates synchronization clock vectors,
- * forms a memory_order constraints graph, and handles replay/backtrack
+ * and handles replay/backtrack
  * execution when running permutations of previously-observed executions.
- *
- * @param curr The current action to process
+ * @param curr The current action to process.
  * @return The ModelAction that is actually executed; may be different than
  * curr
  */
@@ -663,10 +668,15 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 {
 	ASSERT(curr);
 	DBG();
-	if(curr->is_rmw()) {
+	bool second_part_of_rmw = curr->is_rmw_cas_fail() || curr->is_rmw();
+	if(second_part_of_rmw){
+		// Swap with previous rmw_read action and delete the second part.  
+		curr = swap_rmw_write_part(curr);
+	}
+	if(curr->is_locked_operation()) {
 		get_thread(curr)->getMemory()->applyFence(curr);
 	}
-	if(curr->is_read()){ //Read and RMW
+	if(curr->is_read() & !second_part_of_rmw){ //Read and RMW
 		SnapVector<ModelAction *> rf_set;
 		build_may_read_from(curr, &rf_set);
 		process_read(curr, &rf_set);
@@ -674,11 +684,14 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	if (curr->is_memory_fence()) {
 		process_memory_fence(curr);
 	}
-	wake_up_sleeping_actions(curr);
 	if(!curr->is_read() && !curr->is_write() && !curr->is_cache_op()){
 		initialize_curr_action(curr);
 	}
-	update_thread_local_data(curr);
+	// All operation except write and cache operation will update the thread local data.
+	if(!curr->is_write() && !curr->is_cache_op() & !second_part_of_rmw){
+		update_thread_local_data(curr);
+		wake_up_sleeping_actions(curr);
+	}
 	process_thread_action(curr);
 	if (curr->is_write()) { //Processing RMW, and different types of writes
 		process_write(curr);
@@ -692,6 +705,32 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	return curr;
 }
 
+/**
+ * When a write or cache operation gets evicted from store buffer, it becomes visible to other threads.
+ * This function initializes clock, updates thread local data and wakes up actions in other threads that
+ * are waiting for the 'act' action.
+ * @param act is a write or cache operation
+ */ 
+void ModelExecution::remove_action_from_store_buffer(ModelAction *act){
+	ASSERT(act->is_write() || act->is_cache_op());
+	initialize_curr_action(act);
+	update_thread_local_data(act);
+	wake_up_sleeping_actions(act);
+	get_thread(act)->set_return_value(VALUE_NONE);
+}
+
+/**
+ * Close out a RMWR by converting previous RMW_READ into a RMW or READ.
+ * @param act the RMW operation. Its content is transferred to the previous RMW_READ. 
+ **/
+ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
+	ASSERT(act->is_rmw() || act->is_rmw_cas_fail());
+	ModelAction *lastread = get_last_action(act->get_tid());
+	ASSERT(lastread->is_rmw_read());
+	lastread->process_rmw(act);
+	delete act;
+	return lastread;
+}
 /**
  * Computes the clock vector that happens before propagates from this write.
  *
@@ -736,13 +775,13 @@ ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
 
 /**
  * Performs various bookkeeping operations for the current ModelAction. For
- * instance, adds action to the per-object, per-thread action vector and to the
- * action trace list of all thread actions.
+ * instance, adds action to the action trace list of all thread actions.
  *
  * @param act is the ModelAction to add.
  */
 void ModelExecution::update_thread_local_data(ModelAction *act)
 {
+	
 	int tid = id_to_int(act->get_tid());
 	if (act->is_seqcst() || act->is_unlock()) {
 		simple_action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
@@ -763,6 +802,12 @@ void ModelExecution::update_thread_local_data(ModelAction *act)
 void insertIntoActionList(action_list_t *list, ModelAction *act) {
 	list->addAction(act);
 }
+
+void insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
+	act->create_cv(NULL);
+	list->addAction(act);
+}
+
 /**
  * Performs various bookkeeping operations for a normal write.  The
  * complication is that we are typically inserting a normal write
@@ -775,7 +820,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 {
 	ASSERT(act->is_write());
 	int tid = id_to_int(act->get_tid());
-	action_trace.addAction(act);
+	insertIntoActionListAndSetCV(&action_trace, act);
 
 	ModelAction * lastact = thrd_last_action[tid];
 	// Update thrd_last_action, the last action taken by each thrad
@@ -1092,6 +1137,9 @@ bool ModelExecution::is_enabled(thread_id_t tid) const
  */
 Thread * ModelExecution::action_select_next_thread(const ModelAction *curr) const
 {
+	/* Do not split atomic RMW */
+	if (curr->is_rmw_read())
+		return get_thread(curr);
 	/* Follow CREATE with the created thread */
 	/* which is not needed, because model.cc takes care of this */
 	if (curr->get_type() == THREAD_CREATE)

@@ -6,15 +6,15 @@
 #define CONFIG_H
 
 /** Turn on debugging. */
-/*
-#ifndef CONFIG_DEBUG
- #define CONFIG_DEBUG
- #endif
 
- #ifndef CONFIG_ASSERT
- #define CONFIG_ASSERT
- #endif
-*/
+#ifndef CONFIG_DEBUG
+    #define CONFIG_DEBUG
+#endif
+
+#ifndef CONFIG_ASSERT
+    #define CONFIG_ASSERT
+#endif
+
 
 /** Do we have a 48 bit virtual address (64 bit machine) or 32 bit addresses.
  * Set to 1 for 48-bit, 0 for 32-bit. */
