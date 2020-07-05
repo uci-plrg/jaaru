@@ -11,6 +11,7 @@ You need to download and compile the PMCheck LLVM pass. First download the llvm 
 
 Checkout the LLVM pass and copy and paste the pass to the LLVM pass directory:
     git clone ssh://plrg.ics.uci.edu/home/git/PMCPass.git
+    git checkout 7899fe9da8d8df6f19ddcbbb877ea124d711c54b
     mv PMCPass llvm-project/llvm/lib/Transforms/
 
 Register our pass in LLVM by adding the following line to 'llvm-project/llvm/lib/Transforms/CMakeLists.txt':
@@ -34,6 +35,9 @@ To run the test cases, you need to modify 4 files in the 'Test' directory includ
 point to Clang, the LLVM pass, and the PMCheck library:
     {/path/to/}/llvm-project/build/bin/clang -Xclang -load -Xclang {/path/to/}llvm-project/build/lib/libPMCPass.so -Wno-unused-command-line-argument -L{/path/to/}pmcheck/bin -lpmcheck $@
 
+Change LD_LIBRARY_PATH variable in "pmcheck/Test/run.sh" that it points to the 'bin' directory of the project.
+    LD_LIBRARY_PATH=Path/To/pmcheck/bin
+    
 Once you modified the these files, go back to the root 'pmcheck' directory and run the following comamand to compile all the test cases:
     make test
 
