@@ -17,10 +17,10 @@ void pmc_load16(void *addr);
 void pmc_load32(void *addr);
 void pmc_load64(void *addr);
 
-void pmc_store8(void *addr);
-void pmc_store16(void *addr);
-void pmc_store32(void *addr);
-void pmc_store64(void *addr);
+void pmc_store8(void *addr, uint8_t val );
+void pmc_store16(void *addr, uint16_t val);
+void pmc_store32(void *addr, uint32_t val);
+void pmc_store64(void *addr, uint64_t val);
 
 #if __cplusplus
 }

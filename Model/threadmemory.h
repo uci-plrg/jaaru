@@ -20,15 +20,19 @@ public:
 	ModelAction * getLastWriteFromSoreBuffer(void *address);
 	void addCacheOp(ModelAction *clflush);
 	void applyFence(ModelAction *fence);
-	void persistUntil(modelclock_t opclock);
+	void persistUntil(ModelAction * act);
+	void executeUntil(ModelAction *action);
+	ModelAction *popFromStoreBuffer();
 	SnapList<CacheLine*>* getCacheLines(void * address) {return obj_to_cachelines.get(address);}
 	void writeToCacheLine(ModelAction *write);
 
 	SNAPSHOTALLOC;
 private:
+	void evictOpFromStoreBuffer(ModelAction *op);
 	void evictWrite(ModelAction *write);
+	void evictNonAtomicWrite(ModelAction *na_write);
 	void executeWriteOperation(ModelAction *write);
-	void executeCacheOp(ModelAction *read);
+	void evictCacheOp(ModelAction *read);
 	void persistCacheLine(CacheLine *cl);
 	void emptyStoreBuffer();
 	void persistMemoryBuffer();

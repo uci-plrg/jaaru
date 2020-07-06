@@ -275,7 +275,6 @@ bool ModelExecution::is_complete_execution() const
 }
 
 ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
-	ASSERT(0);
 	uint64_t value = *((const uint64_t *) location);
 	modelclock_t storeclock;
 	thread_id_t storethread;
@@ -311,12 +310,15 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 	ModelAction *rf = (*rf_set)[index];
 	ASSERT(rf);
 	ASSERT(rf->is_write());
-	ThreadMemory *readMem = get_thread( curr->get_tid() )->getMemory();
-	ThreadMemory *writeMem = get_thread( rf->get_tid() )->getMemory();
-	if(readMem != writeMem){
+	if(curr->get_tid() != rf->get_tid()){
 		//Reading from the write in another thread. Nothing need to be done when reading from the current thread.
-		readMem->persistUntil(curr->get_seq_number());
-		writeMem->persistUntil(rf->get_seq_number());
+		ThreadMemory * memory = get_thread( rf->get_tid() )->getMemory();
+		memory->executeUntil(rf);
+		if(rf->is_nonatomic_write()){
+			ASSERT(rf->get_location() == curr->get_location());
+			rf = convertNonAtomicStore(curr->get_location());
+		}
+		memory->persistUntil(rf);
 	}
 	curr->set_read_from(rf);
 	ClockVector *cv = get_hb_from_write(rf);
@@ -923,25 +925,28 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
 void  ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAction *>* rf_set)
 {
 	SnapVector<simple_action_list_t> *thrd_lists = obj_wr_thrd_map.get(curr->get_location());
-	unsigned int i;
 	ASSERT(curr->is_read());
 
 	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromSoreBuffer(curr->get_location());
 	if(lastWrite != NULL){
-		//There is a write in the current thread that the read is going to read from that
+		//There is a write in the current thread's store buffer, and the read is going to read from that
 		rf_set->push_back(lastWrite);
 		return;
 	}
 	/* Iterate over all threads */
+	for(uint i=0; i< thread_map.size(); i++){
+		Thread* thread = thread_map[i];
+		if(thread->get_id() != curr->get_tid()){
+			//The current thread already checked and it didn't have any writes in its storeBuffer.
+			thread->getMemory()->getWritesFromStoreBuffer(curr->get_location(), rf_set);
+		}
+	}
+	/* Iterate on the writes that are executed in different threads. */
 	if (thrd_lists != NULL){
-		for (i = 0;i < thrd_lists->size();i++) {
+		for (uint i = 0;i < thrd_lists->size();i++) {
 			/* Iterate over actions in thread, starting from most recent */
 			ThreadMemory * threadMem = get_thread(int_to_id(i))->getMemory();
 			simple_action_list_t *list = &(*thrd_lists)[i];
-			if(int_to_id(i) != curr->get_tid()){
-				//The current thread already checked and it didn't have any writes in its storeBuffer.
-				threadMem->getWritesFromStoreBuffer(curr, rf_set);	
-			}
 			SnapList<CacheLine*> * cachelines = threadMem->getCacheLines(curr->get_location());
 			if(cachelines == NULL){
 				//This thread haven't executed any write on the given address
@@ -958,11 +963,11 @@ void  ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAct
 				if (act == curr)
 					continue;
 				ASSERT(act->is_write());
+				rf_set->push_back(act);
 				/* Stop when the write happens before the valid range*/
 				if (act->get_seq_number() < beginR) {
 					break;
 				}
-				rf_set->push_back(act);
 			}
 			model_print("\n\n");
 		}
@@ -1169,25 +1174,6 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 		scheduler->remove_thread(curr_thrd);
 
 	return action_select_next_thread(curr);
-}
-
-/** Computes clock vector that all running threads have already synchronized to.  */
-
-ClockVector * ModelExecution::computeMinimalCV() {
-	ClockVector *cvmin = NULL;
-	//Thread 0 isn't a real thread, so skip it..
-	for(unsigned int i = 1;i < thread_map.size();i++) {
-		Thread * t = thread_map[i];
-		if (t->get_state() == THREAD_COMPLETED)
-			continue;
-		thread_id_t tid = int_to_id(i);
-		ClockVector * cv = get_cv(tid);
-		if (cvmin == NULL)
-			cvmin = new ClockVector(cv, NULL);
-		else
-			cvmin->minmerge(cv);
-	}
-	return cvmin;
 }
 
 Fuzzer * ModelExecution::getFuzzer() {

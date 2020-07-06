@@ -4,14 +4,16 @@
 #include "common.h"
 #include "datarace.h"
 #include "action.h"
+#include "threadmemory.h"
 
 #define PMCHECKSTORE(size)                                                                      		\
-	void pmc_store ## size (void *addrs){                                                  		 		\
+	void pmc_store ## size (void *addrs, uint ## size ## _t val){                          		 		\
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);                                 					\
 		if(!model)																						\
 			return;																						\
-		thread_id_t tid = thread_current()->get_id();           										\
-		raceCheckWrite ## size(tid, (void *)(((uintptr_t)addrs)));                                      \
+		Thread *thread = thread_current();           											\
+		ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread, size);	\
+		thread->getMemory()->addWrite(act);																\
 	}
 
 PMCHECKSTORE(8)

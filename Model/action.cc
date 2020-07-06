@@ -31,7 +31,7 @@
  */
 
 
-ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, Thread *thread) :
+ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, Thread *thread, uint _size) :
 	location(loc),
 	position(NULL),
 	reads_from(NULL),
@@ -42,7 +42,7 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(0)
+	size(_size)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_NOP);
@@ -234,6 +234,11 @@ bool ModelAction::is_write() const
 	return type == ATOMIC_WRITE || type == ATOMIC_RMW || type == ATOMIC_INIT || type == NONATOMIC_WRITE;
 }
 
+bool ModelAction::is_nonatomic_write() const
+{
+	return type == NONATOMIC_WRITE;
+}
+
 bool ModelAction::is_cache_op() const
 {
 	return type == ACTION_CLWB || type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
@@ -311,6 +316,11 @@ bool ModelAction::is_annotation() const
 bool ModelAction::is_seqcst() const
 {
 	return order == std::memory_order_seq_cst;
+}
+
+bool ModelAction::is_executed() const
+{
+	return seq_number != ACTION_INITIAL_CLOCK;
 }
 
 bool ModelAction::same_var(const ModelAction *act) const
@@ -535,6 +545,7 @@ uint64_t ModelAction::get_write_value() const
 
 uint64_t ModelAction::get_value() const 
 { 
+	//ToDO: remove this assertion. It is wrong but we used it for the purpose of testing...
 	ASSERT(value != 0);
 	return value; 
 }

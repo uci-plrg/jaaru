@@ -14,6 +14,7 @@ void* func1(void *){
     x=1;
 	y=3;
     x.store(5, std::memory_order_release);
+    x=10;
 	cacheOperation(CLWB, (char *)&x, sizeof(unsigned int));
     cacheOperation(CLWB, (char *)&y, sizeof(unsigned int));
 	mfence();
@@ -23,9 +24,9 @@ void* func1(void *){
 
 void* func2(void *)
 {
-    while(x.load(std::memory_order_acquire) <= 5);
+    while(x.load(std::memory_order_acquire) < 5);
 	y.store(2, std::memory_order_relaxed);
-    y.store(4, std::memory_order_relaxed);
+    x.store(4, std::memory_order_relaxed);
 	cacheOperation(CLWB, (char*)&y, sizeof(unsigned int));
 	mfence();
 	printf("Func2: Value Y= %u\n", y.load());
@@ -35,6 +36,8 @@ void* func2(void *)
 
 int main(){
     pthread_t threads[NUMTHREADS];
+    atomic_init<uint>(&x, 19);
+    atomic_init<uint>(&y, 20);
 	void *(*funcptr[])(void *) = {func1, func2};
 	for (int i=0;i< NUMTHREADS;i++) {
         if( int retval = pthread_create(&threads[i], NULL, funcptr[i], NULL ) ) {

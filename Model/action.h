@@ -83,7 +83,7 @@ typedef enum action_type {
  */
 class ModelAction {
 public:
-	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
+	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL, uint size = 0);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size);
 	ModelAction(action_type_t type);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
@@ -127,6 +127,7 @@ public:
 	bool is_failed_trylock() const;
 	bool is_read() const;
 	bool is_write() const;
+	bool is_nonatomic_write() const;
 	bool is_cache_op() const;
 	bool is_clflush() const;
 	bool is_memory_fence() const;
@@ -138,6 +139,7 @@ public:
 	bool is_initialization() const;
 	bool is_annotation() const;
 	bool is_seqcst() const;
+	bool is_executed() const;
 	bool same_var(const ModelAction *act) const;
 	bool same_thread(const ModelAction *act) const;
 	bool is_conflicting_lock(const ModelAction *act) const;

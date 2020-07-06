@@ -105,7 +105,6 @@ private:
 	void build_may_read_from(ModelAction *curr, SnapVector<ModelAction *> *rf_set);
 	ClockVector * get_hb_from_write(ModelAction *rf) const;
 	ModelAction * convertNonAtomicStore(void*);
-	ClockVector * computeMinimalCV();
 
 #ifdef TLS
 	pthread_key_t pthreadkey;
