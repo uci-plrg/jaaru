@@ -298,7 +298,6 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
 void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
 	ASSERT(curr->is_read());
-	initialize_curr_action(curr);
 	// Check to read from non-atomic stores if there is one
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
@@ -321,6 +320,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 		memory->persistUntil(rf);
 	}
 	curr->set_read_from(rf);
+	initialize_curr_action(curr);
 	ClockVector *cv = get_hb_from_write(rf);
 	if (cv != NULL){
 		curr->get_cv()->merge(cv);
@@ -969,7 +969,7 @@ void  ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAct
 					break;
 				}
 			}
-			model_print("\n\n");
+			model_print("*****************************\n");
 		}
 	}
 	if (DBG_ENABLED()) {
