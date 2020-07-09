@@ -22,6 +22,7 @@ public:
 	void persistUntil(modelclock_t opclock);
 	modelclock_t getBeginRange(){ return beginR;}
 	modelclock_t getEndRange(){ return endR;}
+	modelclock_t getPersistentSeqNumber() const;
 	void setLastCacheOp(ModelAction *clop) {lastCacheOp = clop;}
 	void setBeginRange(modelclock_t begin) { beginR =begin;}
 	void setEndRange (modelclock_t end) { endR = end; }

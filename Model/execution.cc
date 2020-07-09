@@ -309,6 +309,8 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 	ModelAction *rf = (*rf_set)[index];
 	ASSERT(rf);
 	ASSERT(rf->is_write());
+	model_print("&&&&&&&&&&&&&Read in thread ID #%u reads from ", curr->get_tid());
+	rf->print();
 	if(curr->get_tid() != rf->get_tid()){
 		//Reading from the write in another thread. Nothing need to be done when reading from the current thread.
 		ThreadMemory * memory = get_thread( rf->get_tid() )->getMemory();
@@ -941,6 +943,7 @@ void  ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAct
 			thread->getMemory()->getWritesFromStoreBuffer(curr->get_location(), rf_set);
 		}
 	}
+	ModelAction *lastPersistentWrite = NULL;
 	/* Iterate on the writes that are executed in different threads. */
 	if (thrd_lists != NULL){
 		for (uint i = 0;i < thrd_lists->size();i++) {
@@ -954,23 +957,30 @@ void  ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAct
 			}
 			ASSERT(cachelines->size() > 0);
 			//TODO: for now we only consider one crash.
-			modelclock_t beginR = cachelines->back()->getBeginRange();
+			modelclock_t persistent_seq_num = cachelines->back()->getPersistentSeqNumber();
+			modelclock_t endR = cachelines->back()->getEndRange();
 			sllnode<ModelAction *> * rit;
-			model_print("*************\n");
+			model_print("*******build_may_read_from(tid = %u)****** range <%u,%u>\n", curr->get_tid(), cachelines->back()->getBeginRange(), endR);
 			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 				ModelAction *act = rit->getVal();
-				model_print("[%p] = %u, ", act->get_location(), act->get_value());
 				if (act == curr)
 					continue;
 				ASSERT(act->is_write());
-				rf_set->push_back(act);
+				model_print("[%p] = %u, ", act->get_location(), act->get_value());
 				/* Stop when the write happens before the valid range*/
-				if (act->get_seq_number() < beginR) {
+				if (act->get_seq_number() < persistent_seq_num) {
+					if(lastPersistentWrite == NULL || lastPersistentWrite->get_seq_number() < act->get_seq_number()) {
+						lastPersistentWrite = act;
+					}
 					break;
 				}
+				rf_set->push_back(act);
 			}
 			model_print("*****************************\n");
 		}
+	}
+	if(lastPersistentWrite != NULL) {
+		rf_set->push_back(lastPersistentWrite);
 	}
 	if (DBG_ENABLED()) {
 		model_print("Reached read action:\n");

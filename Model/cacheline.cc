@@ -23,6 +23,16 @@ CacheLine::CacheLine(uintptr_t _id) :
 {
 }
 
+modelclock_t CacheLine::getPersistentSeqNumber() const
+{
+	if(endR == RANGEUNDEFINED){
+		return beginR;
+	} else {
+		return endR;
+	}
+
+}
+
 void CacheLine::applyWrite(ModelAction * write){
     if(beginR == RANGEUNDEFINED && endR == RANGEUNDEFINED) {
 		beginR = write->get_seq_number();
