@@ -53,7 +53,7 @@ void ThreadMemory::addCacheOp(ModelAction *clflush)
 	storeBuffer.push_back(clflush);
 }
 
-void ThreadMemory::applyFence(ModelAction *fence)
+void ThreadMemory::applyFence()
 {
 	//DEBUG("Applying memory fence...\n");
 	emptyStoreBuffer();

@@ -19,7 +19,7 @@ public:
 	void getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set);
 	ModelAction * getLastWriteFromSoreBuffer(void *address);
 	void addCacheOp(ModelAction *clflush);
-	void applyFence(ModelAction *fence);
+	void applyFence();
 	void persistUntil(ModelAction * act);
 	void executeUntil(ModelAction *action);
 	ModelAction *popFromStoreBuffer();

@@ -494,7 +494,7 @@ void ModelExecution::process_cache_op(ModelAction *curr)
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
 	ASSERT(curr->is_memory_fence());
-	get_thread(curr)->getMemory()->applyFence(curr);
+	get_thread(curr)->getMemory()->applyFence();
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
 
@@ -677,7 +677,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		curr = swap_rmw_write_part(curr);
 	}
 	if(curr->is_locked_operation()) {
-		get_thread(curr)->getMemory()->applyFence(curr);
+		get_thread(curr)->getMemory()->applyFence();
 	}
 	if(curr->is_read() & !second_part_of_rmw){ //Read and RMW
 		SnapVector<ModelAction *> rf_set;
@@ -696,8 +696,13 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		wake_up_sleeping_actions(curr);
 	}
 	process_thread_action(curr);
-	if (curr->is_write()) { //Processing RMW, and different types of writes
+	if (curr->is_write()) 
+	{ //Processing RMW, and different types of writes
 		process_write(curr);
+		if(curr->is_seqcst())
+		{
+			get_thread(curr)->getMemory()->applyFence();
+		}
 	}
 	if (curr->is_cache_op()) {//CLFLUSH, CLWB, CLFLUSHOPT
 		process_cache_op(curr);
