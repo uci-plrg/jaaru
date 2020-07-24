@@ -80,7 +80,6 @@ public:
 	void remove_action_from_store_buffer(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
 	void persistCacheLine(CacheLine *cl, ModelAction *clflush);
-	void persistMemoryBuffer();
 	void evictCacheOp(ModelAction *cacheop);
 
 #ifdef TLS

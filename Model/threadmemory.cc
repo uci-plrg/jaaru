@@ -51,7 +51,7 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	} else if (act->is_write()) {
 		evictWrite(act);
 	} else if (act->is_sfence()) {
-		model->get_execution()->persistMemoryBuffer();
+		emptyFlushBuffer();
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
 			lastclflush = act;
