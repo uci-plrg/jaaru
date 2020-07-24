@@ -79,7 +79,7 @@ public:
 	modelclock_t get_curr_seq_num();
 	void remove_action_from_store_buffer(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
-	void persistCacheLine(CacheLine *cl);
+	void persistCacheLine(CacheLine *cl, ModelAction *clflush);
 	void persistMemoryBuffer();
 	void evictCacheOp(ModelAction *cacheop);
 
@@ -145,7 +145,6 @@ private:
 	SnapVector<ModelAction *> thrd_last_action;
 
 	HashTable<uintptr_t, CacheLine*, uintptr_t, 6> obj_to_cacheline;
-	CacheLineSet memoryBuffer;
 	CacheLine* getCacheLine(void * address);
 
 	/** A special model-checker Thread; used for associating with

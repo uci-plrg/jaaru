@@ -11,8 +11,8 @@
 ThreadMemory::ThreadMemory() :
 	storeBuffer(),
 	obj_to_last_write(),
-	lastclflush_clock(0)
-{
+	flushBuffer(),
+	lastclflush(NULL) {
 }
 
 /** Adds CFLUSH or CFLUSHOPT to the store buffer. */
@@ -27,14 +27,12 @@ void ThreadMemory::addOp(ModelAction * act) {
 	storeBuffer.push_back(act);
 }
 
-void ThreadMemory::addWrite(ModelAction * write)
-{
+void ThreadMemory::addWrite(ModelAction * write) {
 	storeBuffer.push_back(write);
 	obj_to_last_write.put(getCacheID(write->get_location()), write);
 }
 
-ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read)
-{
+ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read) {
 	void *address = read->get_location();
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
@@ -56,13 +54,21 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		model->get_execution()->persistMemoryBuffer();
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
-			lastclflush_clock = model->get_execution()->get_curr_seq_num();
+			lastclflush = act;
+			model->get_execution()->evictCacheOp(act);
+		} else {
+			evictFlushOpt(act);
 		}
-		model->get_execution()->evictCacheOp(act);
 	} else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
 		ASSERT(0);
 	}
+}
+
+void ThreadMemory::evictFlushOpt(ModelAction *act) {
+	if (lastclflush != NULL)
+		act->set_last_clflush(lastclflush->get_seq_number());
+	flushBuffer.push_back(act);
 }
 
 ModelAction *ThreadMemory::popFromStoreBuffer() {
@@ -79,10 +85,18 @@ void ThreadMemory::emptyStoreBuffer() {
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.begin();rit != NULL;rit=rit->getNext()) {
 		ModelAction *curr = rit->getVal();
-		curr->print();
 		evictOpFromStoreBuffer(curr);
 	}
 	storeBuffer.clear();
+}
+
+void ThreadMemory::emptyFlushBuffer() {
+	sllnode<ModelAction *> * rit;
+	for (rit = flushBuffer.begin();rit != NULL;rit=rit->getNext()) {
+		ModelAction *curr = rit->getVal();
+		model->get_execution()->evictCacheOp(curr);
+	}
+	flushBuffer.clear();
 }
 
 void ThreadMemory::executeWriteOperation(ModelAction *_write) {

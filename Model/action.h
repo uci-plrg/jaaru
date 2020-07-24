@@ -176,6 +176,7 @@ public:
 		reads_from = write;
 	}
 	modelclock_t get_last_clflush() { return last_clflush; }
+	void set_last_clflush(modelclock_t mlast_clflush) { last_clflush = mlast_clflush; }
 
 	MEMALLOC
 private:

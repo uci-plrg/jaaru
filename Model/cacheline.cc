@@ -4,12 +4,11 @@
 #include "model.h"
 #include "execution.h"
 
-#define RANGEUNDEFINED (modelclock_t)-1
 
 CacheLine::CacheLine(void *address) :
 	id(getCacheID(address)),
-	beginR(RANGEUNDEFINED),
-	endR(RANGEUNDEFINED),
+	beginR(0),
+	endR(0),
 	lastWrite(NULL),
 	lastCacheOp(NULL)
 {
@@ -17,8 +16,8 @@ CacheLine::CacheLine(void *address) :
 
 CacheLine::CacheLine(uintptr_t _id) :
 	id(_id),
-	beginR(RANGEUNDEFINED),
-	endR(RANGEUNDEFINED),
+	beginR(0),
+	endR(0),
 	lastWrite(NULL),
 	lastCacheOp(NULL)
 {

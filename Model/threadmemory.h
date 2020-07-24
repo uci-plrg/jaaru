@@ -22,17 +22,19 @@ public:
 	ModelAction *popFromStoreBuffer();
 	void writeToCacheLine(ModelAction *write);
 	void emptyStoreBuffer();
+	void emptyFlushBuffer();
 
 	SNAPSHOTALLOC;
 private:
 	void evictOpFromStoreBuffer(ModelAction *op);
 	void evictWrite(ModelAction *write);
 	void evictNonAtomicWrite(ModelAction *na_write);
+	void evictFlushOpt(ModelAction *flushopt);
 	void executeWriteOperation(ModelAction *write);
 
 	SnapList<ModelAction*> storeBuffer;
 	HashTable<uintptr_t, ModelAction *, uintptr_t, 6> obj_to_last_write;
-	modelclock_t lastclflush_clock;
-
+	SnapList<ModelAction *> flushBuffer;
+	ModelAction * lastclflush;
 };
 #endif

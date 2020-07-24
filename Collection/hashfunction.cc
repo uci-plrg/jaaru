@@ -1,4 +1,8 @@
 #include "hashfunction.h"
+#include "classlist.h"
+#include "cacheline.h"
+#include "action.h"
+
 
 /**
  * Hash function for 64-bit integers
@@ -13,3 +17,12 @@ unsigned int int64_hash(uint64_t key) {
 	key = key ^ (key >> 22);
 	return (unsigned int) key;
 }
+
+unsigned int cacheLineHashFunction ( CacheLine *cl) {
+	return ((unsigned int) (cl->getId() >> 6));
+}
+
+bool cacheLineEquals(CacheLine *c1, CacheLine *c2) {
+	return c1->getId() == c2->getId();
+}
+
