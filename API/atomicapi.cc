@@ -273,7 +273,7 @@ void pmc_atomic_thread_fence(int atomic_index, const char * position) {
 void pmc_clwb(void * addrs){
 	DEBUG("pmc_clwb:addr = %p\n",addrs);
 	createModelIfNotExist();
-	ModelAction *action = new ModelAction(ACTION_CLWB, memory_order_seq_cst, addrs);
+	ModelAction *action = new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs);
 	model->switch_to_master(action);
 }
 

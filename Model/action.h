@@ -53,7 +53,6 @@ typedef enum action_type {
 	ATOMIC_RMW,	// < The write part of an atomic RMW action
 	ATOMIC_READ,	// < An atomic read action
 
-	ACTION_CLWB,
 	ACTION_CLFLUSH,
 	ACTION_CLFLUSHOPT,
 
@@ -130,7 +129,8 @@ public:
 	bool is_nonatomic_write() const;
 	bool is_cache_op() const;
 	bool is_clflush() const;
-	bool is_memory_fence() const;
+	bool is_memory_mfence() const;
+  bool is_memory_sfence() const;
 	bool is_yield() const;
 	bool is_locked_operation() const;
 	bool is_rmw() const;
