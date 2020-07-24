@@ -62,7 +62,7 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	action_trace(),
 	obj_map(),
 	condvar_waiters_map(),
-	obj_wr_thrd_map(),
+	obj_wr_map(),
 	mutex_map(),
 	cond_map(),
 	thrd_last_action(1),
@@ -100,16 +100,6 @@ static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple
 	simple_action_list_t *tmp = hash->get(ptr);
 	if (tmp == NULL) {
 		tmp = new simple_action_list_t();
-		hash->put(ptr, tmp);
-	}
-	return tmp;
-}
-
-static SnapVector<simple_action_list_t> * get_safe_ptr_vect_action(HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> * hash, void * ptr)
-{
-	SnapVector<simple_action_list_t> *tmp = hash->get(ptr);
-	if (tmp == NULL) {
-		tmp = new SnapVector<simple_action_list_t>();
 		hash->put(ptr, tmp);
 	}
 	return tmp;
@@ -295,36 +285,21 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  * @param rf_set is the set of model actions we can possibly read from
  * @return True if the read can be pruned from the thread map list.
  */
-void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
-{
+void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set) {
 	ASSERT(curr->is_read());
 	// Check to read from non-atomic stores if there is one
-	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
-	if (hasnonatomicstore) {
-		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
-		rf_set->push_back(nonatomicstore);
-	}
+
 	ASSERT(rf_set->size() > 0);
-	int index = fuzzer->selectWrite(curr, rf_set);
-	ModelAction *rf = (*rf_set)[index];
+	ModelAction *rf = (*rf_set)[0];
+
 	ASSERT(rf);
 	ASSERT(rf->is_write());
-	model_print("&&&&&&&&&&&&&Read in thread ID #%u reads from ", curr->get_tid());
-	rf->print();
-	if(curr->get_tid() != rf->get_tid()){
-		//Reading from the write in another thread. Nothing need to be done when reading from the current thread.
-		ThreadMemory * memory = get_thread( rf->get_tid() )->getMemory();
-		memory->executeUntil(rf);
-		if(rf->is_nonatomic_write()){
-			ASSERT(rf->get_location() == curr->get_location());
-			rf = convertNonAtomicStore(curr->get_location());
-		}
-		memory->persistUntil(rf);
-	}
+
 	curr->set_read_from(rf);
 	initialize_curr_action(curr);
-	ClockVector *cv = get_hb_from_write(rf);
-	if (cv != NULL){
+
+	ClockVector * cv = rf->get_cv();
+	if (cv != NULL) {
 		curr->get_cv()->merge(cv);
 	}
 	get_thread(curr)->set_return_value(curr->get_return_value());
@@ -463,15 +438,13 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  * @param curr write or RMW operation
  * @return True if the mo_graph was updated or promises were resolved
  */
-void ModelExecution::process_write(ModelAction *curr)
-{
+void ModelExecution::process_write(ModelAction *curr) {
 	ASSERT(curr->is_write());
-	if(curr->is_rmw()){ // curr is modified second part of a RMW and must be recorded
-		add_write_to_lists(curr);
-		get_thread(curr)->getMemory()->writeToCacheLine(curr);
-		get_thread(curr)->set_return_value(VALUE_NONE);
-	} else{ //curr is just an atomic write
-		get_thread(curr)->getMemory()->addWrite(curr);
+	if(curr->is_rmw()) {	// curr is modified second part of a RMW and must be recorded
+		get_thread(curr)->getMemory()->addOp(curr);
+		get_thread(curr)->getMemory()->applyFence();
+	} else {	//curr is just an atomic write
+		get_thread(curr)->getMemory()->addOp(curr);
 	}
 }
 
@@ -480,22 +453,32 @@ void ModelExecution::process_write(ModelAction *curr)
  * @param curr: the cache operation that need to be processed
  * @return Nothing is returned
  */
-void ModelExecution::process_cache_op(ModelAction *curr)
-{
+void ModelExecution::process_cache_op(ModelAction *curr) {
 	ASSERT(curr->is_cache_op());
-	get_thread(curr)->getMemory()->addCacheOp(curr);
+	get_thread(curr)->getMemory()->addOp(curr);
 }
 
 /**
- * Process a memory fence including SFENCE, MFENCE, initializing this operation after being done with emptying memory and store buffers
+ * Process a MFENCE, initializing this operation after being done with emptying memory and store buffers
  * @param curr: the fence operation
  * @return Nothing is returned
  */
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
-	ASSERT(curr->is_memory_fence());
+	ASSERT(curr->is_mfence());
 	get_thread(curr)->getMemory()->applyFence();
 	get_thread(curr)->set_return_value(VALUE_NONE);
+}
+
+/**
+ * Process a SFENCE, initializing this operation after being done with emptying memory and store buffers
+ * @param curr: the fence operation
+ * @return Nothing is returned
+ */
+void ModelExecution::process_store_fence(ModelAction *curr)
+{
+	ASSERT(curr->is_sfence());
+	get_thread(curr)->getMemory()->addOp(curr);
 }
 
 /**
@@ -672,42 +655,41 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	ASSERT(curr);
 	DBG();
 	bool second_part_of_rmw = curr->is_rmw_cas_fail() || curr->is_rmw();
-	if(second_part_of_rmw){
-		// Swap with previous rmw_read action and delete the second part.  
+	if(second_part_of_rmw) {
+		// Swap with previous rmw_read action and delete the second part.
 		curr = swap_rmw_write_part(curr);
-	}
-	if(curr->is_locked_operation()) {
+	} else if(curr->is_locked_operation()) {
 		get_thread(curr)->getMemory()->applyFence();
-	}
-	if(curr->is_read() & !second_part_of_rmw){ //Read and RMW
+	} if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
 		SnapVector<ModelAction *> rf_set;
 		build_may_read_from(curr, &rf_set);
 		process_read(curr, &rf_set);
-	}
-	if (curr->is_memory_fence()) {
+	} else if (curr->is_mfence()) {
 		process_memory_fence(curr);
-	}
-	if(!curr->is_read() && !curr->is_write() && !curr->is_cache_op()){
+		initialize_curr_action(curr);
+	} else if (curr->is_sfence()) {
+		process_store_fence(curr);
+		initialize_curr_action(curr);
+	} else if(!curr->is_read() && !curr->is_write() && !curr->is_cache_op()) {
 		initialize_curr_action(curr);
 	}
+
 	// All operation except write and cache operation will update the thread local data.
-	if(!curr->is_write() && !curr->is_cache_op() & !second_part_of_rmw){
+	if(!curr->is_write() && !curr->is_cache_op() & !second_part_of_rmw) {
 		update_thread_local_data(curr);
 		wake_up_sleeping_actions(curr);
 	}
 	process_thread_action(curr);
-	if (curr->is_write()) 
-	{ //Processing RMW, and different types of writes
+
+	if (curr->is_write())  {	//Processing RMW, and different types of writes
 		process_write(curr);
 		if(curr->is_seqcst())
 		{
 			get_thread(curr)->getMemory()->applyFence();
 		}
-	}
-	if (curr->is_cache_op()) {//CLFLUSH, CLWB, CLFLUSHOPT
+	} else if (curr->is_cache_op()) {	//CLFLUSH, CLFLUSHOPT
 		process_cache_op(curr);
-	}
-	if (curr->is_mutex_op()) {
+	} else if (curr->is_mutex_op()) {
 		process_mutex(curr);
 	}
 	return curr;
@@ -718,7 +700,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
  * This function initializes clock, updates thread local data and wakes up actions in other threads that
  * are waiting for the 'act' action.
  * @param act is a write or cache operation
- */ 
+ */
 void ModelExecution::remove_action_from_store_buffer(ModelAction *act){
 	ASSERT(act->is_write() || act->is_cache_op());
 	initialize_curr_action(act);
@@ -729,7 +711,7 @@ void ModelExecution::remove_action_from_store_buffer(ModelAction *act){
 
 /**
  * Close out a RMWR by converting previous RMW_READ into a RMW or READ.
- * @param act the RMW operation. Its content is transferred to the previous RMW_READ. 
+ * @param act the RMW operation. Its content is transferred to the previous RMW_READ.
  **/
 ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
 	ASSERT(act->is_rmw() || act->is_rmw_cas_fail());
@@ -738,47 +720,6 @@ ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
 	lastread->process_rmw(act);
 	delete act;
 	return lastread;
-}
-/**
- * Computes the clock vector that happens before propagates from this write.
- *
- * @param rf The action that might be part of a release sequence. Must be a
- * write.
- * @return ClockVector of happens before relation.
- */
-
-ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
-	SnapVector<ModelAction *> * processset = NULL;
-	for ( ;rf != NULL;rf = rf->get_reads_from()) {
-		ASSERT(rf->is_write());
-		if (!rf->is_rmw() || rf->get_rfcv() != NULL)
-			break;
-		if (processset == NULL)
-			processset = new SnapVector<ModelAction *>();
-		processset->push_back(rf);
-	}
-
-	int i = (processset == NULL) ? 0 : processset->size();
-
-	ClockVector * vec = NULL;
-	while(true) {
-		if (rf->get_rfcv() != NULL) {
-			vec = rf->get_rfcv();
-		} else if (rf->is_write()) {
-			(vec = new ClockVector(vec, NULL))->merge(rf->get_cv());
-			rf->set_rfcv(vec);
-		} else {
-			ASSERT(0);
-		}
-		i--;
-		if (i >= 0) {
-			rf = (*processset)[i];
-		} else
-			break;
-	}
-	if (processset != NULL)
-		delete processset;
-	return vec;
 }
 
 /**
@@ -789,12 +730,12 @@ ClockVector * ModelExecution::get_hb_from_write(ModelAction *rf) const {
  */
 void ModelExecution::update_thread_local_data(ModelAction *act)
 {
-	
+
 	int tid = id_to_int(act->get_tid());
-	if (act->is_seqcst() || act->is_unlock()) {
+	if (act->is_unlock()) {
 		simple_action_list_t *list = get_safe_ptr_action(&obj_map, act->get_location());
 		act->setActionRef(list->add_back(act));
-	}	
+	}
 
 	// Update thrd_last_action, the last action taken by each thread
 	if ((int)thrd_last_action.size() <= tid)
@@ -838,15 +779,9 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 
 void ModelExecution::add_write_to_lists(ModelAction *write) {
-	SnapVector<simple_action_list_t> *vec = get_safe_ptr_vect_action(&obj_wr_thrd_map, write->get_location());
-	int tid = id_to_int(write->get_tid());
-	if (tid >= (int)vec->size()) {
-		uint oldsize =vec->size();
-		vec->resize(priv->next_thread_id);
-		for(uint i=oldsize;i<priv->next_thread_id;i++)
-			new (&(*vec)[i]) simple_action_list_t();
-	}
-	write->setActionRef((*vec)[tid].add_back(write));
+	simple_action_list_t *list= get_safe_ptr_action(&obj_wr_map, write->get_location());
+
+	write->setActionRef(list->add_back(write));
 }
 
 /**
@@ -929,69 +864,38 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
  * @param curr is the current ModelAction that we are exploring; it must be a
  * 'read' operation.
  */
-void  ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAction *>* rf_set)
+void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAction *>* rf_set)
 {
-	SnapVector<simple_action_list_t> *thrd_lists = obj_wr_thrd_map.get(curr->get_location());
 	ASSERT(curr->is_read());
+	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr->get_location());
 
-	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromSoreBuffer(curr->get_location());
-	if(lastWrite != NULL){
+	if (lastWrite != NULL) {
 		//There is a write in the current thread's store buffer, and the read is going to read from that
 		rf_set->push_back(lastWrite);
 		return;
 	}
-	/* Iterate over all threads */
-	for(uint i=0; i< thread_map.size(); i++){
-		Thread* thread = thread_map[i];
-		if(thread->get_id() != curr->get_tid()){
-			//The current thread already checked and it didn't have any writes in its storeBuffer.
-			thread->getMemory()->getWritesFromStoreBuffer(curr->get_location(), rf_set);
-		}
+	simple_action_list_t * list = obj_wr_map.get(curr->get_location());
+
+	if (list != NULL) {
+		//Otherwise return  last write to cache
+		rf_set->push_back(list->back());
+		return;
 	}
-	ModelAction *lastPersistentWrite = NULL;
-	/* Iterate on the writes that are executed in different threads. */
-	if (thrd_lists != NULL){
-		for (uint i = 0;i < thrd_lists->size();i++) {
-			/* Iterate over actions in thread, starting from most recent */
-			ThreadMemory * threadMem = get_thread(int_to_id(i))->getMemory();
-			simple_action_list_t *list = &(*thrd_lists)[i];
-			SnapList<CacheLine*> * cachelines = threadMem->getCacheLines(curr->get_location());
-			if(cachelines == NULL){
-				//This thread haven't executed any write on the given address
-				continue;
-			}
-			ASSERT(cachelines->size() > 0);
-			//TODO: for now we only consider one crash.
-			modelclock_t persistent_seq_num = cachelines->back()->getPersistentSeqNumber();
-			modelclock_t endR = cachelines->back()->getEndRange();
-			sllnode<ModelAction *> * rit;
-			model_print("*******build_may_read_from(tid = %u)****** range <%u,%u>\n", curr->get_tid(), cachelines->back()->getBeginRange(), endR);
-			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
-				ModelAction *act = rit->getVal();
-				if (act == curr)
-					continue;
-				ASSERT(act->is_write());
-				model_print("[%p] = %u, ", act->get_location(), act->get_value());
-				/* Stop when the write happens before the valid range*/
-				if (act->get_seq_number() < persistent_seq_num) {
-					if(lastPersistentWrite == NULL || lastPersistentWrite->get_seq_number() < act->get_seq_number()) {
-						lastPersistentWrite = act;
-					}
-					break;
-				}
-				rf_set->push_back(act);
-			}
-			model_print("*****************************\n");
-		}
+
+	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
+	if (hasnonatomicstore) {
+		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
+		rf_set->push_back(nonatomicstore);
+		return;
 	}
-	if(lastPersistentWrite != NULL) {
-		rf_set->push_back(lastPersistentWrite);
-	}
-	if (DBG_ENABLED()) {
-		model_print("Reached read action:\n");
-		curr->print();
-		model_print("End printing read_from_past\n");
-	}
+
+	//Otherwise look in previous executions for pre-crash writes
+  for(Execution_Context * prev = model->getPrevContext(); prev != NULL; prev = prev->prevContext) {
+    ModelExecution * pExecution = prev->execution;
+    
+
+  }
+
 }
 
 static void print_list(action_list_t *list)

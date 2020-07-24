@@ -3,3 +3,8 @@
 /.vscode
 # Types to ignore
 **/*.swp
+# Files to ignore
+Test/clang
+Test/clang++
+Test/g++
+Test/gcc

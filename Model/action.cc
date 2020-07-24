@@ -36,7 +36,6 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	position(NULL),
 	reads_from(NULL),
 	cv(NULL),
-	rf_cv(NULL),
 	action_ref(NULL),
 	value(value),
 	type(type),
@@ -63,7 +62,6 @@ ModelAction::ModelAction(action_type_t type) :
 	position(NULL),
 	time(0),
 	cv(NULL),
-	rf_cv(NULL),
 	action_ref(NULL),
 	value(0),
 	type(type),
@@ -93,7 +91,6 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	position(position),
 	reads_from(NULL),
 	cv(NULL),
-	rf_cv(NULL),
 	action_ref(NULL),
 	value(value),
 	type(type),
@@ -126,7 +123,6 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	position(position),
 	reads_from(NULL),
 	cv(NULL),
-	rf_cv(NULL),
 	action_ref(NULL),
 	value(value),
 	type(type),
@@ -241,12 +237,17 @@ bool ModelAction::is_nonatomic_write() const
 
 bool ModelAction::is_cache_op() const
 {
-	return type == ACTION_CLWB || type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
+	return type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
 }
 
-bool ModelAction::is_memory_fence() const
+bool ModelAction::is_mfence() const
 {
-	return type == CACHE_MFENCE || type == CACHE_SFENCE;
+	return type == CACHE_MFENCE;
+}
+
+bool ModelAction::is_sfence() const
+{
+	return type == CACHE_SFENCE;
 }
 
 bool ModelAction::is_clflush() const
@@ -258,21 +259,21 @@ bool ModelAction::is_locked_operation() const
 {
 	switch(type)
 	{
-		case PTHREAD_CREATE:
-		case PTHREAD_JOIN:
-		case THREAD_CREATE:
-		case THREAD_JOIN:
-		case ATOMIC_RMWR:
-		case ATOMIC_LOCK:
-		case ATOMIC_TRYLOCK:
-		case ATOMIC_UNLOCK:
-		case ATOMIC_NOTIFY_ONE:
-		case ATOMIC_NOTIFY_ALL:
-		case ATOMIC_WAIT:
-		case ATOMIC_TIMEDWAIT:
-			return true;
-		default:
-			return false;
+	case PTHREAD_CREATE:
+	case PTHREAD_JOIN:
+	case THREAD_CREATE:
+	case THREAD_JOIN:
+	case ATOMIC_RMWR:
+	case ATOMIC_LOCK:
+	case ATOMIC_TRYLOCK:
+	case ATOMIC_UNLOCK:
+	case ATOMIC_NOTIFY_ONE:
+	case ATOMIC_NOTIFY_ALL:
+	case ATOMIC_WAIT:
+	case ATOMIC_TIMEDWAIT:
+		return true;
+	default:
+		return false;
 	}
 	return false;
 }
@@ -293,7 +294,7 @@ bool ModelAction::is_rmw_read() const
 	return type == ATOMIC_RMWR;
 }
 
-bool ModelAction::is_rmw_cas_fail() const 
+bool ModelAction::is_rmw_cas_fail() const
 {
 	return type == ATOMIC_CAS_FAILED;
 }
@@ -428,7 +429,7 @@ bool ModelAction::could_synchronize_with(const ModelAction *act) const
 	// order of seq_cst operations that don't commute
 	if (is_write() || act->is_write() )
 		return true;
-		
+
 
 	// lock just released...we can grab lock
 	if ((is_lock() || is_trylock()) && (act->is_unlock() || act->is_wait()))
@@ -500,10 +501,10 @@ void ModelAction::set_try_lock(bool obtainedlock)
  * returning the action's seq_number. Making we never use an action
  * that the clock has not initialized yet.
  */
-modelclock_t ModelAction::get_seq_number() const 
+modelclock_t ModelAction::get_seq_number() const
 {
 	ASSERT(seq_number != ACTION_INITIAL_CLOCK || is_thread_start());
-	return seq_number; 
+	return seq_number;
 }
 
 /**
@@ -543,11 +544,11 @@ uint64_t ModelAction::get_write_value() const
 	return value;
 }
 
-uint64_t ModelAction::get_value() const 
-{ 
+uint64_t ModelAction::get_value() const
+{
 	//ToDO: remove this assertion. It is wrong but we used it for the purpose of testing...
 	ASSERT(value != 0);
-	return value; 
+	return value;
 }
 
 /**
@@ -639,7 +640,6 @@ const char * ModelAction::get_type_str() const
 	case ATOMIC_NOTIFY_ONE: return "notify one";
 	case ATOMIC_NOTIFY_ALL: return "notify all";
 	case ATOMIC_ANNOTATION: return "annotation";
-	case ACTION_CLWB: return "clwb";
 	case ACTION_CLFLUSH: return "clflush";
 	case ACTION_CLFLUSHOPT: return "clflushopt";
 	case CACHE_MFENCE: return "mfence";

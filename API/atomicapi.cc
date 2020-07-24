@@ -34,7 +34,7 @@ void createModelIfNotExist() {
 		for(int i=0;i < size / 8;i++) {                         \
 			atomraceCheckRead(tid, (void *)(((char *)obj)+i));    \
 		}                                                       \
-		return val;\
+		return val; \
 	}
 
 VOLATILELOAD(8)
@@ -266,14 +266,14 @@ CDSATOMICCASV2(64)
 
 void pmc_atomic_thread_fence(int atomic_index, const char * position) {
 	DEBUG("pmc_atomic_thread_fence\n"); \
-	ASSERT(0);\
+	ASSERT(0); \
 }
 // PMC NVM operations
 
 void pmc_clwb(void * addrs){
 	DEBUG("pmc_clwb:addr = %p\n",addrs);
 	createModelIfNotExist();
-	ModelAction *action = new ModelAction(ACTION_CLWB, memory_order_seq_cst, addrs);
+	ModelAction *action = new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs);
 	model->switch_to_master(action);
 }
 

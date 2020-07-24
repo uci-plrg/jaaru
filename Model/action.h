@@ -48,12 +48,11 @@ typedef enum action_type {
 
 	ATOMIC_INIT,	// < Initialization of an atomic object (e.g., atomic_init())
 	ATOMIC_WRITE,	// < An atomic write action
-	ATOMIC_RMWR, // Read part of an atomic RMW action
+	ATOMIC_RMWR,	// Read part of an atomic RMW action
 	ATOMIC_CAS_FAILED,
 	ATOMIC_RMW,	// < The write part of an atomic RMW action
 	ATOMIC_READ,	// < An atomic read action
 
-	ACTION_CLWB,
 	ACTION_CLFLUSH,
 	ACTION_CLFLUSHOPT,
 
@@ -71,7 +70,7 @@ typedef enum action_type {
 	ATOMIC_ANNOTATION,	// < An annotation action to pass information to a trace analysis
 	ATOMIC_NOP	// < Placeholder
 } action_type_t;
- 
+
 
 /**
  * @brief Represents a single atomic action
@@ -130,7 +129,8 @@ public:
 	bool is_nonatomic_write() const;
 	bool is_cache_op() const;
 	bool is_clflush() const;
-	bool is_memory_fence() const;
+	bool is_mfence() const;
+	bool is_sfence() const;
 	bool is_yield() const;
 	bool is_locked_operation() const;
 	bool is_rmw() const;
@@ -148,8 +148,6 @@ public:
 	Thread * get_thread_operand() const;
 	void create_cv(const ModelAction *parent = NULL);
 	ClockVector * get_cv() const { return cv; }
-	ClockVector * get_rfcv() const { return rf_cv; }
-	void set_rfcv(ClockVector * rfcv) { rf_cv = rfcv; }
 	bool synchronize_with(const ModelAction *act);
 
 	bool has_synchronized_with(const ModelAction *act) const;
@@ -172,8 +170,8 @@ public:
 	void set_thread_operand(Thread *th) { thread_operand = th; }
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
-	
-	SNAPSHOTALLOC
+
+	MEMALLOC
 private:
 	const char * get_type_str() const;
 	const char * get_mo_str() const;
@@ -192,14 +190,13 @@ private:
 	uint64_t time;	//used for sleep
 
 /**
-	 * @brief The clock vector for this operation
-	 *
-	 * Technically, this is only needed for potentially synchronizing
-	 * (e.g., non-relaxed) operations, but it is very handy to have these
-	 * vectors for all operations.
-	 */
+ * @brief The clock vector for this operation
+ *
+ * Technically, this is only needed for potentially synchronizing
+ * (e.g., non-relaxed) operations, but it is very handy to have these
+ * vectors for all operations.
+ */
 	ClockVector *cv;
-	ClockVector *rf_cv;
 	sllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
 	uint64_t value;

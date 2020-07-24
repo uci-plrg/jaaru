@@ -96,6 +96,7 @@ private:
 	ModelAction * swap_rmw_write_part(ModelAction *act);
 	void process_cache_op(ModelAction *curr);
 	void process_memory_fence(ModelAction *curr);
+	void process_store_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);
 	void process_thread_action(ModelAction *curr);
 	bool synchronize(const ModelAction *first, ModelAction *second);
@@ -103,7 +104,6 @@ private:
 	void add_normal_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
 	void build_may_read_from(ModelAction *curr, SnapVector<ModelAction *> *rf_set);
-	ClockVector * get_hb_from_write(ModelAction *rf) const;
 	ModelAction * convertNonAtomicStore(void*);
 
 #ifdef TLS
@@ -122,7 +122,7 @@ private:
 
 	action_list_t action_trace;
 
-	
+
 	/** Per-object list of actions. Maps an object (i.e., memory location)
 	 * to a trace of all actions performed on the object.
 	 * Used only for unlocks, & wait.
@@ -130,11 +130,11 @@ private:
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_map;
 
 /** Per-object list of actions. Maps an object (i.e., memory location)
-	 * to a trace of all actions performed on the object. */
+ * to a trace of all actions performed on the object. */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
-	/** Per-object list of writes that each thread performed. These writes are available to all threads */
-	HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
+	/** Per-object list of writes. These writes are available to all threads */
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_wr_map;
 
 	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;
 	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;

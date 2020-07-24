@@ -17,19 +17,15 @@ public:
 	CacheLine(void *address);
 	CacheLine(uintptr_t id);
 	uintptr_t getId() { return id; }
-	void applyWrite(ModelAction *write);
-	void persistCacheLine();
-	void persistUntil(modelclock_t opclock);
-	modelclock_t getBeginRange(){ return beginR;}
-	modelclock_t getEndRange(){ return endR;}
-	modelclock_t getPersistentSeqNumber() const;
-	void setLastCacheOp(ModelAction *clop) {lastCacheOp = clop;}
-	void setBeginRange(modelclock_t begin) { beginR =begin;}
+	modelclock_t getBeginRange(){ return beginR; }
+	modelclock_t getEndRange(){ return endR; }
+	ModelAction * getLastCacheOp() { return lastCacheOp; }
+	void setLastCacheOp(ModelAction *clop) { lastCacheOp = clop; }
+	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange (modelclock_t end) { endR = end; }
 
 	SNAPSHOTALLOC;
 private:
-	
 	uintptr_t id;
 	//Only contains the clock time of 1) the write that a read may read from 2) read clock
 	modelclock_t beginR;
@@ -38,9 +34,7 @@ private:
 	ModelAction *lastCacheOp;
 };
 
-inline uintptr_t getCacheID(void *address){
-	//DEBUG( "Address %p === Cache ID %x\n", address, ((uintptr_t)address) & ~(CACHELINESIZE - 1) );
+inline uintptr_t getCacheID(void *address) {
 	return ((uintptr_t)address) & ~(CACHELINESIZE - 1);
 }
-
 #endif
