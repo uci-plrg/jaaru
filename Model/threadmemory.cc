@@ -15,7 +15,9 @@ ThreadMemory::ThreadMemory() :
 {
 }
 
-void ThreadMemory::addWrite(ModelAction * write)
+/** Adds CFLUSH, WRITE, CFLUSHOPT, or SFENCE to the store buffer. */
+
+void ThreadMemory::addOp(ModelAction * write)
 {
 	storeBuffer.push_back(write);
 }
@@ -23,9 +25,9 @@ void ThreadMemory::addWrite(ModelAction * write)
 ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(void *address)
 {
 	sllnode<ModelAction *> * rit;
-	for (rit = storeBuffer.end(); rit != NULL; rit=rit->getPrev()) {
+	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *write = rit->getVal();
-		if(write->is_write() && write->get_location() == address){
+		if(write->is_write() && write->get_location() == address) {
 			return write;
 		}
 	}
@@ -39,16 +41,12 @@ void ThreadMemory::getWritesFromStoreBuffer(void *address, SnapVector<ModelActio
 {
 	DEBUG("Store Buffer Size = %u, Address requested %p\n", storeBuffer.size(), address);
 	sllnode<ModelAction *> * rit;
-	for (rit = storeBuffer.end(); rit != NULL; rit=rit->getPrev()) {
+	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *write = rit->getVal();
-		if(write->is_write() && write->get_location() == address){
+		if(write->is_write() && write->get_location() == address) {
 			rf_set->push_back(write);
 		}
 	}
-}
-
-void ThreadMemory::addCacheOp(ModelAction *clflush) {
-	storeBuffer.push_back(clflush);
 }
 
 void ThreadMemory::applyFence() {
@@ -57,14 +55,17 @@ void ThreadMemory::applyFence() {
 }
 
 void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
-	ASSERT(act->is_write() || act->is_cache_op());
+	ASSERT(act->is_write() || act->is_cache_op() || act->is_sfence());
 	if(act->is_nonatomic_write()) {
 		evictNonAtomicWrite(act);
 	} else if (act->is_write()) {
 		evictWrite(act);
+	} else if (act->is_sfence()) {
+		persistMemoryBuffer();
 	} else if (act->is_cache_op()) {
 		evictCacheOp(act);
-	} else {
+	}
+	else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
 		ASSERT(0);
 	}
@@ -82,7 +83,7 @@ ModelAction *ThreadMemory::popFromStoreBuffer() {
 
 void ThreadMemory::emptyStoreBuffer() {
 	sllnode<ModelAction *> * rit;
-	for (rit = storeBuffer.begin(); rit != NULL; rit=rit->getNext()) {
+	for (rit = storeBuffer.begin();rit != NULL;rit=rit->getNext()) {
 		ModelAction *curr = rit->getVal();
 		curr->print();
 		evictOpFromStoreBuffer(curr);
@@ -91,16 +92,16 @@ void ThreadMemory::emptyStoreBuffer() {
 }
 
 void ThreadMemory::executeWriteOperation(ModelAction *_write) {
-	switch(_write->getOpSize()){
-		case 8: APPLYWRITE(8, _write->get_location(), _write->get_value()); break;
-		case 16: APPLYWRITE(16, _write->get_location(), _write->get_value()); break;
-		case 32: APPLYWRITE(32, _write->get_location(), _write->get_value()); break;
-		case 64: APPLYWRITE(64, _write->get_location(), _write->get_value()); break; 
-		default:
-			model_print("Unsupported write size\n");
-			ASSERT(0);
+	switch(_write->getOpSize()) {
+	case 8: APPLYWRITE(8, _write->get_location(), _write->get_value()); break;
+	case 16: APPLYWRITE(16, _write->get_location(), _write->get_value()); break;
+	case 32: APPLYWRITE(32, _write->get_location(), _write->get_value()); break;
+	case 64: APPLYWRITE(64, _write->get_location(), _write->get_value()); break;
+	default:
+		model_print("Unsupported write size\n");
+		ASSERT(0);
 	}
-	
+
 	thread_id_t tid = _write->get_tid();
 	for(int i=0;i < _write->getOpSize() / 8;i++) {
 		atomraceCheckWrite(tid, (void *)(((char *)_write->get_location())+i));
@@ -109,14 +110,14 @@ void ThreadMemory::executeWriteOperation(ModelAction *_write) {
 
 void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {
 	executeWriteOperation(na_write);
-	switch(na_write->getOpSize()){
-		case 8: raceCheckWrite8(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-		case 16: raceCheckWrite16(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-		case 32: raceCheckWrite32(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-		case 64: raceCheckWrite64(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-		default:
-			model_print("Unsupported write size\n");
-			ASSERT(0);
+	switch(na_write->getOpSize()) {
+	case 8: raceCheckWrite8(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
+	case 16: raceCheckWrite16(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
+	case 32: raceCheckWrite32(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
+	case 64: raceCheckWrite64(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
+	default:
+		model_print("Unsupported write size\n");
+		ASSERT(0);
 	}
 	delete na_write;
 }
@@ -131,15 +132,15 @@ void ThreadMemory::evictWrite(ModelAction *writeop)
 	executeWriteOperation(writeop);
 	for(int i=0;i < writeop->getOpSize() / 8;i++) {
 		atomraceCheckWrite(writeop->get_tid(), (void *)(((char *)writeop->get_location())+i));
-	} 
+	}
 }
 
 void ThreadMemory::evictCacheOp(ModelAction *cacheop) {
 	model->get_execution()->remove_action_from_store_buffer(cacheop);
-  void * loc = cacheop->get_location();
-  CacheLine *cacheline = obj_to_cacheline.get(loc);
-	if(cacheline == NULL){
-    cacheline = new CacheLine(loc);
+	void * loc = cacheop->get_location();
+	CacheLine *cacheline = obj_to_cacheline.get(loc);
+	if(cacheline == NULL) {
+		cacheline = new CacheLine(loc);
 		obj_to_cacheline.put(loc, cacheline);
 	}
 	cacheline->setLastCacheOp(cacheop);
@@ -147,13 +148,13 @@ void ThreadMemory::evictCacheOp(ModelAction *cacheop) {
 		persistCacheLine(cacheline);
 		memoryBuffer.remove(cacheline);
 	} else {
-    memoryBuffer.add(cacheline);
+		memoryBuffer.add(cacheline);
 	}
 }
 
 void ThreadMemory::persistCacheLine(CacheLine *cacheline) {
 	cacheline->setBeginRange(cacheline->getLastCacheOp()->get_seq_number());
-  cacheline->setLastCacheOp(NULL);
+	cacheline->setLastCacheOp(NULL);
 }
 
 void ThreadMemory::persistMemoryBuffer() {

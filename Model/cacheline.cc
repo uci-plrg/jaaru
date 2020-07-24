@@ -7,7 +7,7 @@
 #define RANGEUNDEFINED (modelclock_t)-1
 
 CacheLine::CacheLine(void *address) :
-  id(getCacheID(address)),
+	id(getCacheID(address)),
 	beginR(RANGEUNDEFINED),
 	endR(RANGEUNDEFINED),
 	lastCacheOp(NULL)

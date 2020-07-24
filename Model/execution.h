@@ -96,6 +96,7 @@ private:
 	ModelAction * swap_rmw_write_part(ModelAction *act);
 	void process_cache_op(ModelAction *curr);
 	void process_memory_fence(ModelAction *curr);
+	void process_store_fence(ModelAction *curr);
 	bool process_mutex(ModelAction *curr);
 	void process_thread_action(ModelAction *curr);
 	bool synchronize(const ModelAction *first, ModelAction *second);
@@ -121,7 +122,7 @@ private:
 
 	action_list_t action_trace;
 
-	
+
 	/** Per-object list of actions. Maps an object (i.e., memory location)
 	 * to a trace of all actions performed on the object.
 	 * Used only for unlocks, & wait.
@@ -129,7 +130,7 @@ private:
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_map;
 
 /** Per-object list of actions. Maps an object (i.e., memory location)
-	 * to a trace of all actions performed on the object. */
+ * to a trace of all actions performed on the object. */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
 	/** Per-object list of writes. These writes are available to all threads */

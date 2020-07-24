@@ -15,10 +15,9 @@
 class ThreadMemory {
 public:
 	ThreadMemory();
- 	void addWrite(ModelAction * write);
 	void getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set);
 	ModelAction * getLastWriteFromStoreBuffer(void *address);
-	void addCacheOp(ModelAction *clflush);
+	void addOp(ModelAction *act);
 	void applyFence();
 	ModelAction *popFromStoreBuffer();
 	CacheLine* getCacheLines(void * address) {return obj_to_cacheline.get(address);}
@@ -34,10 +33,10 @@ private:
 	void persistCacheLine(CacheLine *cl);
 	void emptyStoreBuffer();
 	void persistMemoryBuffer();
-	
-  HashTable<const void *, CacheLine*, uintptr_t, 2> obj_to_cacheline;
+
+	HashTable<const void *, CacheLine*, uintptr_t, 2> obj_to_cacheline;
 	SnapList<ModelAction*> storeBuffer;
-  CacheLineSet memoryBuffer;
+	CacheLineSet memoryBuffer;
 };
 
 #endif
