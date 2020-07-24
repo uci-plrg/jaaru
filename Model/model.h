@@ -19,6 +19,30 @@
 #include "snapshot-interface.h"
 #include "reporter.h"
 
+class Execution_Context {
+public:
+	Execution_Context(Execution_Context *mprev,
+										Scheduler * const mscheduler,
+										ModelExecution *mexecution,
+										Thread * minit_thread,
+										snapshot_id msnapshot) :
+		prevContext(mprev),
+		scheduler(mscheduler),
+		execution(mexecution),
+		init_thread(minit_thread),
+		snapshot(msnapshot)
+	{}
+
+	Execution_Context *prevContext;
+	Scheduler * const scheduler;
+	ModelExecution *execution;
+	Thread * init_thread;
+	snapshot_id snapshot;
+
+
+	MEMALLOC
+};
+
 /** @brief The central structure for model-checking */
 class ModelChecker {
 public:
@@ -63,6 +87,7 @@ private:
 	ModelExecution *execution;
 	Thread * init_thread;
 
+	Execution_Context * prevContext;
 	int execution_number;
 
 	unsigned int get_num_threads() const;

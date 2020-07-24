@@ -58,11 +58,12 @@ ModelChecker::ModelChecker() :
 	params(),
 	scheduler(new Scheduler()),
 	execution(new ModelExecution(this, scheduler)),
+	prevContext(NULL),
 	execution_number(1)
 {
 	model_print("PMCheck\n"
 							"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
-							"Written by Hamed Gorjiara and Brian Demsky\n\n");
+							"Written by Hamed Gorjiara, Brian Demsky, Peizhao Ou, Brian Norris, and Weiyu Luo\n\n");
 	memset(&stats,0,sizeof(struct execution_stats));
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
 #ifdef TLS
