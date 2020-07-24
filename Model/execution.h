@@ -103,7 +103,6 @@ private:
 	void add_normal_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
 	void build_may_read_from(ModelAction *curr, SnapVector<ModelAction *> *rf_set);
-	ClockVector * get_hb_from_write(ModelAction *rf) const;
 	ModelAction * convertNonAtomicStore(void*);
 
 #ifdef TLS
@@ -133,8 +132,8 @@ private:
 	 * to a trace of all actions performed on the object. */
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
-	/** Per-object list of writes that each thread performed. These writes are available to all threads */
-	HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> obj_wr_thrd_map;
+	/** Per-object list of writes. These writes are available to all threads */
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_wr_map;
 
 	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;
 	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;

@@ -1,3 +1,3 @@
 #/bin/bash
 
-/scratch/nvm/llvm-project/build/bin/clang -Xclang -load -Xclang /scratch/nvm/llvm-project/build/lib/libPMCPass.so -Wno-unused-command-line-argument -L/scratch/nvm/pmcheck/bin -lpmcheck $@
+/scratch/bdemsky/llvm-project/build/bin/clang -Xclang -load -Xclang /scratch/bdemsky/llvm-project/build/lib/libPMCPass.so -Wno-unused-command-line-argument -L/scratch/bdemsky/pmcheck/bin -lpmcheck $@

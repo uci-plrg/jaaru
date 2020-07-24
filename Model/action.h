@@ -148,8 +148,6 @@ public:
 	Thread * get_thread_operand() const;
 	void create_cv(const ModelAction *parent = NULL);
 	ClockVector * get_cv() const { return cv; }
-	ClockVector * get_rfcv() const { return rf_cv; }
-	void set_rfcv(ClockVector * rfcv) { rf_cv = rfcv; }
 	bool synchronize_with(const ModelAction *act);
 
 	bool has_synchronized_with(const ModelAction *act) const;
@@ -173,7 +171,7 @@ public:
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
 	
-	SNAPSHOTALLOC
+	MEMALLOC
 private:
 	const char * get_type_str() const;
 	const char * get_mo_str() const;
@@ -199,7 +197,6 @@ private:
 	 * vectors for all operations.
 	 */
 	ClockVector *cv;
-	ClockVector *rf_cv;
 	sllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
 	uint64_t value;

@@ -15,15 +15,13 @@
 class ThreadMemory {
 public:
 	ThreadMemory();
-	void addWrite(ModelAction * write);
+ 	void addWrite(ModelAction * write);
 	void getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set);
-	ModelAction * getLastWriteFromSoreBuffer(void *address);
+	ModelAction * getLastWriteFromStoreBuffer(void *address);
 	void addCacheOp(ModelAction *clflush);
 	void applyFence();
-	void persistUntil(ModelAction * act);
-	void executeUntil(ModelAction *action);
 	ModelAction *popFromStoreBuffer();
-	SnapList<CacheLine*>* getCacheLines(void * address) {return obj_to_cachelines.get(address);}
+	CacheLine* getCacheLines(void * address) {return obj_to_cacheline.get(address);}
 	void writeToCacheLine(ModelAction *write);
 
 	SNAPSHOTALLOC;
@@ -37,10 +35,9 @@ private:
 	void emptyStoreBuffer();
 	void persistMemoryBuffer();
 	
-	HashTable<const void *, SnapList<CacheLine*> *, uintptr_t, 2> obj_to_cachelines;
-	CacheLineSet activeCacheLines;
+  HashTable<const void *, CacheLine*, uintptr_t, 2> obj_to_cacheline;
 	SnapList<ModelAction*> storeBuffer;
-	CacheLineSet memoryBuffer;
+  CacheLineSet memoryBuffer;
 };
 
 #endif
