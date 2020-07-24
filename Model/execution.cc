@@ -66,6 +66,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	mutex_map(),
 	cond_map(),
 	thrd_last_action(1),
+        obj_to_cacheline(),
+        memoryBuffer(),
 	priv(new struct model_snapshot_members ()),
 	fuzzer(new Fuzzer()),
 	isfinished(false)
@@ -469,6 +471,40 @@ void ModelExecution::process_memory_fence(ModelAction *curr)
 	get_thread(curr)->getMemory()->applyFence();
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
+
+
+void ModelExecution::persistCacheLine(CacheLine *cacheline) {
+	cacheline->setBeginRange(cacheline->getLastCacheOp()->get_seq_number());
+	cacheline->setLastCacheOp(NULL);
+}
+
+void ModelExecution::persistMemoryBuffer() {
+	CacheLineSetIter *iter = memoryBuffer.iterator();
+	while(iter->hasNext()) {
+		CacheLine *cacheline = iter->next();
+		persistCacheLine(cacheline);
+	}
+	memoryBuffer.reset();
+	delete iter;
+}
+
+void ModelExecution::evictCacheOp(ModelAction *cacheop) {
+	remove_action_from_store_buffer(cacheop);
+	void * loc = cacheop->get_location();
+	CacheLine *cacheline = obj_to_cacheline.get(loc);
+	if(cacheline == NULL) {
+		cacheline = new CacheLine(loc);
+		obj_to_cacheline.put(loc, cacheline);
+	}
+	cacheline->setLastCacheOp(cacheop);
+	if(cacheop->is_clflush()) {
+		persistCacheLine(cacheline);
+		memoryBuffer.remove(cacheline);
+	} else {
+		memoryBuffer.add(cacheline);
+	}
+}
+
 
 /**
  * Process a SFENCE, initializing this operation after being done with emptying memory and store buffers
@@ -890,11 +926,11 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelActi
 	}
 
 	//Otherwise look in previous executions for pre-crash writes
-  for(Execution_Context * prev = model->getPrevContext(); prev != NULL; prev = prev->prevContext) {
-    ModelExecution * pExecution = prev->execution;
-    
+	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev = prev->prevContext) {
+		ModelExecution * pExecution = prev->execution;
 
-  }
+
+	}
 
 }
 

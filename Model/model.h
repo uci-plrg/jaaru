@@ -78,8 +78,8 @@ public:
 	void startChecker();
 	Thread * getInitThread() {return init_thread;}
 	Scheduler * getScheduler() {return scheduler;}
-  Execution_Context * getPrevContext() {return prevContext;}
-  
+	Execution_Context * getPrevContext() {return prevContext;}
+
 	MEMALLOC
 private:
 	/** Snapshot id we return to restart. */

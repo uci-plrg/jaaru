@@ -20,7 +20,6 @@ public:
 	void addOp(ModelAction *act);
 	void applyFence();
 	ModelAction *popFromStoreBuffer();
-	CacheLine* getCacheLines(void * address) {return obj_to_cacheline.get(address);}
 	void writeToCacheLine(ModelAction *write);
 
 	SNAPSHOTALLOC;
@@ -29,14 +28,9 @@ private:
 	void evictWrite(ModelAction *write);
 	void evictNonAtomicWrite(ModelAction *na_write);
 	void executeWriteOperation(ModelAction *write);
-	void evictCacheOp(ModelAction *read);
-	void persistCacheLine(CacheLine *cl);
 	void emptyStoreBuffer();
-	void persistMemoryBuffer();
 
-	HashTable<const void *, CacheLine*, uintptr_t, 2> obj_to_cacheline;
 	SnapList<ModelAction*> storeBuffer;
-	CacheLineSet memoryBuffer;
 };
 
 #endif

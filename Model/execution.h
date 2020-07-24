@@ -79,6 +79,9 @@ public:
 	modelclock_t get_curr_seq_num();
 	void remove_action_from_store_buffer(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
+	void persistCacheLine(CacheLine *cl);
+	void persistMemoryBuffer();
+	void evictCacheOp(ModelAction *cacheop);
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
@@ -140,6 +143,12 @@ private:
 	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;
 
 	SnapVector<ModelAction *> thrd_last_action;
+
+
+	HashTable<const void *, CacheLine*, uintptr_t, 2> obj_to_cacheline;
+	CacheLineSet memoryBuffer;
+	CacheLine* getCacheLine(void * address) {return obj_to_cacheline.get(address);}
+
 
 	/** A special model-checker Thread; used for associating with
 	 *  model-checker-related ModelAcitons */

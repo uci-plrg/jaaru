@@ -9,9 +9,7 @@
 	*((volatile uint ## size ## _t *)obj) = val;
 
 ThreadMemory::ThreadMemory() :
-	obj_to_cacheline(),
-	storeBuffer(),
-	memoryBuffer()
+	storeBuffer()
 {
 }
 
@@ -51,7 +49,7 @@ void ThreadMemory::getWritesFromStoreBuffer(void *address, SnapVector<ModelActio
 
 void ThreadMemory::applyFence() {
 	emptyStoreBuffer();
-	persistMemoryBuffer();
+	model->get_execution()->persistMemoryBuffer();
 }
 
 void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
@@ -61,9 +59,9 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	} else if (act->is_write()) {
 		evictWrite(act);
 	} else if (act->is_sfence()) {
-		persistMemoryBuffer();
+		model->get_execution()->persistMemoryBuffer();
 	} else if (act->is_cache_op()) {
-		evictCacheOp(act);
+		model->get_execution()->evictCacheOp(act);
 	}
 	else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
@@ -133,36 +131,4 @@ void ThreadMemory::evictWrite(ModelAction *writeop)
 	for(int i=0;i < writeop->getOpSize() / 8;i++) {
 		atomraceCheckWrite(writeop->get_tid(), (void *)(((char *)writeop->get_location())+i));
 	}
-}
-
-void ThreadMemory::evictCacheOp(ModelAction *cacheop) {
-	model->get_execution()->remove_action_from_store_buffer(cacheop);
-	void * loc = cacheop->get_location();
-	CacheLine *cacheline = obj_to_cacheline.get(loc);
-	if(cacheline == NULL) {
-		cacheline = new CacheLine(loc);
-		obj_to_cacheline.put(loc, cacheline);
-	}
-	cacheline->setLastCacheOp(cacheop);
-	if(cacheop->is_clflush()) {
-		persistCacheLine(cacheline);
-		memoryBuffer.remove(cacheline);
-	} else {
-		memoryBuffer.add(cacheline);
-	}
-}
-
-void ThreadMemory::persistCacheLine(CacheLine *cacheline) {
-	cacheline->setBeginRange(cacheline->getLastCacheOp()->get_seq_number());
-	cacheline->setLastCacheOp(NULL);
-}
-
-void ThreadMemory::persistMemoryBuffer() {
-	CacheLineSetIter *iter = memoryBuffer.iterator();
-	while(iter->hasNext()) {
-		CacheLine *cacheline = iter->next();
-		persistCacheLine(cacheline);
-	}
-	memoryBuffer.reset();
-	delete iter;
 }
