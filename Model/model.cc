@@ -385,6 +385,21 @@ bool ModelChecker::should_terminate_execution()
 	return false;
 }
 
+void ModelChecker::doCrash() {
+	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, init_thread, snapshot);
+	prevContext = ec;
+	scheduler = new Scheduler();
+	execution = new ModelExecution(this, scheduler);
+	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
+#ifdef TLS
+	init_thread->setTLS((char *)get_tls_addr());
+#endif
+	execution->add_thread(init_thread);
+	scheduler->set_current_thread(init_thread);
+	execution->setParams(&params);
+	snapshot = take_snapshot();
+}
+
 /** @brief Run ModelChecker for the user program */
 void ModelChecker::run()
 {

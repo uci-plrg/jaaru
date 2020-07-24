@@ -22,7 +22,7 @@
 class Execution_Context {
 public:
 	Execution_Context(Execution_Context *mprev,
-										Scheduler * const mscheduler,
+										Scheduler * mscheduler,
 										ModelExecution *mexecution,
 										Thread * minit_thread,
 										snapshot_id msnapshot) :
@@ -34,7 +34,7 @@ public:
 	{}
 
 	Execution_Context *prevContext;
-	Scheduler * const scheduler;
+	Scheduler * scheduler;
 	ModelExecution *execution;
 	Thread * init_thread;
 	snapshot_id snapshot;
@@ -50,6 +50,7 @@ public:
 	~ModelChecker();
 	model_params * getParams();
 	void run();
+	void doCrash();
 
 	/** Exit the model checker, intended for pluggins. */
 	void exit_model_checker();
@@ -83,7 +84,7 @@ private:
 	snapshot_id snapshot;
 
 	/** The scheduler to use: tracks the running/ready Threads */
-	Scheduler * const scheduler;
+	Scheduler * scheduler;
 	ModelExecution *execution;
 	Thread * init_thread;
 
