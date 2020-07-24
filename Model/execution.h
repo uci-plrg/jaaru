@@ -144,11 +144,9 @@ private:
 
 	SnapVector<ModelAction *> thrd_last_action;
 
-
-	HashTable<const void *, CacheLine*, uintptr_t, 2> obj_to_cacheline;
+	HashTable<uintptr_t, CacheLine*, uintptr_t, 6> obj_to_cacheline;
 	CacheLineSet memoryBuffer;
-	CacheLine* getCacheLine(void * address) {return obj_to_cacheline.get(address);}
-
+	CacheLine* getCacheLine(void * address);
 
 	/** A special model-checker Thread; used for associating with
 	 *  model-checker-related ModelAcitons */

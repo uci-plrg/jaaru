@@ -21,16 +21,17 @@ public:
 	modelclock_t getEndRange(){ return endR; }
 	ModelAction * getLastCacheOp() { return lastCacheOp; }
 	void setLastCacheOp(ModelAction *clop) { lastCacheOp = clop; }
+	ModelAction * getLastWrite() { return lastWrite; }
+	void setLastWrite(ModelAction *clwr) { lastWrite = clwr; }
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
-	void setEndRange (modelclock_t end) { endR = end; }
+	void setEndRange(modelclock_t end) { endR = end; }
 
 	SNAPSHOTALLOC;
 private:
 	uintptr_t id;
-	//Only contains the clock time of 1) the write that a read may read from 2) read clock
 	modelclock_t beginR;
-	// It should the clock of the last CLWB, when there is a RMW or Fence
 	modelclock_t endR;
+	ModelAction *lastWrite;
 	ModelAction *lastCacheOp;
 };
 

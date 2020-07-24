@@ -15,12 +15,13 @@
 class ThreadMemory {
 public:
 	ThreadMemory();
-	void getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set);
-	ModelAction * getLastWriteFromStoreBuffer(void *address);
+	ModelAction * getLastWriteFromStoreBuffer(ModelAction *read);
+	void addCacheOp(ModelAction *act);
 	void addOp(ModelAction *act);
-	void applyFence();
+	void addWrite(ModelAction *act);
 	ModelAction *popFromStoreBuffer();
 	void writeToCacheLine(ModelAction *write);
+	void emptyStoreBuffer();
 
 	SNAPSHOTALLOC;
 private:
@@ -28,9 +29,9 @@ private:
 	void evictWrite(ModelAction *write);
 	void evictNonAtomicWrite(ModelAction *na_write);
 	void executeWriteOperation(ModelAction *write);
-	void emptyStoreBuffer();
 
+	ModelAction *lastRead;
 	SnapList<ModelAction*> storeBuffer;
+	HashTable<uintptr_t, ModelAction *, uintptr_t, 6> obj_to_last_write;
 };
-
 #endif

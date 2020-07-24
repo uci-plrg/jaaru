@@ -9,19 +9,33 @@
 	*((volatile uint ## size ## _t *)obj) = val;
 
 ThreadMemory::ThreadMemory() :
-	storeBuffer()
+	storeBuffer(),
+	obj_to_last_write()
 {
 }
 
-/** Adds CFLUSH, WRITE, CFLUSHOPT, or SFENCE to the store buffer. */
+/** Adds CFLUSH or CFLUSHOPT to the store buffer. */
 
-void ThreadMemory::addOp(ModelAction * write)
+void ThreadMemory::addCacheOp(ModelAction * act) {
+	storeBuffer.push_back(act);
+	ModelAction *lastWrite = obj_to_last_write.get(getCacheID(act->get_location()));
+	//TOOD: set last write and read in act
+}
+
+void ThreadMemory::addOp(ModelAction * act) {
+	storeBuffer.push_back(act);
+}
+
+void ThreadMemory::addWrite(ModelAction * write)
 {
 	storeBuffer.push_back(write);
+	obj_to_last_write.put(getCacheID(write->get_location()), write);
 }
 
-ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(void *address)
+ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read)
 {
+	void *address = read->get_location();
+	lastRead = read;
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *write = rit->getVal();
@@ -30,26 +44,6 @@ ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(void *address)
 		}
 	}
 	return NULL;
-}
-
-/**
- * Getting all the stores to the location from the store buffer.
- * */
-void ThreadMemory::getWritesFromStoreBuffer(void *address, SnapVector<ModelAction *> * rf_set)
-{
-	DEBUG("Store Buffer Size = %u, Address requested %p\n", storeBuffer.size(), address);
-	sllnode<ModelAction *> * rit;
-	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
-		ModelAction *write = rit->getVal();
-		if(write->is_write() && write->get_location() == address) {
-			rf_set->push_back(write);
-		}
-	}
-}
-
-void ThreadMemory::applyFence() {
-	emptyStoreBuffer();
-	model->get_execution()->persistMemoryBuffer();
 }
 
 void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
@@ -62,8 +56,7 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		model->get_execution()->persistMemoryBuffer();
 	} else if (act->is_cache_op()) {
 		model->get_execution()->evictCacheOp(act);
-	}
-	else {
+	} else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
 		ASSERT(0);
 	}

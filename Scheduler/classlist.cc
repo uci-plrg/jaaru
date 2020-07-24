@@ -7,7 +7,7 @@ unsigned int cacheLineHashFunction ( CacheLine *cl)
 {
 	if(cl == NULL)
 		return 0;
-	return (unsigned int) cl->getId();
+	return ((unsigned int) cl->getId()) >> 6;
 }
 
 bool cacheLineEquals(CacheLine *c1, CacheLine *c2)

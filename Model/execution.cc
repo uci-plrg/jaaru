@@ -66,8 +66,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	mutex_map(),
 	cond_map(),
 	thrd_last_action(1),
-        obj_to_cacheline(),
-        memoryBuffer(),
+	obj_to_cacheline(),
+	memoryBuffer(),
 	priv(new struct model_snapshot_members ()),
 	fuzzer(new Fuzzer()),
 	isfinished(false)
@@ -443,10 +443,11 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 void ModelExecution::process_write(ModelAction *curr) {
 	ASSERT(curr->is_write());
 	if(curr->is_rmw()) {	// curr is modified second part of a RMW and must be recorded
-		get_thread(curr)->getMemory()->addOp(curr);
-		get_thread(curr)->getMemory()->applyFence();
+		get_thread(curr)->getMemory()->addWrite(curr);
+		get_thread(curr)->getMemory()->emptyStoreBuffer();
+		persistMemoryBuffer();
 	} else {	//curr is just an atomic write
-		get_thread(curr)->getMemory()->addOp(curr);
+		get_thread(curr)->getMemory()->addWrite(curr);
 	}
 }
 
@@ -457,7 +458,7 @@ void ModelExecution::process_write(ModelAction *curr) {
  */
 void ModelExecution::process_cache_op(ModelAction *curr) {
 	ASSERT(curr->is_cache_op());
-	get_thread(curr)->getMemory()->addOp(curr);
+	get_thread(curr)->getMemory()->addCacheOp(curr);
 }
 
 /**
@@ -468,7 +469,8 @@ void ModelExecution::process_cache_op(ModelAction *curr) {
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
 	ASSERT(curr->is_mfence());
-	get_thread(curr)->getMemory()->applyFence();
+	get_thread(curr)->getMemory()->emptyStoreBuffer();
+	persistMemoryBuffer();
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
 
@@ -491,11 +493,7 @@ void ModelExecution::persistMemoryBuffer() {
 void ModelExecution::evictCacheOp(ModelAction *cacheop) {
 	remove_action_from_store_buffer(cacheop);
 	void * loc = cacheop->get_location();
-	CacheLine *cacheline = obj_to_cacheline.get(loc);
-	if(cacheline == NULL) {
-		cacheline = new CacheLine(loc);
-		obj_to_cacheline.put(loc, cacheline);
-	}
+	CacheLine *cacheline = getCacheLine(loc);
 	cacheline->setLastCacheOp(cacheop);
 	if(cacheop->is_clflush()) {
 		persistCacheLine(cacheline);
@@ -505,6 +503,14 @@ void ModelExecution::evictCacheOp(ModelAction *cacheop) {
 	}
 }
 
+CacheLine* ModelExecution::getCacheLine(void * address) {
+	CacheLine * cl = obj_to_cacheline.get(getCacheID(address));
+	if (cl == NULL) {
+		cl = new CacheLine(address);
+		obj_to_cacheline.put(getCacheID(address), cl);
+	}
+	return cl;
+}
 
 /**
  * Process a SFENCE, initializing this operation after being done with emptying memory and store buffers
@@ -695,7 +701,8 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		// Swap with previous rmw_read action and delete the second part.
 		curr = swap_rmw_write_part(curr);
 	} else if(curr->is_locked_operation()) {
-		get_thread(curr)->getMemory()->applyFence();
+		get_thread(curr)->getMemory()->emptyStoreBuffer();
+		persistMemoryBuffer();
 	} if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
 		SnapVector<ModelAction *> rf_set;
 		build_may_read_from(curr, &rf_set);
@@ -719,9 +726,9 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 	if (curr->is_write())  {	//Processing RMW, and different types of writes
 		process_write(curr);
-		if(curr->is_seqcst())
-		{
-			get_thread(curr)->getMemory()->applyFence();
+		if(curr->is_seqcst()) {
+			get_thread(curr)->getMemory()->emptyStoreBuffer();
+			persistMemoryBuffer();
 		}
 	} else if (curr->is_cache_op()) {	//CLFLUSH, CLFLUSHOPT
 		process_cache_op(curr);
@@ -903,7 +910,7 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
 void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAction *>* rf_set)
 {
 	ASSERT(curr->is_read());
-	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr->get_location());
+	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr);
 
 	if (lastWrite != NULL) {
 		//There is a write in the current thread's store buffer, and the read is going to read from that
