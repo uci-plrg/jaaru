@@ -9,11 +9,11 @@
 #define PMCHECKSTORE(size)                                                                      		\
 	void pmc_store ## size (void *addrs, uint ## size ## _t val){                          		 		\
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);                                 					\
-		if(!model)																						\
-			return;																						\
+		createModelIfNotExist();																		\
 		Thread *thread = thread_current();           											\
-		ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread, size);	\
-		thread->getMemory()->addWrite(act);																\
+		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread, size);	\
+		model->switch_to_master(action);                                                                                        \
+		*((uint ## size ## _t *)addrs) = val;                                                                            \
 	}
 
 PMCHECKSTORE(8)
@@ -25,12 +25,14 @@ PMCHECKSTORE(64)
 // PMC Non-Atomic Load
 
 #define PMCHECKLOAD(size)                                                                      	        \
-	void pmc_load ## size (void *addrs) {                                                               \
+	uint ## size ## _t pmc_load ## size (void *addrs) {                                                               \
 		DEBUG("pmc_load%u:addr = %p\n", size, addrs);                                                   \
-		if(!model)																						\
-			return;																						\
+		createModelIfNotExist();																		\
+		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, size);                          \
+		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                                             \
 		thread_id_t tid = thread_current()->get_id();           										\
 		raceCheckRead ## size (tid, (void *)(((uintptr_t)addrs)));                                      \
+		return val;																						\
 	}
 
 PMCHECKLOAD(8)
