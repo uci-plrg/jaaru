@@ -237,12 +237,17 @@ bool ModelAction::is_nonatomic_write() const
 
 bool ModelAction::is_cache_op() const
 {
-	return type == ACTION_CLWB || type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
+	return type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
 }
 
-bool ModelAction::is_memory_fence() const
+bool ModelAction::is_memory_mfence() const
 {
-	return type == CACHE_MFENCE || type == CACHE_SFENCE;
+	return type == CACHE_MFENCE;
+}
+
+bool ModelAction::is_memory_fsence() const
+{
+	return type == CACHE_SFENCE;
 }
 
 bool ModelAction::is_clflush() const
@@ -635,7 +640,6 @@ const char * ModelAction::get_type_str() const
 	case ATOMIC_NOTIFY_ONE: return "notify one";
 	case ATOMIC_NOTIFY_ALL: return "notify all";
 	case ATOMIC_ANNOTATION: return "annotation";
-	case ACTION_CLWB: return "clwb";
 	case ACTION_CLFLUSH: return "clflush";
 	case ACTION_CLFLUSHOPT: return "clflushopt";
 	case CACHE_MFENCE: return "mfence";

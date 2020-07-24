@@ -467,7 +467,7 @@ void ModelExecution::process_cache_op(ModelAction *curr)
  */
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
-	ASSERT(curr->is_memory_fence());
+	ASSERT(curr->is_memory_mfence());
 	get_thread(curr)->getMemory()->applyFence();
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
@@ -657,11 +657,11 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		SnapVector<ModelAction *> rf_set;
 		build_may_read_from(curr, &rf_set);
 		process_read(curr, &rf_set);
-	}
-	if (curr->is_memory_fence()) {
+	} else if (curr->is_memory_mfence()) {
 		process_memory_fence(curr);
 	}
-	if(!curr->is_read() && !curr->is_write() && !curr->is_cache_op()){
+
+  if(!curr->is_read() && !curr->is_write() && !curr->is_cache_op()){
 		initialize_curr_action(curr);
 	}
 	// All operation except write and cache operation will update the thread local data.
@@ -670,18 +670,16 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		wake_up_sleeping_actions(curr);
 	}
 	process_thread_action(curr);
-	if (curr->is_write()) 
-	{ //Processing RMW, and different types of writes
+
+	if (curr->is_write())  { //Processing RMW, and different types of writes
 		process_write(curr);
 		if(curr->is_seqcst())
 		{
 			get_thread(curr)->getMemory()->applyFence();
 		}
-	}
-	if (curr->is_cache_op()) {//CLFLUSH, CLWB, CLFLUSHOPT
+	} else if (curr->is_cache_op()) {//CLFLUSH, CLFLUSHOPT
 		process_cache_op(curr);
-	}
-	if (curr->is_mutex_op()) {
+	} else if (curr->is_mutex_op()) {
 		process_mutex(curr);
 	}
 	return curr;
