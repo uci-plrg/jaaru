@@ -476,7 +476,20 @@ void ModelExecution::process_memory_fence(ModelAction *curr)
 
 
 void ModelExecution::persistCacheLine(CacheLine *cacheline) {
-	cacheline->setBeginRange(cacheline->getLastCacheOp()->get_seq_number());
+	ModelAction * clflush = cacheline->getLastCacheOp();
+	if (clflush->is_clflush()) {
+		cacheline->setBeginRange(clflush->get_seq_number());
+	} else {
+		modelclock_t lastcommittedWrite = clflush->get_last_write();
+		ModelAction * lastwrite = clflush->get_reads_from();
+		modelclock_t earliestclock = clflush->get_last_clflush();
+		if (lastwrite != NULL && lastwrite->get_seq_number() > earliestclock)
+			earliestclock = lastwrite->get_seq_number();
+		if (lastcommittedWrite > earliestclock)
+			earliestclock = lastcommittedWrite;
+
+		cacheline->setBeginRange(earliestclock);
+	}
 	cacheline->setLastCacheOp(NULL);
 }
 

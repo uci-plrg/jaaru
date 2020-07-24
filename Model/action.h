@@ -102,6 +102,7 @@ public:
 	uint64_t get_write_value() const;
 	uint64_t get_return_value() const;
 	ModelAction * get_reads_from() const { return reads_from; }
+	modelclock_t get_last_write() const { return lastcommittedWrite; };
 	uint64_t get_time() const {return time;}
 	pmc::mutex * get_mutex() const;
 
@@ -170,6 +171,11 @@ public:
 	void set_thread_operand(Thread *th) { thread_operand = th; }
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
+	void setLastWrites(modelclock_t mlastcommittedWrite, ModelAction *write) {
+		lastcommittedWrite = mlastcommittedWrite;
+		reads_from = write;
+	}
+	modelclock_t get_last_clflush() { return last_clflush; }
 
 	MEMALLOC
 private:
@@ -187,8 +193,10 @@ private:
 	 * Only valid for reads
 	 */
 	ModelAction *reads_from;
-	uint64_t time;	//used for sleep
-
+	union {
+		uint64_t time;	//used for sleep
+		modelclock_t lastcommittedWrite;
+	};
 /**
  * @brief The clock vector for this operation
  *
@@ -199,8 +207,10 @@ private:
 	ClockVector *cv;
 	sllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
-	uint64_t value;
-
+	union {
+		uint64_t value;
+		modelclock_t last_clflush;
+	};
 	/** @brief Type of action (read, write, RMW, fence, thread create, etc.) */
 	action_type type;
 

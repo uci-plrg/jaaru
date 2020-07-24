@@ -30,8 +30,9 @@ private:
 	void evictNonAtomicWrite(ModelAction *na_write);
 	void executeWriteOperation(ModelAction *write);
 
-	ModelAction *lastRead;
 	SnapList<ModelAction*> storeBuffer;
 	HashTable<uintptr_t, ModelAction *, uintptr_t, 6> obj_to_last_write;
+	modelclock_t lastclflush_clock;
+
 };
 #endif

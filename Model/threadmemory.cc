@@ -10,7 +10,8 @@
 
 ThreadMemory::ThreadMemory() :
 	storeBuffer(),
-	obj_to_last_write()
+	obj_to_last_write(),
+	lastclflush_clock(0)
 {
 }
 
@@ -19,7 +20,7 @@ ThreadMemory::ThreadMemory() :
 void ThreadMemory::addCacheOp(ModelAction * act) {
 	storeBuffer.push_back(act);
 	ModelAction *lastWrite = obj_to_last_write.get(getCacheID(act->get_location()));
-	//TOOD: set last write and read in act
+	act->setLastWrites(model->get_execution()->get_curr_seq_num(), lastWrite);
 }
 
 void ThreadMemory::addOp(ModelAction * act) {
@@ -35,7 +36,6 @@ void ThreadMemory::addWrite(ModelAction * write)
 ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read)
 {
 	void *address = read->get_location();
-	lastRead = read;
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *write = rit->getVal();
@@ -55,6 +55,9 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	} else if (act->is_sfence()) {
 		model->get_execution()->persistMemoryBuffer();
 	} else if (act->is_cache_op()) {
+		if (act->is_clflush()) {
+			lastclflush_clock = model->get_execution()->get_curr_seq_num();
+		}
 		model->get_execution()->evictCacheOp(act);
 	} else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
