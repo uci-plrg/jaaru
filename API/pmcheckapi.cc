@@ -13,7 +13,7 @@
 			return;                                                                                                                                                                         \
 		Thread *thread = thread_current();                                                                                              \
 		ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread, size);   \
-		thread->getMemory()->addWrite(act);                                                                                                                             \
+		thread->getMemory()->addOp(act);                                                                                                                             \
 	}
 
 PMCHECKSTORE(8)
