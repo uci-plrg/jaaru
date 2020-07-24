@@ -442,9 +442,8 @@ void ModelExecution::process_write(ModelAction *curr)
 {
 	ASSERT(curr->is_write());
 	if(curr->is_rmw()) { // curr is modified second part of a RMW and must be recorded
-		add_write_to_lists(curr);
-		get_thread(curr)->getMemory()->writeToCacheLine(curr);
-		get_thread(curr)->set_return_value(VALUE_NONE);
+		get_thread(curr)->getMemory()->addWrite(curr);
+                get_thread(curr)->getMemory()->applyFence();
 	} else { //curr is just an atomic write
 		get_thread(curr)->getMemory()->addWrite(curr);
 	}
