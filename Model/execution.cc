@@ -889,7 +889,13 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelActi
 		return;
 	}
 
-	//Otherwise look in previous  executionsfor pre-crash writes
+	//Otherwise look in previous executions for pre-crash writes
+  for(Execution_Context * prev = model->getPrevContext(); prev != NULL; prev = prev->prevContext) {
+    ModelExecution * pExecution = prev->execution;
+    
+
+  }
+
 }
 
 static void print_list(action_list_t *list)
