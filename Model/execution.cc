@@ -286,12 +286,12 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  * @param rf_set is the set of model actions we can possibly read from
  * @return True if the read can be pruned from the thread map list.
  */
-void ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set) {
+void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > * rf_set) {
 	ASSERT(curr->is_read());
 	// Check to read from non-atomic stores if there is one
 
 	ASSERT(rf_set->size() > 0);
-	ModelAction *rf = (*rf_set)[0];
+	ModelAction *rf = (*rf_set)[0].p2;
 
 	ASSERT(rf);
 	ASSERT(rf->is_write());
@@ -699,7 +699,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		get_thread(curr)->getMemory()->emptyStoreBuffer();
 		get_thread(curr)->getMemory()->emptyFlushBuffer();
 	} if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
-		SnapVector<ModelAction *> rf_set;
+		SnapVector<Pair<ModelExecution *, ModelAction *> > rf_set;
 		build_may_read_from(curr, &rf_set);
 		process_read(curr, &rf_set);
 	} else if (curr->is_mfence()) {
@@ -902,28 +902,28 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
  * @param curr is the current ModelAction that we are exploring; it must be a
  * 'read' operation.
  */
-void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelAction *>* rf_set)
+void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> >* rf_set)
 {
 	ASSERT(curr->is_read());
 	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr);
 
 	if (lastWrite != NULL) {
 		//There is a write in the current thread's store buffer, and the read is going to read from that
-		rf_set->push_back(lastWrite);
+		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, lastWrite));
 		return;
 	}
 	simple_action_list_t * list = obj_wr_map.get(curr->get_location());
 
 	if (list != NULL) {
 		//Otherwise return last write to cache
-		rf_set->push_back(list->back());
+		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, list->back()));
 		return;
 	}
 
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
 		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
-		rf_set->push_back(nonatomicstore);
+		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
 		return;
 	}
 
@@ -947,7 +947,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelActi
 
 			//We can see this write
 
-			rf_set->push_back(write);
+			rf_set->push_back(Pair<ModelExecution *, ModelAction *>(pExecution, write));
 
 			//See if this write happened before last cache line flush
 			if (clock < begin) {

@@ -93,7 +93,7 @@ private:
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	void initialize_curr_action(ModelAction *curr);
-	void process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
+	void process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > * rf_set);
 	void process_write(ModelAction *curr);
 	ModelAction * swap_rmw_write_part(ModelAction *act);
 	void process_cache_op(ModelAction *curr);
@@ -105,7 +105,7 @@ private:
 	void update_thread_local_data(ModelAction *act);
 	void add_normal_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
-	void build_may_read_from(ModelAction *curr, SnapVector<ModelAction *> *rf_set);
+	void build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rf_set);
 	ModelAction * convertNonAtomicStore(void*);
 
 #ifdef TLS
