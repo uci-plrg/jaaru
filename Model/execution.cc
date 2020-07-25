@@ -915,7 +915,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelActi
 	simple_action_list_t * list = obj_wr_map.get(curr->get_location());
 
 	if (list != NULL) {
-		//Otherwise return  last write to cache
+		//Otherwise return last write to cache
 		rf_set->push_back(list->back());
 		return;
 	}
@@ -927,13 +927,35 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<ModelActi
 		return;
 	}
 
+	//TODO: If not in persistent area, we should stop here...
+
+	void * address = curr->get_location();
+	uintptr_t cacheid = getCacheID(address);
 	//Otherwise look in previous executions for pre-crash writes
 	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev = prev->prevContext) {
 		ModelExecution * pExecution = prev->execution;
+		CacheLine * cl = pExecution->obj_to_cacheline.get(cacheid);
+		modelclock_t begin = cl->getBeginRange();
+		modelclock_t end = cl->getEndRange();
+		simple_action_list_t * writes = pExecution->obj_wr_map.get(address);
+		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
+			ModelAction * write = it->getVal();
+			modelclock_t clock = write->get_seq_number();
+			//see if write happens after cache line persistence
+			if (end != 0 && clock > end)
+				continue;
 
+			//We can see this write
 
+			rf_set->push_back(write);
+
+			//See if this write happened before last cache line flush
+			if (clock < begin) {
+				//done with search and don't need to look at previous executions
+				return;
+			}
+		}
 	}
-
 }
 
 static void print_list(action_list_t *list)
