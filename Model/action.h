@@ -178,7 +178,7 @@ public:
 	modelclock_t get_last_clflush() { return last_clflush; }
 	void set_last_clflush(modelclock_t mlast_clflush) { last_clflush = mlast_clflush; }
 
-	MEMALLOC
+	SNAPSHOTALLOC
 private:
 	const char * get_type_str() const;
 	const char * get_mo_str() const;

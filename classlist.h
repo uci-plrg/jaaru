@@ -20,6 +20,10 @@ class ClockVector;
 class Fuzzer;
 class ModelChecker;
 class actionlist;
+class Node;
+class NodeStack;
+
+struct bug_message;
 
 typedef SnapList<ModelAction *> simple_action_list_t;
 typedef actionlist action_list_t;

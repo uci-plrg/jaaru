@@ -4,10 +4,9 @@ PMCheck: A modle checker for persistent memory
 TODO List
 ---------
 
-1) Cacheline range constraining based on reads
-2) Search algorithm
-3) Support for normal reads that span multiple writes
-4) Constraint randomness for schedule so that search algorithm works correctly (restore seed)
+1) Search algorithm
+2) Support for normal reads that span multiple writes
+3) Constraint randomness for schedule so that search algorithm works correctly (restore seed)
 
 
 PMCheck is a tool for testing persistent memory tools. It is fast because it lazily simulate crashes in the code. 
