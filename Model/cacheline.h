@@ -29,7 +29,13 @@ public:
 	SNAPSHOTALLOC;
 private:
 	uintptr_t id;
+	//earliest point at which the cache line could have been written
+	//out...  Incluside, so this includes write with beginR sequence
+	//number
 	modelclock_t beginR;
+	//last point at which the cache line could have been
+	//persisted. Inclusive, so this includes write with endR sequence
+	//number
 	modelclock_t endR;
 	ModelAction *lastWrite;
 	ModelAction *lastCacheOp;

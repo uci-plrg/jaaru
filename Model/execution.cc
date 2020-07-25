@@ -291,7 +291,47 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 	// Check to read from non-atomic stores if there is one
 
 	ASSERT(rf_set->size() > 0);
+	ModelExecution *exec = (*rf_set)[0].p1;
 	ModelAction *rf = (*rf_set)[0].p2;
+
+	if (exec != this) {
+		//Not this execution, so we need to walk list
+		void * address = curr->get_location();
+
+		for(Execution_Context * pExecution = model->getPrevContext();;pExecution=pExecution->prevContext) {
+			ModelExecution * pexec = pExecution->execution;
+
+			simple_action_list_t * writes = pexec->obj_wr_map.get(address);
+			if (writes == NULL)
+				continue;
+
+			CacheLine * cl = pexec->getCacheLine(address);
+
+			modelclock_t currend = cl->getEndRange();
+
+			if (pexec == exec) {
+				modelclock_t currbegin = cl->getBeginRange();
+				if (currbegin < curr->get_seq_number())
+					cl->setBeginRange(curr->get_seq_number());
+				sllnode<ModelAction *> * node = curr->getActionRef();
+				sllnode<ModelAction *> * nextNode = node->getNext();
+				if (nextNode!=NULL) {
+					modelclock_t nextclock = nextNode->getVal()->get_seq_number();
+					if (currend == 0 || nextclock <= currend)
+						cl->setEndRange(nextclock-1);
+				}
+				break;
+			}
+
+			//Didn't read from this execution, so cache line must not
+			//have been written out after first write from this
+			//execution...
+			ModelAction *first = writes->begin()->getVal();
+
+			if (currend == 0 || first->get_seq_number() <= currend)
+				cl->setEndRange(first->get_seq_number()-1);
+		}
+	}
 
 	ASSERT(rf);
 	ASSERT(rf->is_write());
@@ -938,6 +978,8 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 		modelclock_t begin = cl->getBeginRange();
 		modelclock_t end = cl->getEndRange();
 		simple_action_list_t * writes = pExecution->obj_wr_map.get(address);
+		if (writes == NULL)
+			continue;
 		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
 			ModelAction * write = it->getVal();
 			modelclock_t clock = write->get_seq_number();
