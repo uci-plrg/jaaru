@@ -37,7 +37,6 @@ public:
 	Thread * init_thread;
 	snapshot_id snapshot;
 
-
 	MEMALLOC
 };
 

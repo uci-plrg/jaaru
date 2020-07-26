@@ -153,12 +153,14 @@ void NodeStack::reset_execution() {
 
 Node * NodeStack::explore_next(SnapVector<Pair<ModelExecution *, ModelAction *> > * rf_set) {
 	Node * node = get_next();
-	if (node == NULL)
+	if (node == NULL) {
 		node = create_node(rf_set);
-	else {
+	} else {
 		ASSERT(((int)rf_set->size()) == node->read_from_size());
 		if (node == curr_backtrack) {
 			node->increment_read_from();
+			pop_restofstack(1);	//dump other nodes...
+			curr_backtrack = NULL;
 		}
 	}
 	if (!node->read_from_empty())

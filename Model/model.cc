@@ -95,17 +95,7 @@ model_params * ModelChecker::getParams() {
  * Restores user program to initial state and resets all model-checker data
  * structures.
  */
-void ModelChecker::reset_to_initial_state()
-{
-
-	/**
-	 * FIXME: if we utilize partial rollback, we will need to free only
-	 * those pending actions which were NOT pending before the rollback
-	 * point
-	 */
-	for (unsigned int i = 0;i < get_num_threads();i++)
-		delete get_thread(int_to_id(i))->get_pending();
-
+void ModelChecker::reset_to_initial_state() {
 	snapshot_roll_back(snapshot);
 }
 
@@ -286,8 +276,29 @@ bool ModelChecker::next_execution() {
 	else
 		clear_program_output();
 
-// test code
 	execution_number ++;
+
+	//See if we are done...
+	if (!nodestack->has_another_execution()) {
+		//last execution on this stack...need to reset
+		if (prevContext == NULL) {
+			//really done
+			return false;
+		}
+		//Only need to delete nodestack...rest are snapshotting
+		delete nodestack;
+		scheduler = prevContext->scheduler;
+		execution  = prevContext->execution;
+		nodestack = prevContext->nodestack;
+		init_thread = prevContext->init_thread;
+		snapshot = prevContext->snapshot;
+		Execution_Context * tmp = prevContext->prevContext;
+		delete prevContext;
+		prevContext = tmp;
+	} else {
+		//reset nodestack for next execution
+		nodestack->reset_execution();
+	}
 	reset_to_initial_state();
 	return true;
 }
@@ -297,8 +308,7 @@ bool ModelChecker::next_execution() {
  * @param tid The Thread's ID
  * @return A Thread reference
  */
-Thread * ModelChecker::get_thread(thread_id_t tid) const
-{
+Thread * ModelChecker::get_thread(thread_id_t tid) const {
 	return execution->get_thread(tid);
 }
 
@@ -307,8 +317,7 @@ Thread * ModelChecker::get_thread(thread_id_t tid) const
  * @param act The ModelAction
  * @return A Thread reference
  */
-Thread * ModelChecker::get_thread(const ModelAction *act) const
-{
+Thread * ModelChecker::get_thread(const ModelAction *act) const {
 	return execution->get_thread(act);
 }
 
@@ -319,8 +328,7 @@ Thread * ModelChecker::get_thread(const ModelAction *act) const
  *
  * @param thread The user-thread to switch to
  */
-void ModelChecker::switch_from_master(Thread *thread)
-{
+void ModelChecker::switch_from_master(Thread *thread) {
 	scheduler->set_current_thread(thread);
 	Thread::swap(&system_context, thread);
 }
@@ -336,8 +344,7 @@ void ModelChecker::switch_from_master(Thread *thread)
  * ModelExecution::has_asserted).
  * @return Return the value returned by the current action
  */
-uint64_t ModelChecker::switch_to_master(ModelAction *act)
-{
+uint64_t ModelChecker::switch_to_master(ModelAction *act) {
 	if (modellock) {
 		static bool fork_message_printed = false;
 
