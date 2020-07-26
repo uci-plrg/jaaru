@@ -59,6 +59,7 @@ ModelChecker::ModelChecker() :
 	params(),
 	scheduler(new Scheduler()),
 	execution(new ModelExecution(this, scheduler)),
+	nodestack(new NodeStack()),
 	prevContext(NULL),
 	execution_number(1)
 {

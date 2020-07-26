@@ -735,6 +735,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	} else if(curr->is_locked_operation()) {
 		get_thread(curr)->getMemory()->emptyStoreBuffer();
 		get_thread(curr)->getMemory()->emptyFlushBuffer();
+		initialize_curr_action(curr);
 	} else if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
 		handle_read(curr);
 	} else if (curr->is_mfence()) {
@@ -743,7 +744,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	} else if (curr->is_sfence()) {
 		process_store_fence(curr);
 		initialize_curr_action(curr);
-	} else if(!curr->is_read() && !curr->is_write() && !curr->is_cache_op()) {
+	} else if(!curr->is_write() && !curr->is_cache_op()) {
 		initialize_curr_action(curr);
 	}
 

@@ -156,7 +156,7 @@ Node * NodeStack::explore_next(SnapVector<Pair<ModelExecution *, ModelAction *> 
 	if (node == NULL) {
 		node = create_node(rf_set);
 	} else {
-		ASSERT(((int)rf_set->size()) == node->read_from_size());
+		ASSERT(((int)rf_set->size()) == node->get_read_from_size());
 		if (node == curr_backtrack) {
 			node->increment_read_from();
 			pop_restofstack(1);	//dump other nodes...

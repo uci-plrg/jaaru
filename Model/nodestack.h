@@ -29,7 +29,6 @@ public:
 
 	void increment_read_from();
 	bool read_from_empty() const;
-	int read_from_size() const;
 	void print_read_from();
 	int get_read_from() const;
 	int get_read_from_size() const;
