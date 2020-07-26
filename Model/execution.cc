@@ -16,6 +16,7 @@
 #include "mutex.h"
 #include "threadmemory.h"
 #include "cacheline.h"
+#include "nodestack.h"
 
 #define INITIAL_THREAD_ID       0
 
@@ -286,13 +287,9 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
  * @param rf_set is the set of model actions we can possibly read from
  * @return True if the read can be pruned from the thread map list.
  */
-void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > * rf_set) {
+void ModelExecution::process_read(ModelAction *curr, ModelExecution *exec, ModelAction *rf) {
 	ASSERT(curr->is_read());
 	// Check to read from non-atomic stores if there is one
-
-	ASSERT(rf_set->size() > 0);
-	ModelExecution *exec = (*rf_set)[0].p1;
-	ModelAction *rf = (*rf_set)[0].p2;
 
 	if (exec != this) {
 		//Not this execution, so we need to walk list
@@ -738,10 +735,8 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	} else if(curr->is_locked_operation()) {
 		get_thread(curr)->getMemory()->emptyStoreBuffer();
 		get_thread(curr)->getMemory()->emptyFlushBuffer();
-	} if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
-		SnapVector<Pair<ModelExecution *, ModelAction *> > rf_set;
-		build_may_read_from(curr, &rf_set);
-		process_read(curr, &rf_set);
+	} else if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
+		handle_read(curr);
 	} else if (curr->is_mfence()) {
 		process_memory_fence(curr);
 		initialize_curr_action(curr);
@@ -771,6 +766,21 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		process_mutex(curr);
 	}
 	return curr;
+}
+
+void ModelExecution::handle_read(ModelAction *curr) {
+	SnapVector<Pair<ModelExecution *, ModelAction *> > rf_set;
+	build_may_read_from(curr, &rf_set);
+	int index = 0;
+
+	if (rf_set.size() != 1) {
+		//Have to make decision of what to do
+		NodeStack *stack = model->getNodeStack();
+		Node * nextnode = stack->explore_next(&rf_set);
+		index = nextnode->get_read_from();
+	}
+
+	process_read(curr, rf_set[index].p1, rf_set[index].p2);
 }
 
 /**

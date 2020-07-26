@@ -21,12 +21,7 @@
 
 class Execution_Context {
 public:
-	Execution_Context(Execution_Context *mprev,
-										Scheduler * mscheduler,
-										ModelExecution *mexecution,
-										NodeStack *mnodestack,
-										Thread * minit_thread,
-										snapshot_id msnapshot) :
+	Execution_Context(Execution_Context *mprev, Scheduler * mscheduler, ModelExecution *mexecution, NodeStack *mnodestack, Thread * minit_thread, snapshot_id msnapshot) :
 		prevContext(mprev),
 		scheduler(mscheduler),
 		execution(mexecution),
@@ -82,6 +77,7 @@ public:
 	Thread * getInitThread() {return init_thread;}
 	Scheduler * getScheduler() {return scheduler;}
 	Execution_Context * getPrevContext() {return prevContext;}
+	NodeStack * getNodeStack() {return nodestack;}
 
 	MEMALLOC
 private:
@@ -99,7 +95,7 @@ private:
 
 	unsigned int get_num_threads() const;
 
-	void finish_execution(bool moreexecutions);
+	bool next_execution();
 	bool should_terminate_execution();
 
 	Thread * get_next_thread();

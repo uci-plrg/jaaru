@@ -24,33 +24,26 @@
  */
 class Node {
 public:
-	Node(Node *par);
+	Node(int mrf_size);
 	~Node();
 
-	/** @return the parent Node to this Node; that is, the action that
-	 * occurred previously in the stack. */
-	Node * get_parent() const { return parent; }
-
-	bool increment_read_from();
+	void increment_read_from();
 	bool read_from_empty() const;
-	unsigned int read_from_size() const;
+	int read_from_size() const;
 	void print_read_from();
-	void add_read_from(ModelExecution *Execution, ModelAction *act);
-	ModelAction * get_read_from() const;
-	ModelAction * get_read_from(int i) const;
+	int get_read_from() const;
 	int get_read_from_size() const;
 	void print() const;
 
 	MEMALLOC
 private:
-	Node * const parent;
 
 	/**
 	 * The set of past ModelActions that this the action at this Node may
 	 * read from. Only meaningful if this Node represents a 'read' action.
 	 */
-	ModelVector<Pair<ModelExecution *, ModelAction *> > read_from;
-	unsigned int read_from_idx;
+	int read_from_idx;
+	int rf_size;
 };
 
 typedef ModelVector<Node *> node_list_t;
@@ -69,18 +62,20 @@ public:
 	~NodeStack();
 
 	Node * get_head() const;
-	Node * get_next() const;
+	Node * get_next();
 	void reset_execution();
 	void pop_restofstack(int numAhead);
 	void full_reset();
-	int get_total_nodes() { return total_nodes; }
-
 	void print() const;
+	bool has_another_execution() {return last_backtrack != NULL;}
+	Node * create_node(SnapVector<Pair<ModelExecution *, ModelAction *> > * rfset);
+	Node * explore_next(SnapVector<Pair<ModelExecution *, ModelAction *> > * rfset);
 
 	MEMALLOC
 private:
 	node_list_t node_list;
-
+	Node * last_backtrack;
+	Node * curr_backtrack;
 	/**
 	 * @brief the index position of the current head Node
 	 *
@@ -88,7 +83,6 @@ private:
 	 * current head Node. It is negative when the list is empty.
 	 */
 	int head_idx;
-	int total_nodes;
 };
 
 #endif	/* __NODESTACK_H__ */

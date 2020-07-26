@@ -93,7 +93,8 @@ private:
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	void initialize_curr_action(ModelAction *curr);
-	void process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > * rf_set);
+	void process_read(ModelAction *curr, ModelExecution * exec, ModelAction *rf);
+	void handle_read(ModelAction *curr);
 	void process_write(ModelAction *curr);
 	ModelAction * swap_rmw_write_part(ModelAction *act);
 	void process_cache_op(ModelAction *curr);

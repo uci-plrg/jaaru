@@ -266,8 +266,7 @@ void ModelChecker::print_execution(bool printbugs) const
  * @return If there are more executions to explore, return true. Otherwise,
  * return false.
  */
-void ModelChecker::finish_execution(bool more_executions)
-{
+bool ModelChecker::next_execution() {
 	DBG();
 	/* Is this execution a feasible execution that's worth bug-checking? */
 	bool complete = (execution->is_complete_execution() ||
@@ -289,8 +288,8 @@ void ModelChecker::finish_execution(bool more_executions)
 
 // test code
 	execution_number ++;
-	if (more_executions)
-		reset_to_initial_state();
+	reset_to_initial_state();
+	return true;
 }
 
 /**
@@ -408,7 +407,7 @@ void ModelChecker::run()
 	//Need to initial random number generator state to avoid resets on rollback
 	char random_state[256];
 	initstate(423121, random_state, sizeof(random_state));
-	for(int exec = 0;exec < params.maxexecutions;exec++) {
+	do {
 		Thread * t = init_thread;
 
 		do {
@@ -472,8 +471,7 @@ void ModelChecker::run()
 			t->set_pending(NULL);
 			t = execution->take_step(curr);
 		} while (!should_terminate_execution());
-		finish_execution((exec+1) < params.maxexecutions);
-	}
+	} while(next_execution());
 	model_print("******* Model-checking complete: *******\n");
 	print_stats();
 
