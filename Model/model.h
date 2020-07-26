@@ -24,11 +24,13 @@ public:
 	Execution_Context(Execution_Context *mprev,
 										Scheduler * mscheduler,
 										ModelExecution *mexecution,
+										NodeStack *mnodestack,
 										Thread * minit_thread,
 										snapshot_id msnapshot) :
 		prevContext(mprev),
 		scheduler(mscheduler),
 		execution(mexecution),
+		nodestack(mnodestack),
 		init_thread(minit_thread),
 		snapshot(msnapshot)
 	{}
@@ -36,6 +38,7 @@ public:
 	Execution_Context *prevContext;
 	Scheduler * scheduler;
 	ModelExecution *execution;
+	NodeStack *nodestack;
 	Thread * init_thread;
 	snapshot_id snapshot;
 
@@ -88,6 +91,7 @@ private:
 	/** The scheduler to use: tracks the running/ready Threads */
 	Scheduler * scheduler;
 	ModelExecution *execution;
+	NodeStack *nodestack;
 	Thread * init_thread;
 
 	Execution_Context * prevContext;

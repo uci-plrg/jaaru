@@ -15,6 +15,7 @@
 #include "execution.h"
 #include "params.h"
 #include "datarace.h"
+#include "nodestack.h"
 
 ModelChecker *model = NULL;
 
@@ -386,10 +387,11 @@ bool ModelChecker::should_terminate_execution()
 }
 
 void ModelChecker::doCrash() {
-	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, init_thread, snapshot);
+	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, nodestack, init_thread, snapshot);
 	prevContext = ec;
 	scheduler = new Scheduler();
 	execution = new ModelExecution(this, scheduler);
+	nodestack = new NodeStack();
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
 #ifdef TLS
 	init_thread->setTLS((char *)get_tls_addr());
@@ -439,17 +441,10 @@ void ModelChecker::run()
 				Thread *th = get_thread(int_to_id(i));
 				ModelAction *act = th->get_pending();
 				if (act && execution->is_enabled(th) && (th->get_state() != THREAD_BLOCKED) ) {
-					if (act->is_write()) {
-						std::memory_order order = act->get_mo();
-						if (order == std::memory_order_relaxed || \
-								order == std::memory_order_release) {
-							t = th;
-							break;
-						}
-					} else if (act->get_type() == THREAD_CREATE || \
-										 act->get_type() == PTHREAD_CREATE || \
-										 act->get_type() == THREAD_START || \
-										 act->get_type() == THREAD_FINISH) {
+					if (act->get_type() == THREAD_CREATE || \
+							act->get_type() == PTHREAD_CREATE || \
+							act->get_type() == THREAD_START || \
+							act->get_type() == THREAD_FINISH) {
 						t = th;
 						break;
 					}
@@ -478,8 +473,6 @@ void ModelChecker::run()
 			t = execution->take_step(curr);
 		} while (!should_terminate_execution());
 		finish_execution((exec+1) < params.maxexecutions);
-		//restore random number generator state after rollback
-		setstate(random_state);
 	}
 	model_print("******* Model-checking complete: *******\n");
 	print_stats();
