@@ -6,7 +6,7 @@ TODO List
 
 1) Handle injecting crashes & figure out model for what is persistent...
 2) Support for normal reads that span multiple writes
-
+3) Handle evicting items from store buffers...
 
 PMCheck is a tool for testing persistent memory tools. It is fast because it lazily simulate crashes in the code. 
 
