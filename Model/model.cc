@@ -412,9 +412,6 @@ void ModelChecker::doCrash() {
 /** @brief Run ModelChecker for the user program */
 void ModelChecker::run()
 {
-	//Need to initial random number generator state to avoid resets on rollback
-	char random_state[256];
-	initstate(423121, random_state, sizeof(random_state));
 	do {
 		Thread * t = init_thread;
 
