@@ -334,7 +334,8 @@ void ModelExecution::process_read(ModelAction *curr, ModelExecution *exec, Model
 	ASSERT(rf->is_write());
 
 	curr->set_read_from(rf);
-	initialize_curr_action(curr);
+	if (!curr->is_rmw_read())
+		initialize_curr_action(curr);
 
 	ClockVector * cv = rf->get_cv();
 	if (cv != NULL) {
@@ -807,6 +808,9 @@ ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
 	ModelAction *lastread = get_last_action(act->get_tid());
 	ASSERT(lastread->is_rmw_read());
 	lastread->process_rmw(act);
+	if (act->is_rmw_cas_fail()) {
+		initialize_curr_action(lastread);
+	}
 	delete act;
 	return lastread;
 }

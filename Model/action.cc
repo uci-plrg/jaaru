@@ -222,7 +222,7 @@ bool ModelAction::is_failed_trylock() const
 
 bool ModelAction::is_read() const
 {
-	return type == ATOMIC_READ || type == ATOMIC_RMWR || type == ATOMIC_RMW;
+	return type == ATOMIC_READ || type == NONATOMIC_READ || type == ATOMIC_RMWR || type == ATOMIC_RMW;
 }
 
 bool ModelAction::is_write() const
@@ -503,7 +503,6 @@ void ModelAction::set_try_lock(bool obtainedlock)
  */
 modelclock_t ModelAction::get_seq_number() const
 {
-	ASSERT(seq_number != ACTION_INITIAL_CLOCK || is_thread_start());
 	return seq_number;
 }
 
@@ -544,10 +543,7 @@ uint64_t ModelAction::get_write_value() const
 	return value;
 }
 
-uint64_t ModelAction::get_value() const
-{
-	//ToDO: remove this assertion. It is wrong but we used it for the purpose of testing...
-	ASSERT(value != 0);
+uint64_t ModelAction::get_value() const {
 	return value;
 }
 
@@ -627,6 +623,7 @@ const char * ModelAction::get_type_str() const
 	case PTHREAD_JOIN: return "pthread join";
 
 	case NONATOMIC_WRITE: return "nonatomic write";
+	case NONATOMIC_READ: return "nonatomic read";
 	case ATOMIC_READ: return "atomic read";
 	case ATOMIC_WRITE: return "atomic write";
 	case ATOMIC_RMW: return "atomic rmw";
