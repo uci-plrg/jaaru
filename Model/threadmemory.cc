@@ -130,7 +130,6 @@ void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {
 		model_print("Unsupported write size\n");
 		ASSERT(0);
 	}
-	delete na_write;
 }
 
 void ThreadMemory::evictWrite(ModelAction *writeop)
