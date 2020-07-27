@@ -263,7 +263,6 @@ bool ModelAction::is_locked_operation() const
 	case PTHREAD_JOIN:
 	case THREAD_CREATE:
 	case THREAD_JOIN:
-	case ATOMIC_RMWR:
 	case ATOMIC_LOCK:
 	case ATOMIC_TRYLOCK:
 	case ATOMIC_UNLOCK:
@@ -478,19 +477,27 @@ bool ModelAction::is_conflicting_lock(const ModelAction *act) const
 }
 
 /**
- * Create a new clock vector for this action. Note that this function allows a
- * user to clobber (and leak) a ModelAction's existing clock vector. A user
- * should ensure that the vector has already either been rolled back
- * (effectively "freed") or freed.
+ * Create a new clock vector for this action.
  *
  * @param parent A ModelAction from which to inherit a ClockVector
  */
-void ModelAction::create_cv(const ModelAction *parent)
+void ModelAction::merge_cv(const ModelAction *parent)
 {
-	if (parent)
-		cv = new ClockVector(parent->cv, this);
+	if (cv == NULL) {
+		if (parent)
+			cv = new ClockVector(parent->cv, this);
+		else
+			cv = new ClockVector(NULL, this);
+	} else if (parent != NULL) {
+		cv->merge(parent->cv);
+	}
+}
+
+void ModelAction::merge_cv(ClockVector *mcv) {
+	if (cv != NULL)
+		cv->merge(mcv);
 	else
-		cv = new ClockVector(NULL, this);
+		cv = new ClockVector(mcv, NULL);
 }
 
 void ModelAction::set_try_lock(bool obtainedlock)

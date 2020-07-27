@@ -117,6 +117,9 @@ void ThreadMemory::executeWriteOperation(ModelAction *_write) {
 }
 
 void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {
+	ModelExecution *execution = model->get_execution();
+	execution->remove_action_from_store_buffer(na_write);
+	execution->add_write_to_lists(na_write);
 	executeWriteOperation(na_write);
 	switch(na_write->getOpSize()) {
 	case 8: raceCheckWrite8(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;

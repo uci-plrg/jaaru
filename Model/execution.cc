@@ -334,12 +334,13 @@ void ModelExecution::process_read(ModelAction *curr, ModelExecution *exec, Model
 	ASSERT(rf->is_write());
 
 	curr->set_read_from(rf);
-	if (!curr->is_rmw_read())
+	if (!curr->is_rmw_read()) {
 		initialize_curr_action(curr);
+	}
 
 	ClockVector * cv = rf->get_cv();
 	if (cv != NULL) {
-		curr->get_cv()->merge(cv);
+		curr->merge_cv(cv);
 	}
 	get_thread(curr)->set_return_value(curr->get_return_value());
 }
@@ -653,7 +654,7 @@ void ModelExecution::initialize_curr_action(ModelAction *curr)
 {
 	curr->set_seq_number(get_next_seq_num());
 	/* Always compute new clock vector */
-	curr->create_cv(get_parent_action(curr->get_tid()));
+	curr->merge_cv(get_parent_action(curr->get_tid()));
 
 	action_trace.addAction(curr);
 }
@@ -846,7 +847,7 @@ void insertIntoActionList(action_list_t *list, ModelAction *act) {
 }
 
 void insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
-	act->create_cv(NULL);
+	act->merge_cv((ModelAction *) NULL);
 	list->addAction(act);
 }
 

@@ -111,9 +111,9 @@ PMCATOMICSTORE(32)
 PMCATOMICSTORE(64)
 
 
-uint64_t model_rmw_read_action(void *obj, int atomic_index, const char *position) {
+uint64_t model_rmw_read_action(void *obj, int atomic_index, const char *position, uint size) {
 	createModelIfNotExist();
-	return model->switch_to_master(new ModelAction(ATOMIC_RMWR, position, orders[atomic_index], obj));
+	return model->switch_to_master(new ModelAction(ATOMIC_RMWR, position, orders[atomic_index], obj, VALUE_NONE, size));
 }
 
 ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const char * position, uint size) {
@@ -126,7 +126,7 @@ ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const c
 #define _ATOMIC_RMW_(__op__, size, addr, val, atomic_index, position)                                                                   \
 	({                                                                                                                              \
 		DEBUG("pmc_atomic_RMW_%u:addr = %p, value= %" PRIu ## size "\n", size, addr, val); \
-		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position);                                       \
+		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position, size); \
 		uint ## size ## _t _copy = _old;                                                                                        \
 		uint ## size ## _t _val = val;                                                                                          \
 		_copy __op__ _val;                                                                                                      \
@@ -221,7 +221,7 @@ void model_rmw_cas_fail_action(void *obj, int atomic_index, const char *position
 		DEBUG("pmc_atomic_COMPSWP%u:addr = %p, value= %" PRIu ## size "\n", size, addr, desired); \
 		uint ## size ## _t _desired = desired;                                                            \
 		uint ## size ## _t _expected = expected;                                                          \
-		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position); \
+		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position, size); \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                       \
 			atomraceCheckRead(tid,  (void *)(((char *)addr)+i));  \

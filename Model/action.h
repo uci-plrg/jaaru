@@ -147,7 +147,8 @@ public:
 	bool could_synchronize_with(const ModelAction *act) const;
 	int getOpSize() const;
 	Thread * get_thread_operand() const;
-	void create_cv(const ModelAction *parent = NULL);
+	void merge_cv(const ModelAction *parent = NULL);
+	void merge_cv(ClockVector *cv);
 	ClockVector * get_cv() const { return cv; }
 	bool synchronize_with(const ModelAction *act);
 
