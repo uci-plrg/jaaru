@@ -1,12 +1,24 @@
 PMCheck: A modle checker for persistent memory
 =====================================================
 
-TODO List
----------
+Short Term Todo List
+--------------------
 
 1) Handle injecting crashes & figure out model for what is persistent...
-2) Support for normal reads that span multiple writes
-3) Handle evicting items from store buffers...
+2) Handle evicting items from store buffers...
+3) Hack to support RECIPE...how to:
+   a) Make sure all data structures are heap allocated...
+   b) Stash the root pointer as a global
+   c) Check whether global exists before allocation data structure
+
+Longer Term Todos
+-----------------
+
+1) Restore state of program to initial state...means checker has to have persistent traces...
+2) Support libpmem/libpmem2 interfaces...
+3) Develop persistent location map...tracks what is & is not persistent...
+4) Support for normal reads that span multiple writes
+
 
 PMCheck is a tool for testing persistent memory tools. It is fast because it lazily simulate crashes in the code. 
 
