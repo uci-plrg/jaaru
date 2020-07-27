@@ -154,7 +154,6 @@ void ModelAction::copy_from_new(ModelAction *newaction)
 
 void ModelAction::set_seq_number(modelclock_t num)
 {
-	ASSERT(seq_number == ACTION_INITIAL_CLOCK);
 	seq_number = num;
 }
 
