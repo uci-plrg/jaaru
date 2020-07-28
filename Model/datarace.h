@@ -66,6 +66,12 @@ void raceCheckWrite16(thread_id_t thread, const void *location);
 void raceCheckWrite32(thread_id_t thread, const void *location);
 void raceCheckWrite64(thread_id_t thread, const void *location);
 
+
+bool ValidateAddress8(void * address);
+bool ValidateAddress16(void * address);
+bool ValidateAddress32(void * address);
+bool ValidateAddress64(void * address);
+
 /**
  * @brief A record of information for detecting data races
  */

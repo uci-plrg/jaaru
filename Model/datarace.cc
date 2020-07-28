@@ -78,6 +78,20 @@ uint8_t * lookupShadowEntry(const void *address) {
 	return &basetable->data[((uintptr_t)address) & MASK16BIT];
 }
 
+#define VALIDATEADDRESS(size)           \
+	bool ValidateAddress ## size(void * address) {                  \
+		volatile uint ## size ## _t * val1 = ((volatile uint ## size ## _t *)(lookupShadowEntry(address))); \
+		uint ## size ## _t val2 = *((volatile uint ## size ## _t *)address); \
+		bool val = (*val1) == val2;                                         \
+		if (!val)                                                           \
+			*val1 = val2;                                                     \
+		return val;                                                         \
+	}
+
+VALIDATEADDRESS(8)
+VALIDATEADDRESS(16)
+VALIDATEADDRESS(32)
+VALIDATEADDRESS(64)
 
 bool hasNonAtomicStore(const void *address) {
 	uint64_t * shadow = lookupAddressEntry(address);
