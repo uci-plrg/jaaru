@@ -31,7 +31,7 @@
  */
 
 
-ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, Thread *thread, uint _size) :
+ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, Thread *thread) :
 	location(loc),
 	position(NULL),
 	reads_from(NULL),
@@ -40,8 +40,7 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	value(value),
 	type(type),
 	order(order),
-	seq_number(ACTION_INITIAL_CLOCK),
-	size(_size)
+	seq_number(ACTION_INITIAL_CLOCK)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_NOP);
@@ -66,42 +65,10 @@ ModelAction::ModelAction(action_type_t type) :
 	value(0),
 	type(type),
 	order(memory_order_seq_cst),
-	seq_number(ACTION_INITIAL_CLOCK),
-	size(0)
+	seq_number(ACTION_INITIAL_CLOCK)
 {
 	Thread *t = thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
-}
-
-
-/**
- * @brief Construct a new ModelAction with source line number (requires llvm support)
- *
- * @param type The type of action
- * @param order The memory order of this action. A "don't care" for non-ATOMIC
- * actions (e.g., THREAD_* or MODEL_* actions).
- * @param loc The location that this action acts upon
- * @param value (optional) A value associated with the action (e.g., the value
- * read or written). Defaults to a given macro constant, for debugging purposes.
- * @param size (optional) The Thread in which this action occurred. If NULL
- * (default), then a Thread is assigned according to the scheduler.
- */
-ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int _size) :
-	location(loc),
-	position(position),
-	reads_from(NULL),
-	cv(NULL),
-	action_ref(NULL),
-	value(value),
-	type(type),
-	order(order),
-	seq_number(ACTION_INITIAL_CLOCK),
-	size(_size)
-{
-	/* References to NULL atomic variables can end up here */
-	ASSERT(loc);
-	Thread *t = thread_current();
-	this->tid = t->get_id();
 }
 
 
@@ -127,8 +94,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	value(value),
 	type(type),
 	order(order),
-	seq_number(ACTION_INITIAL_CLOCK),
-	size(0)
+	seq_number(ACTION_INITIAL_CLOCK)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -141,10 +107,6 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 /** @brief ModelAction destructor */
 ModelAction::~ModelAction()
 {
-}
-
-int ModelAction::getOpSize() const {
-	return size;
 }
 
 void ModelAction::copy_from_new(ModelAction *newaction)

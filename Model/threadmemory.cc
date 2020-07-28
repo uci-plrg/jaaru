@@ -100,15 +100,6 @@ void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {
 	ModelExecution *execution = model->get_execution();
 	execution->remove_action_from_store_buffer(na_write);
 	execution->add_write_to_lists(na_write);
-	switch(na_write->getOpSize()) {
-	case 8: raceCheckWrite8(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-	case 16: raceCheckWrite16(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-	case 32: raceCheckWrite32(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-	case 64: raceCheckWrite64(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
-	default:
-		model_print("Unsupported write size\n");
-		ASSERT(0);
-	}
 }
 
 void ThreadMemory::evictWrite(ModelAction *writeop)
@@ -118,7 +109,4 @@ void ThreadMemory::evictWrite(ModelAction *writeop)
 	execution->remove_action_from_store_buffer(writeop);
 
 	execution->add_write_to_lists(writeop);
-	for(int i=0;i < writeop->getOpSize() / 8;i++) {
-		atomraceCheckWrite(writeop->get_tid(), (void *)(((char *)writeop->get_location())+i));
-	}
 }

@@ -11,9 +11,10 @@
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);                                                                  \
 		createModelIfNotExist();                                                                                                                                                \
 		Thread *thread = thread_current();                                                                                              \
-		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread, size);        \
+		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread);        \
 		model->switch_to_master(action);                                                                                        \
 		*((uint ## size ## _t *)addrs) = val;                                                                            \
+		raceCheckWrite ## size (thread->get_id(), addrs);								\
 	}
 
 PMCHECKSTORE(8)
@@ -28,7 +29,7 @@ PMCHECKSTORE(64)
 	uint ## size ## _t pmc_load ## size (void *addrs) {                                                               \
 		DEBUG("pmc_load%u:addr = %p\n", size, addrs);                                                   \
 		createModelIfNotExist();                                                                                                                                                \
-		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, size);                          \
+		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs);                          \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                                             \
 		thread_id_t tid = thread_current()->get_id();                                                                                           \
 		raceCheckRead ## size (tid, (void *)(((uintptr_t)addrs)));                                      \

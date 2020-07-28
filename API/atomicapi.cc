@@ -28,7 +28,7 @@ void createModelIfNotExist() {
 	uint ## size ## _t pmc_volatile_load ## size(void * obj, const char * position) {                                               \
 		DEBUG("pmc_volatile_load%u:addr = %p\n", size, obj); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj, size);                          \
+		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj);                          \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                                             \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                         \
@@ -47,9 +47,13 @@ VOLATILELOAD(64)
 	void pmc_volatile_store ## size (void * obj, uint ## size ## _t val, const char * position) {                                   \
 		DEBUG("pmc_volatile_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val, size);        \
+		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val);        \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
+		thread_id_t tid = thread_current()->get_id();           \
+		for(int i=0 ; i < size / 8; i++) {																					\
+			atomraceCheckWrite (tid , (void *)(((char *)obj)+i));															\
+		}																												\
 	}
 
 VOLATILESTORE(8)
@@ -62,9 +66,13 @@ VOLATILESTORE(64)
 	void pmc_atomic_init ## size (void * obj, uint ## size ## _t val, const char * position) { \
 		DEBUG("pmc_atomic_init%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                      \
-		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val, size);                \
+		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val);                \
 		model->switch_to_master(action);                                                                                        \
 		*((uint ## size ## _t *)obj) = val;                                                                            \
+		thread_id_t tid = thread_current()->get_id();           				\
+		for(int i=0 ; i < size / 8; i++) {																					\
+			atomraceCheckWrite (tid , (void *)(((char *)obj)+i));															\
+		}																					\
 	}
 
 PMCATOMICINT(8)
@@ -78,7 +86,7 @@ PMCATOMICINT(64)
 	uint ## size ## _t pmc_atomic_load ## size(void * obj, int atomic_index, const char * position) {                               \
 		DEBUG("pmc_atomic_load%u:addr = %p\n", size, obj); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj, size);                                \
+		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj);                                \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                           \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                         \
@@ -98,9 +106,13 @@ PMCATOMICLOAD(64)
 	void pmc_atomic_store ## size(void * obj, uint ## size ## _t val, int atomic_index, const char * position) {                    \
 		DEBUG("pmc_atomic_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val, size);              \
+		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val);              \
 		model->switch_to_master(action);                                                                                        \
 		*((uint ## size ## _t *)obj) = val;                                                                            \
+		thread_id_t tid = thread_current()->get_id();           \
+		for(int i=0 ; i < size / 8; i++) {																					\
+			atomraceCheckWrite (tid , (void *)(((char *)obj)+i));															\
+		}																		\
 	}
 
 PMCATOMICSTORE(8)
@@ -109,14 +121,14 @@ PMCATOMICSTORE(32)
 PMCATOMICSTORE(64)
 
 
-uint64_t model_rmw_read_action(void *obj, int atomic_index, const char *position, uint size) {
+uint64_t model_rmw_read_action(void *obj, int atomic_index, const char *position) {
 	createModelIfNotExist();
-	return model->switch_to_master(new ModelAction(ATOMIC_RMWR, position, orders[atomic_index], obj, VALUE_NONE, size));
+	return model->switch_to_master(new ModelAction(ATOMIC_RMWR, position, orders[atomic_index], obj, VALUE_NONE));
 }
 
-ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const char * position, uint size) {
+ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const char * position) {
 	createModelIfNotExist();
-	ModelAction* action = new ModelAction(ATOMIC_RMW, position, orders[atomic_index], obj, val, size);
+	ModelAction* action = new ModelAction(ATOMIC_RMW, position, orders[atomic_index], obj, val);
 	model->switch_to_master(action);
 	return action;
 }
@@ -124,11 +136,11 @@ ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const c
 #define _ATOMIC_RMW_(__op__, size, addr, val, atomic_index, position)                                                                   \
 	({                                                                                                                              \
 		DEBUG("pmc_atomic_RMW_%u:addr = %p, value= %" PRIu ## size "\n", size, addr, val); \
-		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position, size); \
+		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position); \
 		uint ## size ## _t _copy = _old;                                                                                        \
 		uint ## size ## _t _val = val;                                                                                          \
 		_copy __op__ _val;                                                                                                      \
-		ModelAction *action = model_rmw_action(addr, (uint64_t) _copy, atomic_index, position, size);                          \
+		ModelAction *action = model_rmw_action(addr, (uint64_t) _copy, atomic_index, position);                          \
 		*((volatile uint ## size ## _t *)addr) = _copy;                                                                         \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                       \
@@ -219,13 +231,13 @@ void model_rmw_cas_fail_action(void *obj, int atomic_index, const char *position
 		DEBUG("pmc_atomic_COMPSWP%u:addr = %p, value= %" PRIu ## size "\n", size, addr, desired); \
 		uint ## size ## _t _desired = desired;                                                            \
 		uint ## size ## _t _expected = expected;                                                          \
-		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position, size); \
+		uint ## size ## _t _old = model_rmw_read_action(addr, atomic_index, position); \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                       \
 			atomraceCheckRead(tid,  (void *)(((char *)addr)+i));  \
 		}                                                               \
 		if (_old == _expected) {                                                                    \
-			ModelAction *action = model_rmw_action(addr, (uint64_t) _desired, atomic_index, position, size); \
+			ModelAction *action = model_rmw_action(addr, (uint64_t) _desired, atomic_index, position); \
 			*((volatile uint ## size ## _t *)addr) = desired;                        \
 			for(int i=0;i < size / 8;i++) {                       \
 				recordWrite(tid, (void *)(((char *)addr)+i));         \
