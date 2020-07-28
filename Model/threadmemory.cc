@@ -5,9 +5,6 @@
 #include "execution.h"
 #include "datarace.h"
 
-#define APPLYWRITE(size, obj, val) \
-	*((volatile uint ## size ## _t *)obj) = val;
-
 ThreadMemory::ThreadMemory() :
 	storeBuffer(),
 	obj_to_last_write(),
@@ -99,25 +96,7 @@ void ThreadMemory::emptyFlushBuffer() {
 	flushBuffer.clear();
 }
 
-void ThreadMemory::executeWriteOperation(ModelAction *_write) {
-	switch(_write->getOpSize()) {
-	case 8: APPLYWRITE(8, _write->get_location(), _write->get_value()); break;
-	case 16: APPLYWRITE(16, _write->get_location(), _write->get_value()); break;
-	case 32: APPLYWRITE(32, _write->get_location(), _write->get_value()); break;
-	case 64: APPLYWRITE(64, _write->get_location(), _write->get_value()); break;
-	default:
-		model_print("Unsupported write size\n");
-		ASSERT(0);
-	}
-
-	thread_id_t tid = _write->get_tid();
-	for(int i=0;i < _write->getOpSize() / 8;i++) {
-		atomraceCheckWrite(tid, (void *)(((char *)_write->get_location())+i));
-	}
-}
-
 void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {
-	executeWriteOperation(na_write);
 	switch(na_write->getOpSize()) {
 	case 8: raceCheckWrite8(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
 	case 16: raceCheckWrite16(na_write->get_tid(), (void *)(((uintptr_t)na_write->get_location()))); break;
@@ -137,7 +116,6 @@ void ThreadMemory::evictWrite(ModelAction *writeop)
 	execution->remove_action_from_store_buffer(writeop);
 
 	execution->add_write_to_lists(writeop);
-	executeWriteOperation(writeop);
 	for(int i=0;i < writeop->getOpSize() / 8;i++) {
 		atomraceCheckWrite(writeop->get_tid(), (void *)(((char *)writeop->get_location())+i));
 	}

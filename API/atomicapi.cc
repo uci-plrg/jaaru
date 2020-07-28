@@ -50,10 +50,6 @@ VOLATILELOAD(64)
 		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val, size);        \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
-		thread_id_t tid = thread_current()->get_id();           \
-		for(int i=0;i < size / 8;i++) {                       \
-			atomraceCheckWrite(tid, (void *)(((char *)obj)+i));          \
-		}                                               \
 	}
 
 VOLATILESTORE(8)
@@ -68,6 +64,7 @@ VOLATILESTORE(64)
 		createModelIfNotExist();                                                      \
 		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val, size);                \
 		model->switch_to_master(action);                                                                                        \
+		*((uint ## size ## _t *)obj) = val;                                                                            \
 	}
 
 PMCATOMICINT(8)
@@ -103,6 +100,7 @@ PMCATOMICLOAD(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val, size);              \
 		model->switch_to_master(action);                                                                                        \
+		*((uint ## size ## _t *)obj) = val;                                                                            \
 	}
 
 PMCATOMICSTORE(8)
