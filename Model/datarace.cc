@@ -82,8 +82,8 @@ uint8_t * lookupShadowEntry(const void *address) {
 	bool ValidateAddress ## size(void * address) {                  \
 		volatile uint ## size ## _t * val1 = ((volatile uint ## size ## _t *)(lookupShadowEntry(address))); \
 		uint ## size ## _t val2 = *((volatile uint ## size ## _t *)address); \
-		bool val = (*val1) == val2;                                         \
-		if (!val)                                                           \
+		bool val = (*val1) != val2;                                         \
+		if (val)                                                           \
 			*val1 = val2;                                                     \
 		return val;                                                         \
 	}

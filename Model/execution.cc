@@ -983,6 +983,8 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 		hasExtraWrite = ValidateAddress32(address);
 	else if (size == 64)
 		hasExtraWrite = ValidateAddress64(address);
+	else
+		ASSERT(0);
 
 	if (hasExtraWrite) {
 		//Have uninstrumented writes...Get all pending writes to the same location out of store buffers...then add a nonatomic write for that store...

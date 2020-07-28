@@ -28,7 +28,7 @@ void createModelIfNotExist() {
 	uint ## size ## _t pmc_volatile_load ## size(void * obj, const char * position) {                                               \
 		DEBUG("pmc_volatile_load%u:addr = %p\n", size, obj); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj, size);    \
+		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj, VALUE_NONE, size); \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                                             \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                         \
@@ -88,7 +88,7 @@ PMCATOMICINT(64)
 	uint ## size ## _t pmc_atomic_load ## size(void * obj, int atomic_index, const char * position) {                               \
 		DEBUG("pmc_atomic_load%u:addr = %p\n", size, obj); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj, size); \
+		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj, VALUE_NONE, size); \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                           \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                         \
