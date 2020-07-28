@@ -60,6 +60,24 @@ static uint64_t * lookupAddressEntry(const void *address)
 	return &basetable->array[((uintptr_t)address) & MASK16BIT];
 }
 
+/** This function looks up the entry in the shadow table corresponding to a
+ * given address.*/
+uint8_t * lookupShadowEntry(const void *address) {
+	struct ShadowTable *currtable = root;
+#if BIT48
+	currtable = (struct ShadowTable *) currtable->array[(((uintptr_t)address) >> 32) & MASK16BIT];
+	if (currtable == NULL) {
+		currtable = (struct ShadowTable *)(root->array[(((uintptr_t)address) >> 32) & MASK16BIT] = table_calloc(sizeof(struct ShadowTable)));
+	}
+#endif
+
+	struct ShadowBaseTable *basetable = (struct ShadowBaseTable *)currtable->array[(((uintptr_t)address) >> 16) & MASK16BIT];
+	if (basetable == NULL) {
+		basetable = (struct ShadowBaseTable *)(currtable->array[(((uintptr_t)address) >> 16) & MASK16BIT] = table_calloc(sizeof(struct ShadowBaseTable)));
+	}
+	return &basetable->data[((uintptr_t)address) & MASK16BIT];
+}
+
 
 bool hasNonAtomicStore(const void *address) {
 	uint64_t * shadow = lookupAddressEntry(address);

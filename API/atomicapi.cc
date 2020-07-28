@@ -47,13 +47,14 @@ VOLATILELOAD(64)
 	void pmc_volatile_store ## size (void * obj, uint ## size ## _t val, const char * position) {                                   \
 		DEBUG("pmc_volatile_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                                                                \
-		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val);        \
-		model->switch_to_master(action);                                                                                        \
-		*((volatile uint ## size ## _t *)obj) = val;                                                                            \
+		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val); \
+		model->switch_to_master(action);                        \
+		*((volatile uint ## size ## _t *)obj) = val;            \
+		*((volatile uint ## size ## _t *)lookupShadowEntry(obj)) = val; \
 		thread_id_t tid = thread_current()->get_id();           \
-		for(int i=0 ; i < size / 8; i++) {																					\
-			atomraceCheckWrite (tid , (void *)(((char *)obj)+i));															\
-		}																												\
+		for(int i=0 ;i < size / 8;i++) {                                                                                                                                                                      \
+			atomraceCheckWrite (tid, (void *)(((char *)obj)+i));                                                                                                                   \
+		}                                                                                                                                                                                                                               \
 	}
 
 VOLATILESTORE(8)
@@ -68,11 +69,12 @@ VOLATILESTORE(64)
 		createModelIfNotExist();                                                      \
 		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val);                \
 		model->switch_to_master(action);                                                                                        \
-		*((uint ## size ## _t *)obj) = val;                                                                            \
-		thread_id_t tid = thread_current()->get_id();           				\
-		for(int i=0 ; i < size / 8; i++) {																					\
-			atomraceCheckWrite (tid , (void *)(((char *)obj)+i));															\
-		}																					\
+		*((uint ## size ## _t *)obj) = val;                     \
+		*((uint ## size ## _t *)lookupShadowEntry(obj)) = val;  \
+		thread_id_t tid = thread_current()->get_id();                           \
+		for(int i=0 ;i < size / 8;i++) {                                                                                                                                                                      \
+			atomraceCheckWrite (tid, (void *)(((char *)obj)+i));                                                                                                                   \
+		}                                                                                                                                                                       \
 	}
 
 PMCATOMICINT(8)
@@ -108,11 +110,12 @@ PMCATOMICLOAD(64)
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val);              \
 		model->switch_to_master(action);                                                                                        \
-		*((uint ## size ## _t *)obj) = val;                                                                            \
+		*((volatile uint ## size ## _t *)obj) = val;                    \
+		*((volatile uint ## size ## _t *)lookupShadowEntry(obj)) = val; \
 		thread_id_t tid = thread_current()->get_id();           \
-		for(int i=0 ; i < size / 8; i++) {																					\
-			atomraceCheckWrite (tid , (void *)(((char *)obj)+i));															\
-		}																		\
+		for(int i=0 ;i < size / 8;i++) {                                                                                                                                                                      \
+			atomraceCheckWrite (tid, (void *)(((char *)obj)+i));                                                                                                                   \
+		}                                                                                                                                               \
 	}
 
 PMCATOMICSTORE(8)
@@ -141,7 +144,8 @@ ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const c
 		uint ## size ## _t _val = val;                                                                                          \
 		_copy __op__ _val;                                                                                                      \
 		ModelAction *action = model_rmw_action(addr, (uint64_t) _copy, atomic_index, position);                          \
-		*((volatile uint ## size ## _t *)addr) = _copy;                                                                         \
+		*((volatile uint ## size ## _t *)addr) = _copy;         \
+		*((volatile uint ## size ## _t *)lookupShadowEntry(addr)) = _copy; \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size / 8;i++) {                       \
 			atomraceCheckRead(tid,  (void *)(((char *)addr)+i));  \
@@ -238,8 +242,9 @@ void model_rmw_cas_fail_action(void *obj, int atomic_index, const char *position
 		}                                                               \
 		if (_old == _expected) {                                                                    \
 			ModelAction *action = model_rmw_action(addr, (uint64_t) _desired, atomic_index, position); \
-			*((volatile uint ## size ## _t *)addr) = desired;                        \
-			for(int i=0;i < size / 8;i++) {                       \
+			*((volatile uint ## size ## _t *)addr) = desired; \
+			*((volatile uint ## size ## _t *)lookupShadowEntry(addr)) = desired;    \
+			for(int i=0;i < size / 8;i++) {                 \
 				recordWrite(tid, (void *)(((char *)addr)+i));         \
 			} \
 			return _expected; }                                     \

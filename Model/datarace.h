@@ -17,6 +17,7 @@ struct ShadowTable {
 
 struct ShadowBaseTable {
 	uint64_t array[65536];
+	uint8_t data[65536];
 };
 
 struct DataRace {
@@ -40,8 +41,9 @@ struct DataRace {
 	int numframes;
 };
 
-#define MASK16BIT 0xffff
+uint8_t * lookupShadowEntry(const void *address);
 
+#define MASK16BIT 0xffff
 void initRaceDetector();
 void raceCheckWrite(thread_id_t thread, void *location);
 void atomraceCheckWrite(thread_id_t thread, void *location);
