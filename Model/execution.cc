@@ -961,6 +961,14 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
 void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> >* rf_set)
 {
 	ASSERT(curr->is_read());
+
+	bool hasnonatomicstore = false;
+	if (hasnonatomicstore) {
+		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
+		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
+		return;
+	}
+
 	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr);
 
 	if (lastWrite != NULL) {
@@ -973,13 +981,6 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 	if (list != NULL) {
 		//Otherwise return last write to cache
 		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, list->back()));
-		return;
-	}
-
-	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
-	if (hasnonatomicstore) {
-		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
-		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
 		return;
 	}
 

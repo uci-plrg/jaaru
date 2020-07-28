@@ -82,7 +82,8 @@ typedef enum action_type {
  */
 class ModelAction {
 public:
-	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
+	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL, uint size = 0);
+	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size);
 	ModelAction(action_type_t type);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
 	~ModelAction();
@@ -144,6 +145,7 @@ public:
 	bool same_thread(const ModelAction *act) const;
 	bool is_conflicting_lock(const ModelAction *act) const;
 	bool could_synchronize_with(const ModelAction *act) const;
+	int getOpSize() const;
 	Thread * get_thread_operand() const;
 	void merge_cv(const ModelAction *parent = NULL);
 	void merge_cv(ClockVector *cv);
@@ -227,6 +229,12 @@ private:
 	 * should represent the action's position in the execution order.
 	 */
 	modelclock_t seq_number;
+	/**
+	 * @brief Size of this action
+	 * If the action is write or read, we keep the size of the operation here.
+	 * (e.g. 8, 16, 32, or 64)
+	 */
+	uint size;
 };
 
 #endif	/* __ACTION_H__ */
