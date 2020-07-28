@@ -108,6 +108,7 @@ private:
 	ModelAction * get_last_unlock(ModelAction *curr) const;
 	void build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rf_set);
 	ModelAction * convertNonAtomicStore(void*);
+	void flushBuffers(void *address, uint size);
 
 #ifdef TLS
 	pthread_key_t pthreadkey;

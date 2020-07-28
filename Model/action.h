@@ -83,7 +83,7 @@ typedef enum action_type {
 class ModelAction {
 public:
 	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL, uint size = 0);
-	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int size);
+	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, uint size);
 	ModelAction(action_type_t type);
 	ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
 	~ModelAction();
@@ -145,7 +145,7 @@ public:
 	bool same_thread(const ModelAction *act) const;
 	bool is_conflicting_lock(const ModelAction *act) const;
 	bool could_synchronize_with(const ModelAction *act) const;
-	int getOpSize() const;
+	uint getOpSize() const;
 	Thread * get_thread_operand() const;
 	void merge_cv(const ModelAction *parent = NULL);
 	void merge_cv(ClockVector *cv);

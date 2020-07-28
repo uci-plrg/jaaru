@@ -935,7 +935,7 @@ ClockVector * ModelExecution::get_cv(thread_id_t tid) const
 	return firstaction != NULL ? firstaction->get_cv() : NULL;
 }
 
-bool valequals(uint64_t val1, uint64_t val2, int size) {
+bool valequals(uint64_t val1, uint64_t val2, uint size) {
 	switch(size) {
 	case 1:
 		return ((uint8_t)val1) == ((uint8_t)val2);
@@ -951,6 +951,14 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
 	}
 }
 
+void ModelExecution::flushBuffers(void * address, uint size) {
+	for(uint i=0;i< get_num_threads();i++) {
+		Thread * t = get_thread(i);
+		ThreadMemory * memory = t->getMemory();
+		memory->emptyWrites(address, size);
+	}
+}
+
 /**
  * Build up an initial set of all past writes that this 'read' action may read
  * from, as well as any previously-observed future values that must still be valid.
@@ -962,9 +970,24 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 {
 	ASSERT(curr->is_read());
 
-	bool hasnonatomicstore = false;
-	if (hasnonatomicstore) {
-		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
+	//Handle case of uninstrumented write...
+	uint size = curr->getOpSize();
+	bool hasExtraWrite = false;
+	void * address = curr->get_location();
+
+	if (size == 8)
+		hasExtraWrite = ValidateAddress8(address);
+	else if (size == 16)
+		hasExtraWrite = ValidateAddress16(address);
+	else if (size == 32)
+		hasExtraWrite = ValidateAddress32(address);
+	else if (size == 64)
+		hasExtraWrite = ValidateAddress64(address);
+
+	if (hasExtraWrite) {
+		//Have uninstrumented writes...Get all pending writes to the same location out of store buffers...then add a nonatomic write for that store...
+		flushBuffers(address, size);
+		ModelAction * nonatomicstore = convertNonAtomicStore(address);
 		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
 		return;
 	}
@@ -976,7 +999,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, lastWrite));
 		return;
 	}
-	simple_action_list_t * list = obj_wr_map.get(curr->get_location());
+	simple_action_list_t * list = obj_wr_map.get(address);
 
 	if (list != NULL) {
 		//Otherwise return last write to cache
@@ -984,9 +1007,16 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 		return;
 	}
 
+	bool hasnonatomicstore = hasNonAtomicStore(address);
+
+	if (hasnonatomicstore) {
+		ModelAction * nonatomicstore = convertNonAtomicStore(address);
+		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
+		return;
+	}
+
 	//TODO: If not in persistent area, we should stop here...
 
-	void * address = curr->get_location();
 	uintptr_t cacheid = getCacheID(address);
 	//Otherwise look in previous executions for pre-crash writes
 	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev = prev->prevContext) {

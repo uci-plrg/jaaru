@@ -86,7 +86,7 @@ ModelAction::ModelAction(action_type_t type) :
  * @param size (optional) The Thread in which this action occurred. If NULL
  * (default), then a Thread is assigned according to the scheduler.
  */
-ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, int _size) :
+ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, uint _size) :
 	location(loc),
 	position(position),
 	reads_from(NULL),
@@ -143,7 +143,7 @@ ModelAction::~ModelAction()
 {
 }
 
-int ModelAction::getOpSize() const {
+uint ModelAction::getOpSize() const {
 	return size;
 }
 

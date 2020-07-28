@@ -88,12 +88,38 @@ void ThreadMemory::emptyStoreBuffer() {
 }
 
 void ThreadMemory::emptyFlushBuffer() {
-	sllnode<ModelAction *> * rit;
-	for (rit = flushBuffer.begin();rit != NULL;rit=rit->getNext()) {
-		ModelAction *curr = rit->getVal();
+	sllnode<ModelAction *> * it;
+	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
+		ModelAction *curr = it->getVal();
 		model->get_execution()->evictCacheOp(curr);
 	}
 	flushBuffer.clear();
+}
+
+void ThreadMemory::emptyWrites(void * address, uint size) {
+	sllnode<ModelAction *> * rit;
+	for (rit = flushBuffer.end();rit != NULL;rit=rit->getPrev()) {
+		ModelAction *curr = rit->getVal();
+		if (curr->is_write()) {
+			void *loc = curr->get_location();
+			if (((uintptr_t)loc) >= ((uintptr_t)address) && ((uintptr_t)loc) < (((uintptr_t)address)+((unsigned int)size))) {
+				break;
+			}
+		}
+	}
+	if (rit != NULL) {
+		sllnode<ModelAction *> * it;
+		for(it = flushBuffer.begin();it!= NULL;) {
+			sllnode<ModelAction *> *next = it->getNext();
+			ModelAction *curr = it->getVal();
+			model->get_execution()->evictCacheOp(curr);
+			flushBuffer.erase(it);
+
+			if (it == rit)
+				break;
+			it = next;
+		}
+	}
 }
 
 void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {

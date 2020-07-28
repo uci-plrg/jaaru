@@ -23,6 +23,7 @@ public:
 	void writeToCacheLine(ModelAction *write);
 	void emptyStoreBuffer();
 	void emptyFlushBuffer();
+	void emptyWrites(void * address, uint size);
 
 	SNAPSHOTALLOC;
 private:
