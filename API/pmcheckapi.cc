@@ -9,13 +9,14 @@
 #define PMCHECKSTORE(size)                                                                                      \
 	void pmc_store ## size (void *addrs, uint ## size ## _t val){                                                   \
 		DEBUG("pmc_store%u:addr = %p\n", size, addrs);                                                                  \
-		createModelIfNotExist();                                                                                                                                                \
-		Thread *thread = thread_current();                                                                                              \
-		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thread);        \
+		createModelIfNotExist();                                \
+		Thread *thrd = thread_current();                        \
+		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thrd, size); \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)addrs) = val;                  \
 		*((volatile uint ## size ## _t *)lookupShadowEntry(addrs)) = val; \
-		raceCheckWrite ## size (thread->get_id(), addrs);                                                               \
+		thread_id_t tid = thrd->get_id();               \
+		raceCheckWrite ## size (tid, addrs);    \
 	}
 
 PMCHECKSTORE(8)
@@ -30,7 +31,7 @@ PMCHECKSTORE(64)
 	uint ## size ## _t pmc_load ## size (void *addrs) {                   \
 		DEBUG("pmc_load%u:addr = %p\n", size, addrs);                       \
 		createModelIfNotExist();                                            \
-		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs); \
+		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, size); \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action); \
 		thread_id_t tid = thread_current()->get_id();                       \
 		raceCheckRead ## size (tid, (void *)(((uintptr_t)addrs)));          \
