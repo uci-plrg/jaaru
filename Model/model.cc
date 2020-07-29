@@ -423,6 +423,27 @@ void ModelChecker::doCrash() {
 	run();
 }
 
+
+ucontext_t snapshot_ctxt;
+snapshot_id _snap_id;
+char snapshot_stack[1024];
+
+static void snapshot_helper() {
+	_snap_id = take_snapshot();
+	setcontext(model->get_system_context());
+}
+
+snapshot_id doSnapShot() {
+	getcontext(&snapshot_ctxt);
+	snapshot_ctxt.uc_stack.ss_sp = snapshot_stack;
+	snapshot_ctxt.uc_stack.ss_size = 1024;
+	snapshot_ctxt.uc_link = NULL;
+	makecontext(&snapshot_ctxt, snapshot_helper, 0);
+	model_swapcontext(model->get_system_context(), &snapshot_ctxt);
+
+	return _snap_id;
+}
+
 /** @brief Run ModelChecker for the user program */
 void ModelChecker::run()
 {
