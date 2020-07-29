@@ -1,12 +1,17 @@
 #include <stdlib.h>
 #include <cstdio>
 #include <malloc.h>
+#include <assert.h>
 #define CACHE_LINE_SIZE 64
 typedef struct Node
 {
 	int value;
 	volatile Node *next;
 } Node;
+
+void restart(){
+	assert(0);
+}
 
 int main()
 {
