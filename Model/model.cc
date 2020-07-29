@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <string.h>
 #include <cstdlib>
+#include <dlfcn.h>
+
 
 #include "model.h"
 #include "action.h"
@@ -24,10 +26,8 @@ void placeholder(void *) {
 	ASSERT(0);
 }
 
-void restart();
-
 void restart_wrapper(void *) {
-	restart();
+  ((void (*)())dlsym(RTLD_DEFAULT, "restart"))();
 }
 
 #include <signal.h>
