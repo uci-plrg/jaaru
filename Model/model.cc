@@ -405,25 +405,6 @@ bool ModelChecker::should_terminate_execution()
 	return false;
 }
 
-void ModelChecker::doCrash() {
-	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, nodestack, init_thread, snapshot);
-	prevContext = ec;
-	scheduler = new Scheduler();
-	execution = new ModelExecution(this, scheduler);
-	nodestack = new NodeStack();
-	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &restart_wrapper, NULL, NULL);
-#ifdef TLS
-	init_thread->setTLS((char *)get_tls_addr());
-#endif
-	execution->add_thread(init_thread);
-	scheduler->set_current_thread(init_thread);
-	execution->setParams(&params);
-	numcrashes++;
-	snapshot = take_snapshot();
-	run();
-}
-
-
 ucontext_t snapshot_ctxt;
 snapshot_id _snap_id;
 char snapshot_stack[1024];
@@ -442,6 +423,25 @@ snapshot_id doSnapShot() {
 	model_swapcontext(model->get_system_context(), &snapshot_ctxt);
 
 	return _snap_id;
+}
+
+void ModelChecker::doCrash() {
+	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, nodestack, init_thread, snapshot);
+	prevContext = ec;
+	scheduler = new Scheduler();
+	execution = new ModelExecution(this, scheduler);
+	nodestack = new NodeStack();
+	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &restart_wrapper, NULL, NULL);
+#ifdef TLS
+	init_thread->setTLS((char *)get_tls_addr());
+#endif
+	execution->add_thread(init_thread);
+	scheduler->set_current_thread(init_thread);
+	init_thread->set_pending(new ModelAction(THREAD_START, std::memory_order_seq_cst, init_thread));
+	execution->setParams(&params);
+	numcrashes++;
+	snapshot = doSnapShot();
+	run();
 }
 
 /** @brief Run ModelChecker for the user program */
