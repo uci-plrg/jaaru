@@ -32,8 +32,7 @@ void* func2(void *)
 	return NULL;
 }
 
-
-int main(){
+void restart(){
 	pthread_t threads[NUMTHREADS];
 	atomic_init<uint>(&x, 19);
 	atomic_init<uint>(&y, 20);
@@ -41,11 +40,20 @@ int main(){
 	for (int i=0;i< NUMTHREADS;i++) {
 		if( int retval = pthread_create(&threads[i], NULL, funcptr[i], NULL ) ) {
 			fprintf(stderr, "Unable to create a pthread. Return value %d\n", retval);
-			return EXIT_FAILURE;
+			throw EXIT_FAILURE;
 		}
 	}
 	for(int i=0;i< NUMTHREADS;i++) {
 		pthread_join(threads[i], NULL);
+	}
+}
+
+
+int main(){
+	try{
+		restart();
+	} catch(...){
+		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
 }

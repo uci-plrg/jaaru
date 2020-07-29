@@ -281,7 +281,6 @@ CDSATOMICCASV2(64)
 
 void pmc_atomic_thread_fence(int atomic_index, const char * position) {
 	DEBUG("pmc_atomic_thread_fence\n"); \
-	ASSERT(0); \
 }
 // PMC NVM operations
 
