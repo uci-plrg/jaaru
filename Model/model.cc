@@ -27,7 +27,10 @@ void placeholder(void *) {
 }
 
 void restart_wrapper(void *) {
-  ((void (*)())dlsym(RTLD_DEFAULT, "restart"))();
+	void (*restart)() = ((void (*)())dlsym(RTLD_DEFAULT, "restart"));
+	if (restart == NULL)
+		model_print("Program does not export restart().  May need extern \"C\" declaration.");
+	restart();
 }
 
 #include <signal.h>

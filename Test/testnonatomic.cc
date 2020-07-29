@@ -52,7 +52,7 @@ void restart(){
 int main(){
 	try{
 		restart();
-	} catch(...){
+	} catch(...) {
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
