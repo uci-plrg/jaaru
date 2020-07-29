@@ -181,7 +181,7 @@ public:
 	bool checkAndSetCrashed() { bool tmp = hasCrashed; hasCrashed = true; return tmp;}
 
 
-	SNAPSHOTALLOC
+	MEMALLOC
 private:
 	const char * get_type_str() const;
 	const char * get_mo_str() const;

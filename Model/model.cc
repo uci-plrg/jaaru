@@ -301,11 +301,12 @@ bool ModelChecker::next_execution() {
 		execution  = prevContext->execution;
 		nodestack = prevContext->nodestack;
 		init_thread = prevContext->init_thread;
-		snapshot = prevContext->snapshot;
+		snapshot_id oldsnap = prevContext->snapshot;
 		Execution_Context * tmp = prevContext->prevContext;
 		delete prevContext;
 		prevContext = tmp;
 		reset_to_initial_state();
+		snapshot = oldsnap;	//restore old snapshot identifier
 		return false;
 	} else {
 		//reset nodestack for next execution

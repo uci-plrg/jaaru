@@ -177,11 +177,12 @@ static void fork_startExecution(ucontext_t *context, VoidFuncPtr entryPoint) {
 
 	/* setup the system context */
 	create_context(context, fork_snap->mStackBase, STACK_SIZE_DEFAULT, entryPoint);
-	/* switch to a new entryPoint context, on a new stack */
-	create_context(&private_ctxt, snapshot_calloc(STACK_SIZE_DEFAULT, 1), STACK_SIZE_DEFAULT, fork_loop);
 }
 
 static snapshot_id fork_take_snapshot() {
+	/* switch to a new entryPoint context, on a new stack */
+	create_context(&private_ctxt, snapshot_calloc(STACK_SIZE_DEFAULT, 1), STACK_SIZE_DEFAULT, fork_loop);
+
 	model_swapcontext(&shared_ctxt, &private_ctxt);
 	DEBUG("TAKESNAPSHOT RETURN\n");
 	return snapshotid;
