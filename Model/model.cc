@@ -16,6 +16,7 @@
 #include "params.h"
 #include "datarace.h"
 #include "nodestack.h"
+#include "threadmemory.h"
 
 ModelChecker *model = NULL;
 
@@ -473,6 +474,11 @@ void ModelChecker::run()
 
 			/* Consume the next action for a Thread */
 			ModelAction *curr = t->get_pending();
+			if (shouldInsertCrash(curr)) {
+				doCrash();
+				break;
+			}
+
 			t->set_pending(NULL);
 			t = execution->take_step(curr);
 		} while (!should_terminate_execution());
@@ -484,4 +490,16 @@ void ModelChecker::run()
 	char filename[256];
 	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
 	unlink(filename);
+}
+
+bool ModelChecker::shouldInsertCrash(ModelAction *act) {
+	if (act->is_mfence() || act->is_rmw_read() || (act->is_write() && act->is_seqcst())) {
+		if (act->checkAndSetCrashed())
+			return false;
+
+		ThreadMemory * memory = execution->get_thread(act)->getMemory();
+		return memory->hasPendingFlushes();
+
+	}
+	return false;
 }

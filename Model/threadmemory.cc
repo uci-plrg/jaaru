@@ -9,7 +9,8 @@ ThreadMemory::ThreadMemory() :
 	storeBuffer(),
 	obj_to_last_write(),
 	flushBuffer(),
-	lastclflush(NULL) {
+	lastclflush(NULL),
+	flushcount(0) {
 }
 
 /** Adds CFLUSH or CFLUSHOPT to the store buffer. */
@@ -18,6 +19,7 @@ void ThreadMemory::addCacheOp(ModelAction * act) {
 	storeBuffer.push_back(act);
 	ModelAction *lastWrite = obj_to_last_write.get(getCacheID(act->get_location()));
 	act->setLastWrites(model->get_execution()->get_curr_seq_num(), lastWrite);
+	flushcount++;
 }
 
 void ThreadMemory::addOp(ModelAction * act) {
@@ -53,6 +55,7 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		if (act->is_clflush()) {
 			lastclflush = act;
 			model->get_execution()->evictCacheOp(act);
+			flushcount--;
 		} else {
 			evictFlushOpt(act);
 		}
@@ -92,13 +95,14 @@ void ThreadMemory::emptyFlushBuffer() {
 	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
 		ModelAction *curr = it->getVal();
 		model->get_execution()->evictCacheOp(curr);
+		flushcount--;
 	}
 	flushBuffer.clear();
 }
 
 void ThreadMemory::emptyWrites(void * address, uint size) {
 	sllnode<ModelAction *> * rit;
-	for (rit = flushBuffer.end();rit != NULL;rit=rit->getPrev()) {
+	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *curr = rit->getVal();
 		if (curr->is_write()) {
 			void *loc = curr->get_location();
@@ -109,17 +113,21 @@ void ThreadMemory::emptyWrites(void * address, uint size) {
 	}
 	if (rit != NULL) {
 		sllnode<ModelAction *> * it;
-		for(it = flushBuffer.begin();it!= NULL;) {
+		for(it = storeBuffer.begin();it!= NULL;) {
 			sllnode<ModelAction *> *next = it->getNext();
 			ModelAction *curr = it->getVal();
 			model->get_execution()->evictCacheOp(curr);
-			flushBuffer.erase(it);
+			storeBuffer.erase(it);
 
 			if (it == rit)
 				break;
 			it = next;
 		}
 	}
+}
+
+bool ThreadMemory::hasPendingFlushes() {
+	return flushcount != 0;
 }
 
 void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {

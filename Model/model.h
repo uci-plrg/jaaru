@@ -94,6 +94,8 @@ private:
 
 	unsigned int get_num_threads() const;
 
+
+	bool shouldInsertCrash(ModelAction * act);
 	bool next_execution();
 	bool should_terminate_execution();
 

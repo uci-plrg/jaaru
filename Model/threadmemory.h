@@ -24,6 +24,7 @@ public:
 	void emptyStoreBuffer();
 	void emptyFlushBuffer();
 	void emptyWrites(void * address, uint size);
+	bool hasPendingFlushes();
 
 	SNAPSHOTALLOC;
 private:
@@ -36,5 +37,6 @@ private:
 	HashTable<uintptr_t, ModelAction *, uintptr_t, 6> obj_to_last_write;
 	SnapList<ModelAction *> flushBuffer;
 	ModelAction * lastclflush;
+	int flushcount = 0;
 };
 #endif
