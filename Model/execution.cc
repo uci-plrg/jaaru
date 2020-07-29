@@ -308,9 +308,9 @@ void ModelExecution::process_read(ModelAction *curr, ModelExecution *exec, Model
 
 			if (pexec == exec) {
 				modelclock_t currbegin = cl->getBeginRange();
-				if (currbegin < curr->get_seq_number())
-					cl->setBeginRange(curr->get_seq_number());
-				sllnode<ModelAction *> * node = curr->getActionRef();
+				if (currbegin < rf->get_seq_number())
+					cl->setBeginRange(rf->get_seq_number());
+				sllnode<ModelAction *> * node = rf->getActionRef();
 				sllnode<ModelAction *> * nextNode = node->getNext();
 				if (nextNode!=NULL) {
 					modelclock_t nextclock = nextNode->getVal()->get_seq_number();
@@ -1024,8 +1024,9 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev = prev->prevContext) {
 		ModelExecution * pExecution = prev->execution;
 		CacheLine * cl = pExecution->obj_to_cacheline.get(cacheid);
-		modelclock_t begin = cl->getBeginRange();
-		modelclock_t end = cl->getEndRange();
+
+		modelclock_t begin = cl != NULL ? cl->getBeginRange() : 0;
+		modelclock_t end = cl != NULL ? cl->getEndRange() : 0;
 		simple_action_list_t * writes = pExecution->obj_wr_map.get(address);
 		if (writes == NULL)
 			continue;

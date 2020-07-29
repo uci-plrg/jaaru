@@ -116,7 +116,7 @@ void ThreadMemory::emptyWrites(void * address, uint size) {
 		for(it = storeBuffer.begin();it!= NULL;) {
 			sllnode<ModelAction *> *next = it->getNext();
 			ModelAction *curr = it->getVal();
-			model->get_execution()->evictCacheOp(curr);
+			evictOpFromStoreBuffer(curr);
 			storeBuffer.erase(it);
 
 			if (it == rit)

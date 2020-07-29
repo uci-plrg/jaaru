@@ -91,6 +91,7 @@ private:
 
 	Execution_Context * prevContext;
 	int execution_number;
+	int numcrashes;
 
 	unsigned int get_num_threads() const;
 

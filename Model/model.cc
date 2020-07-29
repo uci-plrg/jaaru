@@ -24,6 +24,12 @@ void placeholder(void *) {
 	ASSERT(0);
 }
 
+void restart();
+
+void restart_wrapper(void *) {
+	restart();
+}
+
 #include <signal.h>
 
 #define SIGSTACKSIZE 65536
@@ -62,7 +68,8 @@ ModelChecker::ModelChecker() :
 	execution(new ModelExecution(this, scheduler)),
 	nodestack(new NodeStack()),
 	prevContext(NULL),
-	execution_number(1)
+	execution_number(1),
+	numcrashes(0)
 {
 	model_print("PMCheck\n"
 							"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
@@ -289,6 +296,7 @@ bool ModelChecker::next_execution() {
 		}
 		//Only need to delete nodestack...rest are snapshotting
 		delete nodestack;
+		numcrashes--;
 		scheduler = prevContext->scheduler;
 		execution  = prevContext->execution;
 		nodestack = prevContext->nodestack;
@@ -297,12 +305,14 @@ bool ModelChecker::next_execution() {
 		Execution_Context * tmp = prevContext->prevContext;
 		delete prevContext;
 		prevContext = tmp;
+		reset_to_initial_state();
+		return false;
 	} else {
 		//reset nodestack for next execution
 		nodestack->reset_execution();
+		reset_to_initial_state();
+		return true;
 	}
-	reset_to_initial_state();
-	return true;
 }
 
 /**
@@ -400,14 +410,16 @@ void ModelChecker::doCrash() {
 	scheduler = new Scheduler();
 	execution = new ModelExecution(this, scheduler);
 	nodestack = new NodeStack();
-	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
+	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &restart_wrapper, NULL, NULL);
 #ifdef TLS
 	init_thread->setTLS((char *)get_tls_addr());
 #endif
 	execution->add_thread(init_thread);
 	scheduler->set_current_thread(init_thread);
 	execution->setParams(&params);
+	numcrashes++;
 	snapshot = take_snapshot();
+	run();
 }
 
 /** @brief Run ModelChecker for the user program */
@@ -476,7 +488,6 @@ void ModelChecker::run()
 			ModelAction *curr = t->get_pending();
 			if (shouldInsertCrash(curr)) {
 				doCrash();
-				break;
 			}
 
 			t->set_pending(NULL);
@@ -494,6 +505,8 @@ void ModelChecker::run()
 
 bool ModelChecker::shouldInsertCrash(ModelAction *act) {
 	if (act->is_mfence() || act->is_rmw_read() || (act->is_write() && act->is_seqcst())) {
+		if (numcrashes > 0)
+			return false;
 		if (act->checkAndSetCrashed())
 			return false;
 

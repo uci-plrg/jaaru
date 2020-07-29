@@ -7,9 +7,11 @@
 
 /** Turn on debugging. */
 
-#ifndef CONFIG_DEBUG
-#define CONFIG_DEBUG
-#endif
+
+/*#ifndef CONFIG_DEBUG
+ #define CONFIG_DEBUG
+ #endif
+ */
 
 #ifndef CONFIG_ASSERT
 #define CONFIG_ASSERT
