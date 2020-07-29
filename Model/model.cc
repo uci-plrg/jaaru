@@ -432,12 +432,8 @@ void ModelChecker::doCrash() {
 	execution = new ModelExecution(this, scheduler);
 	nodestack = new NodeStack();
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &restart_wrapper, NULL, NULL);
-#ifdef TLS
-	init_thread->setTLS((char *)get_tls_addr());
-#endif
 	execution->add_thread(init_thread);
 	scheduler->set_current_thread(init_thread);
-	init_thread->set_pending(new ModelAction(THREAD_START, std::memory_order_seq_cst, init_thread));
 	execution->setParams(&params);
 	numcrashes++;
 	snapshot = doSnapShot();

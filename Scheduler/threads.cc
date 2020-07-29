@@ -243,6 +243,8 @@ void tlsdestructor(void *v) {
 void setup_context() {
 	Thread * curr_thread = thread_current();
 
+	ASSERT(curr_thread->tls == NULL);	//We rely on this for locking...
+
 	/* Add dummy "start" action, just to create a first clock vector */
 	model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
 
@@ -264,6 +266,7 @@ void setup_context() {
 	}
 
 	set_tls_addr((uintptr_t)curr_thread->tls);
+
 	setcontext(&curr_thread->context);
 }
 #endif
@@ -308,9 +311,6 @@ int Thread::create_context()
 int Thread::swap(Thread *t, ucontext_t *ctxt)
 {
 	t->set_state(THREAD_READY);
-#ifdef TLS
-	set_tls_addr((uintptr_t)model->getInitThread()->tls);
-#endif
 	return model_swapcontext(&t->context, ctxt);
 }
 
