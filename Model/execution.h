@@ -107,7 +107,7 @@ private:
 	void add_normal_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
 	void build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rf_set);
-	ModelAction * convertNonAtomicStore(void*);
+	ModelAction * convertNonAtomicStore(void*, uint size);
 	void flushBuffers(void *address, uint size);
 
 #ifdef TLS

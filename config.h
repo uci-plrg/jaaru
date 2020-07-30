@@ -36,7 +36,7 @@
 /** Page size configuration */
 #define PAGESIZE 4096
 
-#define TLS 1
+//#define TLS 1
 
 /** Thread parameters */
 

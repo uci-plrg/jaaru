@@ -30,6 +30,44 @@ void initRaceDetector()
 	raceset = new RaceSet();
 }
 
+void resetSBT(struct ShadowBaseTable * ptr) {
+	for(int i=0;i <65536;i++) {
+		uintptr_t shadowval = (uintptr_t) ptr->array[i];
+		if (!ISSHORTRECORD(shadowval)) {
+			struct RaceRecord *record = (struct RaceRecord *)shadowval;
+			snapshot_free(record);
+		}
+		ptr->array[i] = 0;
+	}
+}
+
+
+void resetST2(struct ShadowTable *ptr) {
+	for(int i=0;i <65536;i++) {
+		if (ptr->array[i] != 0) {
+			resetSBT((struct ShadowBaseTable *)ptr->array[i]);
+		}
+	}
+}
+
+void resetST(struct ShadowTable *ptr) {
+	for(int i=0;i <65536;i++) {
+		if (ptr->array[i] != 0) {
+#ifdef BIT48
+			resetST2((struct ShadowTable *)ptr->array[i]);
+#else
+			resetSBT((struct ShadowBaseTable *)ptr->array[i]);
+#endif
+		}
+	}
+}
+
+void resetRaceDetector() {
+	resetST(root);
+}
+
+
+
 void * table_calloc(size_t size)
 {
 	if ((((char *)memory_base) + size) > memory_top) {

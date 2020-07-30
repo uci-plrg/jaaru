@@ -266,13 +266,13 @@ bool ModelExecution::is_complete_execution() const
 	return true;
 }
 
-ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
+ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) {
 	uint64_t value = *((const uint64_t *) location);
 	modelclock_t storeclock;
 	thread_id_t storethread;
 	getStoreThreadAndClock(location, &storethread, &storeclock);
 	setAtomicStoreFlag(location);
-	ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, location, value, get_thread(storethread));
+	ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, location, value, get_thread(storethread), size);
 	act->set_seq_number(storeclock);
 	add_normal_write_to_lists(act);
 	add_write_to_lists(act);
@@ -811,6 +811,8 @@ ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
 	lastread->process_rmw(act);
 	if (act->is_rmw_cas_fail()) {
 		initialize_curr_action(lastread);
+		get_thread(act)->getMemory()->emptyStoreBuffer();
+		get_thread(act)->getMemory()->emptyFlushBuffer();
 	}
 	delete act;
 	return lastread;
@@ -989,7 +991,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 	if (hasExtraWrite) {
 		//Have uninstrumented writes...Get all pending writes to the same location out of store buffers...then add a nonatomic write for that store...
 		flushBuffers(address, size);
-		ModelAction * nonatomicstore = convertNonAtomicStore(address);
+		ModelAction * nonatomicstore = convertNonAtomicStore(address, size);
 		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
 		return;
 	}
@@ -1012,7 +1014,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 	bool hasnonatomicstore = hasNonAtomicStore(address);
 
 	if (hasnonatomicstore) {
-		ModelAction * nonatomicstore = convertNonAtomicStore(address);
+		ModelAction * nonatomicstore = convertNonAtomicStore(address, size);
 		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
 		return;
 	}

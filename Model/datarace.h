@@ -45,6 +45,7 @@ uint8_t * lookupShadowEntry(const void *address);
 
 #define MASK16BIT 0xffff
 void initRaceDetector();
+void resetRaceDetector();
 void raceCheckWrite(thread_id_t thread, void *location);
 void atomraceCheckWrite(thread_id_t thread, void *location);
 void raceCheckRead(thread_id_t thread, const void *location);

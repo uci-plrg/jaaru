@@ -440,6 +440,7 @@ void ModelChecker::doCrash() {
 	execution->setParams(&params);
 	numcrashes++;
 	snapshot = doSnapShot();
+	resetRaceDetector();
 	run();
 }
 

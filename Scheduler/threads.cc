@@ -17,8 +17,9 @@
 #include "threadmemory.h"
 #include "clockvector.h"
 
-#ifdef TLS
 #include <dlfcn.h>
+
+#ifdef TLS
 uintptr_t get_tls_addr() {
 	uintptr_t addr;
 	asm ("mov %%fs:0, %0" : "=r" (addr));
