@@ -93,7 +93,7 @@ private:
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	void initialize_curr_action(ModelAction *curr);
-	void process_read(ModelAction *curr, ModelExecution * exec, ModelAction *rf);
+	void process_read(ModelAction *curr, Pair<ModelExecution *, ModelAction *> *rfarray);
 	void handle_read(ModelAction *curr);
 	void process_write(ModelAction *curr);
 	ModelAction * swap_rmw_write_part(ModelAction *act);
@@ -106,9 +106,9 @@ private:
 	void update_thread_local_data(ModelAction *act);
 	void add_normal_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
-	void build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rf_set);
+	void build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> *> *rf_set);
 	ModelAction * convertNonAtomicStore(void*, uint size);
-	void flushBuffers(void *address, uint size);
+	void flushBuffers(void *address);
 
 #ifdef TLS
 	pthread_key_t pthreadkey;
@@ -138,7 +138,7 @@ private:
 	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
 
 	/** Per-object list of writes. These writes are available to all threads */
-	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_wr_map;
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 3> obj_wr_map;
 
 	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;
 	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;
@@ -163,4 +163,8 @@ private:
 
 };
 
+inline void * alignAddress(void * addr) {
+	uintptr_t address = (uintptr_t) addr;
+	return (void *) (address & ~((uintptr_t)7));
+}
 #endif	/* __EXECUTION_H__ */

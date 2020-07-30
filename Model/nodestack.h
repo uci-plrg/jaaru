@@ -67,8 +67,8 @@ public:
 	void full_reset();
 	void print() const;
 	bool has_another_execution() {return last_backtrack != NULL;}
-	Node * create_node(SnapVector<Pair<ModelExecution *, ModelAction *> > * rfset);
-	Node * explore_next(SnapVector<Pair<ModelExecution *, ModelAction *> > * rfset);
+	Node * create_node(SnapVector<Pair<ModelExecution *, ModelAction *> *> * rfset);
+	Node * explore_next(SnapVector<Pair<ModelExecution *, ModelAction *> *> * rfset);
 
 	MEMALLOC
 private:

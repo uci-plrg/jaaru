@@ -107,6 +107,16 @@ static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple
 	return tmp;
 }
 
+static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 3> * hash, void * ptr)
+{
+	simple_action_list_t *tmp = hash->get(ptr);
+	if (tmp == NULL) {
+		tmp = new simple_action_list_t();
+		hash->put(ptr, tmp);
+	}
+	return tmp;
+}
+
 /** @return a thread ID for a new Thread */
 thread_id_t ModelExecution::get_next_id()
 {
@@ -287,10 +297,12 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
  * @param rf_set is the set of model actions we can possibly read from
  * @return True if the read can be pruned from the thread map list.
  */
-void ModelExecution::process_read(ModelAction *curr, ModelExecution *exec, ModelAction *rf) {
+void ModelExecution::process_read(ModelAction *curr, Pair<ModelExecution *, ModelAction *> *rfarray) {
 	ASSERT(curr->is_read());
 	// Check to read from non-atomic stores if there is one
 
+	ModelExecution * exec = rfarray[0].p1;
+	ModelAction *rf = rfarray[0].p2;
 	if (exec != this) {
 		//Not this execution, so we need to walk list
 		void * address = curr->get_location();
@@ -298,7 +310,7 @@ void ModelExecution::process_read(ModelAction *curr, ModelExecution *exec, Model
 		for(Execution_Context * pExecution = model->getPrevContext();;pExecution=pExecution->prevContext) {
 			ModelExecution * pexec = pExecution->execution;
 
-			simple_action_list_t * writes = pexec->obj_wr_map.get(address);
+			simple_action_list_t * writes = pexec->obj_wr_map.get(alignAddress(address));
 			if (writes == NULL)
 				continue;
 
@@ -772,7 +784,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 }
 
 void ModelExecution::handle_read(ModelAction *curr) {
-	SnapVector<Pair<ModelExecution *, ModelAction *> > rf_set;
+	SnapVector<Pair<ModelExecution *, ModelAction *> *> rf_set;
 	build_may_read_from(curr, &rf_set);
 	int index = 0;
 
@@ -783,7 +795,7 @@ void ModelExecution::handle_read(ModelAction *curr) {
 		index = nextnode->get_read_from();
 	}
 
-	process_read(curr, rf_set[index].p1, rf_set[index].p2);
+	process_read(curr, rf_set[index]);
 }
 
 /**
@@ -875,7 +887,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 
 void ModelExecution::add_write_to_lists(ModelAction *write) {
-	simple_action_list_t *list= get_safe_ptr_action(&obj_wr_map, write->get_location());
+	simple_action_list_t *list= get_safe_ptr_action(&obj_wr_map, alignAddress(write->get_location()));
 
 	write->setActionRef(list->add_back(write));
 }
@@ -953,11 +965,11 @@ bool valequals(uint64_t val1, uint64_t val2, uint size) {
 	}
 }
 
-void ModelExecution::flushBuffers(void * address, uint size) {
+void ModelExecution::flushBuffers(void * address) {
 	for(uint i=0;i< get_num_threads();i++) {
 		Thread * t = get_thread(i);
 		ThreadMemory * memory = t->getMemory();
-		memory->emptyWrites(address, size);
+		memory->emptyWrites(address);
 	}
 }
 
@@ -968,46 +980,47 @@ void ModelExecution::flushBuffers(void * address, uint size) {
  * @param curr is the current ModelAction that we are exploring; it must be a
  * 'read' operation.
  */
-void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> >* rf_set)
+void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *>*>* rf_set)
 {
 	ASSERT(curr->is_read());
 
 	//Handle case of uninstrumented write...
 	uint size = curr->getOpSize();
+	Pair<ModelExecution *, ModelAction *> * write_array = (Pair<ModelExecution *, ModelAction *>*)snapshot_calloc(size*sizeof(Pair<ModelExecution*, ModelAction *>), 1);
+
 	bool hasExtraWrite = false;
 	void * address = curr->get_location();
 
-	if (size == 8)
-		hasExtraWrite = ValidateAddress8(address);
-	else if (size == 16)
-		hasExtraWrite = ValidateAddress16(address);
-	else if (size == 32)
-		hasExtraWrite = ValidateAddress32(address);
-	else if (size == 64)
-		hasExtraWrite = ValidateAddress64(address);
-	else
-		ASSERT(0);
+	uint numslotsleft = size;
 
-	if (hasExtraWrite) {
-		//Have uninstrumented writes...Get all pending writes to the same location out of store buffers...then add a nonatomic write for that store...
-		flushBuffers(address, size);
-		ModelAction * nonatomicstore = convertNonAtomicStore(address, size);
-		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
+	for(uint i=0;i< size;i++) {
+		void * curraddress = (void *)(((uintptr_t)address) + i);
+		bool hasExtraWrite = ValidateAddress8(curraddress);
+		if (hasExtraWrite) {
+			flushBuffers(curraddress);
+			ModelAction * nonatomicstore = convertNonAtomicStore(address, 1);
+			write_array[i].p1 = this;
+			write_array[i].p2 = nonatomicstore;
+			numslotsleft--;
+		}
+	}
+
+	if (numslotsleft == 0) {
+		rf_set->push_back(write_array);
 		return;
 	}
 
-	ModelAction *lastWrite = get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr);
-
-	if (lastWrite != NULL) {
+	if (get_thread(curr->get_tid())->getMemory()->getLastWriteFromStoreBuffer(curr, this, write_array, numslotsleft)) {
 		//There is a write in the current thread's store buffer, and the read is going to read from that
-		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, lastWrite));
+		rf_set->push_back(write_array);
 		return;
 	}
-	simple_action_list_t * list = obj_wr_map.get(address);
+
+	simple_action_list_t * list = obj_wr_map.get(alignAddress(address));
 
 	if (list != NULL) {
 		//Otherwise return last write to cache
-		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, list->back()));
+		//		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, list->back()));
 		return;
 	}
 
@@ -1015,7 +1028,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 
 	if (hasnonatomicstore) {
 		ModelAction * nonatomicstore = convertNonAtomicStore(address, size);
-		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
+		//		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
 		return;
 	}
 
@@ -1029,7 +1042,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 
 		modelclock_t begin = cl != NULL ? cl->getBeginRange() : 0;
 		modelclock_t end = cl != NULL ? cl->getEndRange() : 0;
-		simple_action_list_t * writes = pExecution->obj_wr_map.get(address);
+		simple_action_list_t * writes = pExecution->obj_wr_map.get(alignAddress(address));
 		if (writes == NULL)
 			continue;
 		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
@@ -1041,7 +1054,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 
 			//We can see this write
 
-			rf_set->push_back(Pair<ModelExecution *, ModelAction *>(pExecution, write));
+			//			rf_set->push_back(Pair<ModelExecution *, ModelAction *>(pExecution, write));
 
 			//See if this write happened before last cache line flush
 			if (clock < begin) {

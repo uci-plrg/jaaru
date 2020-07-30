@@ -11,7 +11,7 @@
 		DEBUG("pmc_store%u:addr = %p %lld\n", size, addrs, (uint64_t) val);  \
 		createModelIfNotExist();                                \
 		Thread *thrd = thread_current();                        \
-		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thrd, size); \
+		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thrd, size>>3); \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)addrs) = val;                  \
 		*((volatile uint ## size ## _t *)lookupShadowEntry(addrs)) = val; \
@@ -31,7 +31,7 @@ PMCHECKSTORE(64)
 	uint ## size ## _t pmc_load ## size (void *addrs) {                   \
 		DEBUG("pmc_load%u:addr = %p\n", size, addrs);                       \
 		createModelIfNotExist();                                            \
-		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, VALUE_NONE, size); \
+		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, VALUE_NONE, size>>3); \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action); \
 		DEBUG("pmc_load: addr = %p val = %llu val2 = %llu\n", addrs, (uintptr_t) val, *((uintptr_t *)addrs)); \
 		thread_id_t tid = thread_current()->get_id();                       \

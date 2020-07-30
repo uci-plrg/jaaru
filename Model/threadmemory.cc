@@ -31,16 +31,19 @@ void ThreadMemory::addWrite(ModelAction * write) {
 	obj_to_last_write.put(getCacheID(write->get_location()), write);
 }
 
-ModelAction * ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read) {
-	void *address = read->get_location();
+bool ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read, ModelExecution * exec, Pair<ModelExecution *, ModelAction *>*writes, uint & numslotsleft) {
+	uint size = read->getOpSize();
+	uintptr_t rbot = (uintptr_t) read->get_location();
+	uintptr_t rtop = rbot + size;
+
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *write = rit->getVal();
-		if(write->is_write() && write->get_location() == address) {
-			return write;
-		}
+		if(write->is_write())
+			if (checkOverlap(exec, writes, write, numslotsleft, rbot, rtop, size))
+				return true;
 	}
-	return NULL;
+	return false;
 }
 
 void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
@@ -100,13 +103,13 @@ void ThreadMemory::emptyFlushBuffer() {
 	flushBuffer.clear();
 }
 
-void ThreadMemory::emptyWrites(void * address, uint size) {
+void ThreadMemory::emptyWrites(void * address) {
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *curr = rit->getVal();
 		if (curr->is_write()) {
 			void *loc = curr->get_location();
-			if (((uintptr_t)loc) >= ((uintptr_t)address) && ((uintptr_t)loc) < (((uintptr_t)address)+((unsigned int)size))) {
+			if (((uintptr_t)address) >= ((uintptr_t)loc) && ((uintptr_t)address) < (((uintptr_t)loc)+(curr->getOpSize()))) {
 				break;
 			}
 		}

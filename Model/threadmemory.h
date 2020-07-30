@@ -12,10 +12,31 @@
 #include "action.h"
 #include "actionlist.h"
 
+inline bool checkOverlap(ModelExecution *exec, Pair<ModelExecution *, ModelAction *>*writes, ModelAction *write, uint & numslotsleft, uintptr_t rbot, uintptr_t rtop, uint size) {
+	uintptr_t wbot = (uintptr_t) write->get_location();
+	uint wsize = write->getOpSize();
+	uintptr_t wtop = wbot + wsize;
+	//skip on if there is no overlap
+	if ((wbot > rtop) || (rbot > wtop))
+		return false;
+	intptr_t writeoffset = ((intptr_t)rbot) - ((intptr_t)wbot);
+	for(uint i = 0;i < size;i++) {
+		if (writes[i].p2 == NULL && writeoffset >= 0 && writeoffset < wsize) {
+			writes[i].p1 = exec;
+			writes[i].p2 = write;
+			numslotsleft--;
+			if (numslotsleft == 0)
+				return true;
+		}
+		writeoffset++;
+	}
+	return false;
+}
+
 class ThreadMemory {
 public:
 	ThreadMemory();
-	ModelAction * getLastWriteFromStoreBuffer(ModelAction *read);
+	bool getLastWriteFromStoreBuffer(ModelAction *read, ModelExecution *exec, Pair<ModelExecution *, ModelAction *>*writes, uint & numslotsleft);
 	void addCacheOp(ModelAction *act);
 	void addOp(ModelAction *act);
 	void addWrite(ModelAction *act);
@@ -23,7 +44,7 @@ public:
 	void writeToCacheLine(ModelAction *write);
 	void emptyStoreBuffer();
 	void emptyFlushBuffer();
-	void emptyWrites(void * address, uint size);
+	void emptyWrites(void * address);
 	bool hasPendingFlushes();
 
 	SNAPSHOTALLOC;

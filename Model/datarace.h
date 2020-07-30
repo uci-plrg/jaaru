@@ -68,10 +68,14 @@ void raceCheckWrite32(thread_id_t thread, const void *location);
 void raceCheckWrite64(thread_id_t thread, const void *location);
 
 
-bool ValidateAddress8(void * address);
-bool ValidateAddress16(void * address);
-bool ValidateAddress32(void * address);
-bool ValidateAddress64(void * address);
+inline bool ValidateAddress8(void * address) {
+	volatile uint8_t * val1 = ((volatile uint8_t *)(lookupShadowEntry(address)));
+	uint8_t val2 = *((volatile uint8_t *)address);
+	bool val = (*val1) != val2;
+	if (val)
+		*val1 = val2;
+	return val;
+}
 
 /**
  * @brief A record of information for detecting data races
