@@ -87,6 +87,8 @@ public:
 #endif
 	SNAPSHOTALLOC
 private:
+	bool processWrites(ModelAction *read, Pair<ModelExecution *, ModelAction *> * writes, simple_action_list_t *list, uint & numslotsleft);
+
 	int get_execution_number() const;
 	bool should_wake_up(const ModelAction *curr, const Thread *thread) const;
 	void wake_up_sleeping_actions(ModelAction *curr);

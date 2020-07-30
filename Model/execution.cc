@@ -973,6 +973,22 @@ void ModelExecution::flushBuffers(void * address) {
 	}
 }
 
+
+bool ModelExecution::processWrites(ModelAction *read, Pair<ModelExecution *, ModelAction *> * writes, simple_action_list_t *list, uint & numslotsleft) {
+	uint size = read->getOpSize();
+	uintptr_t rbot = (uintptr_t) read->get_location();
+	uintptr_t rtop = rbot + size;
+
+	sllnode<ModelAction *> * rit;
+	for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
+		ModelAction *write = rit->getVal();
+		if(write->is_write())
+			if (checkOverlap(this, writes, write, numslotsleft, rbot, rtop, size))
+				return true;
+	}
+	return false;
+}
+
 /**
  * Build up an initial set of all past writes that this 'read' action may read
  * from, as well as any previously-observed future values that must still be valid.
@@ -1019,24 +1035,22 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 	simple_action_list_t * list = obj_wr_map.get(alignAddress(address));
 
 	if (list != NULL) {
-		//Otherwise return last write to cache
-		//		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, list->back()));
-		return;
+		if (processWrites(curr, write_array, list, numslotsleft)) {
+			rf_set->push_back(write_array);
+			return;
+		}
 	}
 
-	bool hasnonatomicstore = hasNonAtomicStore(address);
+	//TODO: If not in persistent area, we should skip this..
 
-	if (hasnonatomicstore) {
-		ModelAction * nonatomicstore = convertNonAtomicStore(address, size);
-		//		rf_set->push_back(Pair<ModelExecution *, ModelAction *>(this, nonatomicstore));
-		return;
-	}
-
-	//TODO: If not in persistent area, we should stop here...
+	SnapVector<Pair<ModelExecution *, ModelAction *>*> * seedWrites = new SnapVector<Pair<ModelExecution *, ModelAction *>*>();
+	seedWrites->push_back(write_array);
 
 	uintptr_t cacheid = getCacheID(address);
 	//Otherwise look in previous executions for pre-crash writes
-	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev = prev->prevContext) {
+
+	Execution_Context * prev = model->getPrevContext();
+	while(true) {
 		ModelExecution * pExecution = prev->execution;
 		CacheLine * cl = pExecution->obj_to_cacheline.get(cacheid);
 
@@ -1044,7 +1058,8 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 		modelclock_t end = cl != NULL ? cl->getEndRange() : 0;
 		simple_action_list_t * writes = pExecution->obj_wr_map.get(alignAddress(address));
 		if (writes == NULL)
-			continue;
+			goto nextLoop;
+
 		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
 			ModelAction * write = it->getVal();
 			modelclock_t clock = write->get_seq_number();
@@ -1062,6 +1077,10 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<Pair<Mode
 				return;
 			}
 		}
+nextLoop:
+		prev = prev->prevContext;
+		if (prev == NULL)
+			break;
 	}
 }
 
