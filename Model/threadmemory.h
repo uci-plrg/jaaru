@@ -17,7 +17,7 @@ inline bool checkOverlap(ModelExecution *exec, SnapVector<Pair<ModelExecution *,
 	uint wsize = write->getOpSize();
 	uintptr_t wtop = wbot + wsize;
 	//skip on if there is no overlap
-	if ((wbot > rtop) || (rbot > wtop))
+	if ((wbot >= rtop) || (rbot >= wtop))
 		return false;
 	intptr_t writeoffset = ((intptr_t)rbot) - ((intptr_t)wbot);
 	for(uint i = 0;i < size;i++) {

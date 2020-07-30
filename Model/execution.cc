@@ -1044,48 +1044,130 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 
 	//TODO: If not in persistent area, we should skip this..
 
-	SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >*> * seedWrites = new SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >*>();
-	seedWrites->push_back(write_array);
+	WriteVecSet * seedWrites = new WriteVecSet();
+	seedWrites->add(write_array);
 
-	uintptr_t cacheid = getCacheID(address);
+
 	//Otherwise look in previous executions for pre-crash writes
 
 	Execution_Context * prev = model->getPrevContext();
 	while(true) {
 		ModelExecution * pExecution = prev->execution;
-		CacheLine * cl = pExecution->obj_to_cacheline.get(cacheid);
+		if (lookforWritesInPriorExecution(pExecution, curr, &seedWrites))
+			return;
+		prev = prev->prevContext;
+		if (prev == NULL)
+			return;
+	}
+}
 
-		modelclock_t begin = cl != NULL ? cl->getBeginRange() : 0;
-		modelclock_t end = cl != NULL ? cl->getEndRange() : 0;
-		simple_action_list_t * writes = pExecution->obj_wr_map.get(alignAddress(address));
-		if (writes != NULL) {
 
-			SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >*> * currWrites = new SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >*>();
-			for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
-				ModelAction * write = it->getVal();
-				modelclock_t clock = write->get_seq_number();
-				//see if write happens after cache line persistence
-				if (end != 0 && clock > end)
-					continue;
+bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, ModelAction *read, WriteVecSet ** priorWrites) {
+	void *address = read->get_location();
+	uintptr_t cacheid = getCacheID(address);
+	CacheLine * cl = pExecution->obj_to_cacheline.get(cacheid);
+	WriteVecSet *seedWrites = *priorWrites;
+	modelclock_t begin = cl != NULL ? cl->getBeginRange() : 0;
+	modelclock_t end = cl != NULL ? cl->getEndRange() : 0;
+	simple_action_list_t * writes = pExecution->obj_wr_map.get(alignAddress(address));
 
-				for(uint i=0;i<currWrites->size();i++) {
-					SnapVector<Pair<ModelExecution *, ModelAction *> > * writeCan = (*currWrites)[i];
+	uint size = read->getOpSize();
+	uintptr_t rbot = (uintptr_t) read->get_location();
+	uintptr_t rtop = rbot + size;
+	bool isDone = false;
+
+
+	if (writes != NULL) {
+		WriteVecSet *currWrites = new WriteVecSet();
+		WriteVecSet *nextWrites = new WriteVecSet();
+		bool pastWindow = false;
+
+		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
+			ModelAction * write = it->getVal();
+			modelclock_t clock = write->get_seq_number();
+			//see if write happens after cache line persistence
+			if (end != 0 && clock > end)
+				continue;
+
+			uintptr_t wbot = (uintptr_t) write->get_location();
+			uint wsize = write->getOpSize();
+			uintptr_t wtop = wbot + wsize;
+
+			//skip on if there is no overlap
+			if ((wbot >= rtop) || (rbot >= wtop))
+				continue;
+
+			if (!pastWindow) {
+				WriteVecIter * it = seedWrites->iterator();
+				while(it->hasNext()) {
+					SnapVector<Pair<ModelExecution *, ModelAction *> >* vec = it->next();
+					SnapVector<Pair<ModelExecution *, ModelAction *> >* veccopy = new SnapVector<Pair<ModelExecution *, ModelAction *> >(size);
+					veccopy->resize(size);
+					for(uint i = 0;i < size;i++) {
+						(*veccopy)[i]=(*vec)[i];
+					}
+					currWrites->add(veccopy);
 				}
-				//We can see this write
+				delete it;
+			}
 
-				//			rf_set->push_back(Pair<ModelExecution *, ModelAction *>(pExecution, write));
+			//See if there are any open slots in writes
+			bool hasNull = false;
+			{
+				WriteVecIter * it = currWrites->iterator();
+				while(it->hasNext()) {
+					SnapVector<Pair<ModelExecution *, ModelAction *> >* vec = it->next();
+					intptr_t writeoffset = ((intptr_t)rbot) - ((intptr_t)wbot);
+					for(uint i = 0;i < size;i++) {
+						if ((*vec)[i].p2 == NULL) {
+							if (writeoffset >= 0 && writeoffset < wsize) {
+								(*vec)[i].p1 = pExecution;
+								(*vec)[i].p2 = write;
+							} else
+								hasNull = true;
+						}
+						writeoffset++;
+					}
+				}
+				delete it;
+			}
+			WriteVecSet *tmpWrites = currWrites;
+			currWrites = nextWrites;
+			nextWrites = tmpWrites;
+			nextWrites->reset();
 
-				//See if this write happened before last cache line flush
-				if (clock < begin) {
-					//done with search and don't need to look at previous executions
-					return;
+			//See if this write happened before last cache line flush
+			if (clock < begin) {
+				pastWindow = true;
+				//all slots full...done
+				if (!hasNull) {
+					isDone = true;
+					goto done;
 				}
 			}
 		}
-		prev = prev->prevContext;
-		if (prev == NULL)
-			break;
+
+done:
+		if (!pastWindow) {
+			WriteVecIter * it = seedWrites->iterator();
+			while(it->hasNext()) {
+				currWrites->add(it->next());
+			}
+			delete it;
+		} else {
+			//have to free seedWrites since we aren't using them anymore
+			WriteVecIter * it = seedWrites->iterator();
+			while(it->hasNext()) {
+				delete it->next();
+			}
+			delete it;
+		}
+
+		delete seedWrites;
+		delete nextWrites;
+		*priorWrites = currWrites;
 	}
+	return isDone;
 }
 
 static void print_list(action_list_t *list)
