@@ -87,7 +87,7 @@ public:
 #endif
 	SNAPSHOTALLOC
 private:
-	bool processWrites(ModelAction *read, Pair<ModelExecution *, ModelAction *> * writes, simple_action_list_t *list, uint & numslotsleft);
+	bool processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft);
 
 	int get_execution_number() const;
 	bool should_wake_up(const ModelAction *curr, const Thread *thread) const;
@@ -95,7 +95,7 @@ private:
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	void initialize_curr_action(ModelAction *curr);
-	void process_read(ModelAction *curr, Pair<ModelExecution *, ModelAction *> *rfarray);
+	void process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
 	void handle_read(ModelAction *curr);
 	void process_write(ModelAction *curr);
 	ModelAction * swap_rmw_write_part(ModelAction *act);
@@ -108,7 +108,7 @@ private:
 	void update_thread_local_data(ModelAction *act);
 	void add_normal_write_to_lists(ModelAction *act);
 	ModelAction * get_last_unlock(ModelAction *curr) const;
-	void build_may_read_from(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> *> *rf_set);
+	void build_may_read_from(ModelAction *curr, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
 	ModelAction * convertNonAtomicStore(void*, uint size);
 	void flushBuffers(void *address);
 

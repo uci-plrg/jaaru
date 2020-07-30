@@ -31,7 +31,7 @@ void ThreadMemory::addWrite(ModelAction * write) {
 	obj_to_last_write.put(getCacheID(write->get_location()), write);
 }
 
-bool ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read, ModelExecution * exec, Pair<ModelExecution *, ModelAction *>*writes, uint & numslotsleft) {
+bool ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read, ModelExecution * exec, SnapVector<Pair<ModelExecution *, ModelAction *> >*writes, uint & numslotsleft) {
 	uint size = read->getOpSize();
 	uintptr_t rbot = (uintptr_t) read->get_location();
 	uintptr_t rtop = rbot + size;

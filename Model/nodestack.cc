@@ -151,7 +151,7 @@ void NodeStack::reset_execution() {
 	head_idx = -1;
 }
 
-Node * NodeStack::explore_next(SnapVector<Pair<ModelExecution *, ModelAction *>* > * rf_set) {
+Node * NodeStack::explore_next(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >* > * rf_set) {
 	Node * node = get_next();
 	if (node == NULL) {
 		node = create_node(rf_set);
@@ -168,7 +168,7 @@ Node * NodeStack::explore_next(SnapVector<Pair<ModelExecution *, ModelAction *>*
 	return node;
 }
 
-Node * NodeStack::create_node(SnapVector<Pair<ModelExecution *, ModelAction *>* > * rf_set) {
+Node * NodeStack::create_node(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >* > * rf_set) {
 	Node * n = new Node(rf_set->size());
 	node_list.push_back(n);
 	head_idx++;
