@@ -390,7 +390,10 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 		initialize_curr_action(curr);
 	}
 
+	/* Store value in ModelAction so printed traces look nice */
 	curr->set_read_value(value);
+
+	/* Return value to thread so code executes */
 	get_thread(curr)->set_return_value(value);
 }
 
@@ -1184,7 +1187,7 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 			}
 
 			//See if this write happened before last cache line flush
-			if (clock < begin) {
+			if (clock < begin || write->is_initialization()) {
 				pastWindow = true;
 				//all slots full...done
 				if (!hasNull) {
