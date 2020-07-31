@@ -60,6 +60,7 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	thread_map(2),	/* We'll always need at least 2 threads */
 	pthread_map(0),
 	pthread_counter(2),
+	storebufferusage(0),
 	action_trace(),
 	obj_map(),
 	condvar_waiters_map(),

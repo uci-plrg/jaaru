@@ -19,15 +19,18 @@ void ThreadMemory::addCacheOp(ModelAction * act) {
 	storeBuffer.push_back(act);
 	ModelAction *lastWrite = obj_to_last_write.get(getCacheID(act->get_location()));
 	act->setLastWrites(model->get_execution()->get_curr_seq_num(), lastWrite);
+	model->get_execution()->updateStoreBuffer(1);
 	flushcount++;
 }
 
 void ThreadMemory::addOp(ModelAction * act) {
 	storeBuffer.push_back(act);
+	model->get_execution()->updateStoreBuffer(1);
 }
 
 void ThreadMemory::addWrite(ModelAction * write) {
 	storeBuffer.push_back(write);
+	model->get_execution()->updateStoreBuffer(1);
 	obj_to_last_write.put(getCacheID(write->get_location()), write);
 }
 
@@ -74,14 +77,13 @@ void ThreadMemory::evictFlushOpt(ModelAction *act) {
 	flushBuffer.push_back(act);
 }
 
-ModelAction *ThreadMemory::popFromStoreBuffer() {
-	ASSERT(storeBuffer.size() > 0);
-	ModelAction *head = storeBuffer.front();
-	ASSERT(head != NULL);
-	storeBuffer.pop_front();
-	head->print();
-	evictOpFromStoreBuffer(head);
-	return head;
+void ThreadMemory::popFromStoreBuffer() {
+	if (storeBuffer.size() > 0) {
+		ModelAction *head = storeBuffer.front();
+		storeBuffer.pop_front();
+		model->get_execution()->updateStoreBuffer(-1);
+		evictOpFromStoreBuffer(head);
+	}
 }
 
 void ThreadMemory::emptyStoreBuffer() {
@@ -90,6 +92,7 @@ void ThreadMemory::emptyStoreBuffer() {
 		ModelAction *curr = rit->getVal();
 		evictOpFromStoreBuffer(curr);
 	}
+	model->get_execution()->updateStoreBuffer(-storeBuffer.size());
 	storeBuffer.clear();
 }
 
@@ -121,7 +124,7 @@ void ThreadMemory::emptyWrites(void * address) {
 			ModelAction *curr = it->getVal();
 			evictOpFromStoreBuffer(curr);
 			storeBuffer.erase(it);
-
+			model->get_execution()->updateStoreBuffer(-1);
 			if (it == rit)
 				break;
 			it = next;

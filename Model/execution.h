@@ -81,6 +81,8 @@ public:
 	void add_write_to_lists(ModelAction *act);
 	void persistCacheLine(CacheLine *cl, ModelAction *clflush);
 	void evictCacheOp(ModelAction *cacheop);
+	uint32_t getStoreBuffer() { return storebufferusage; }
+	void updateStoreBuffer(int32_t delta) { storebufferusage+=delta; }
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
@@ -113,6 +115,7 @@ private:
 	ModelAction * convertNonAtomicStore(void*, uint size);
 	void flushBuffers(void *address);
 
+
 #ifdef TLS
 	pthread_key_t pthreadkey;
 #endif
@@ -126,7 +129,7 @@ private:
 	SnapVector<Thread *> thread_map;
 	SnapVector<Thread *> pthread_map;
 	uint32_t pthread_counter;
-
+	uint32_t storebufferusage;
 	action_list_t action_trace;
 
 

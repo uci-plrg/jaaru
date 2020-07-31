@@ -9,6 +9,8 @@ struct model_params {
 	int maxexecutions;
 	bool nofork;
 	modelclock_t traceminsize;
+	uint storebufferthreshold;
+	uint evictmax;
 	int verbose;
 };
 

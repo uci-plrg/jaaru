@@ -20,6 +20,8 @@ void param_defaults(struct model_params *params)
 	params->maxexecutions = 10;
 	params->traceminsize = 0;
 	params->nofork = false;
+	params->evictmax = 30;
+	params->storebufferthreshold = 40;
 }
 
 static void print_usage(struct model_params *params)

@@ -467,6 +467,16 @@ void ModelChecker::run()
 				}
 			}
 
+			if (execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads()) {
+				uint targetthread = random() % execution->get_num_threads();
+				uint numberEvict = random() % params.evictmax;
+				ThreadMemory * mem = get_thread(int_to_id(targetthread))->getMemory();
+				for(uint i=0;i<numberEvict;i++) {
+					mem->popFromStoreBuffer();
+				}
+			}
+
+
 			/* Don't schedule threads which should be disabled */
 			for (unsigned int i = 0;i < get_num_threads();i++) {
 				Thread *th = get_thread(int_to_id(i));

@@ -40,7 +40,7 @@ public:
 	void addCacheOp(ModelAction *act);
 	void addOp(ModelAction *act);
 	void addWrite(ModelAction *act);
-	ModelAction *popFromStoreBuffer();
+	void popFromStoreBuffer();
 	void writeToCacheLine(ModelAction *write);
 	void emptyStoreBuffer();
 	void emptyFlushBuffer();
