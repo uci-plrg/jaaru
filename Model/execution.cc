@@ -299,62 +299,90 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
  */
 void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
 	ASSERT(curr->is_read());
+	uint64_t value = 0;
 	// Check to read from non-atomic stores if there is one
+	void * address = curr->get_location();
+	ModelExecution *lexec = NULL;
+	ModelAction *lrf = NULL;
+	for(uint i=curr->getOpSize();i != 0; ) {
+		i--;
+		ModelExecution * exec = (*rfarray)[i].p1;
+		ModelAction *rf = (*rfarray)[i].p2;
 
-	ModelExecution * exec = (*rfarray)[0].p1;
-	ModelAction *rf = (*rfarray)[0].p2;
-	if (exec != this) {
-		//Not this execution, so we need to walk list
-		void * address = curr->get_location();
+		value = value << 8;
 
-		for(Execution_Context * pExecution = model->getPrevContext();;pExecution=pExecution->prevContext) {
-			ModelExecution * pexec = pExecution->execution;
-
-			simple_action_list_t * writes = pexec->obj_wr_map.get(alignAddress(address));
-			if (writes == NULL)
-				continue;
-
-			CacheLine * cl = pexec->getCacheLine(address);
-
-			modelclock_t currend = cl->getEndRange();
-
-			if (pexec == exec) {
-				modelclock_t currbegin = cl->getBeginRange();
-				if (currbegin < rf->get_seq_number())
-					cl->setBeginRange(rf->get_seq_number());
-				sllnode<ModelAction *> * node = rf->getActionRef();
-				sllnode<ModelAction *> * nextNode = node->getNext();
-				if (nextNode!=NULL) {
-					modelclock_t nextclock = nextNode->getVal()->get_seq_number();
-					if (currend == 0 || nextclock <= currend)
-						cl->setEndRange(nextclock-1);
-				}
-				break;
-			}
-
-			//Didn't read from this execution, so cache line must not
-			//have been written out after first write from this
-			//execution...
-			ModelAction *first = writes->begin()->getVal();
-
-			if (currend == 0 || first->get_seq_number() <= currend)
-				cl->setEndRange(first->get_seq_number()-1);
+		if (rf == NULL) {
+			//just read from memory since we didn't find a write to read from
+			value |= ((uint8_t *)curr->get_location())[i];
+			continue;
+		} else {
+			uintptr_t wbot = (uintptr_t) rf->get_location();
+			intptr_t writeoffset = ((intptr_t)address) + i - ((intptr_t)wbot);
+			uint64_t writevalue = rf->get_value();
+			writevalue = writevalue >> writeoffset;
+			value |= writevalue & 0xff;
 		}
+
+
+		if (exec == lexec && lrf == rf)
+			continue;
+
+		lexec = exec;
+		lrf = rf;
+
+		if (exec == this) {
+			ClockVector * cv = rf->get_cv();
+			if (cv != NULL) {
+				curr->merge_cv(cv);
+			}
+		}
+		if (exec != this) {
+			//Not this execution, so we need to walk list
+			void * address = curr->get_location();
+
+			for(Execution_Context * pExecution = model->getPrevContext();;pExecution=pExecution->prevContext) {
+				ModelExecution * pexec = pExecution->execution;
+
+				simple_action_list_t * writes = pexec->obj_wr_map.get(alignAddress(address));
+				if (writes == NULL)
+					continue;
+
+				CacheLine * cl = pexec->getCacheLine(address);
+
+				modelclock_t currend = cl->getEndRange();
+
+				if (pexec == exec) {
+					modelclock_t currbegin = cl->getBeginRange();
+					if (currbegin < rf->get_seq_number())
+						cl->setBeginRange(rf->get_seq_number());
+					sllnode<ModelAction *> * node = rf->getActionRef();
+					sllnode<ModelAction *> * nextNode = node->getNext();
+					if (nextNode!=NULL) {
+						modelclock_t nextclock = nextNode->getVal()->get_seq_number();
+						if (currend == 0 || nextclock <= currend)
+							cl->setEndRange(nextclock-1);
+					}
+					break;
+				}
+
+				//Didn't read from this execution, so cache line must not
+				//have been written out after first write from this
+				//execution...
+				ModelAction *first = writes->begin()->getVal();
+
+				if (currend == 0 || first->get_seq_number() <= currend)
+					cl->setEndRange(first->get_seq_number()-1);
+			}
+		}
+
 	}
 
-	ASSERT(rf);
-	ASSERT(rf->is_write());
-
-	curr->set_read_from(rf);
 	if (!curr->is_rmw_read()) {
 		initialize_curr_action(curr);
 	}
 
-	ClockVector * cv = rf->get_cv();
-	if (cv != NULL) {
-		curr->merge_cv(cv);
-	}
-	get_thread(curr)->set_return_value(curr->get_return_value());
+
+	get_thread(curr)->set_return_value(value);
 }
 
 /**
@@ -530,7 +558,7 @@ void ModelExecution::persistCacheLine(CacheLine *cacheline, ModelAction *clflush
 		cacheline->setBeginRange(clflush->get_seq_number());
 	} else {
 		modelclock_t lastcommittedWrite = clflush->get_last_write();
-		ModelAction * lastwrite = clflush->get_reads_from();
+		ModelAction * lastwrite = clflush->getLastWrite();
 		modelclock_t earliestclock = clflush->get_last_clflush();
 		if (lastwrite != NULL && lastwrite->get_seq_number() > earliestclock)
 			earliestclock = lastwrite->get_seq_number();

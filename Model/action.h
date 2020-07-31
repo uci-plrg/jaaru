@@ -98,15 +98,11 @@ public:
 	const char * get_position() const { return position; }
 	modelclock_t get_seq_number() const ;
 	uint64_t get_value() const;
-	uint64_t get_reads_from_value() const;
 	uint64_t get_write_value() const;
 	uint64_t get_return_value() const;
-	ModelAction * get_reads_from() const { return reads_from; }
 	modelclock_t get_last_write() const { return lastcommittedWrite; };
 	uint64_t get_time() const {return time;}
 	pmc::mutex * get_mutex() const;
-
-	void set_read_from(ModelAction *act);
 
 	void copy_from_new(ModelAction *newaction);
 	void set_seq_number(modelclock_t num);
@@ -174,8 +170,10 @@ public:
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
 	void setLastWrites(modelclock_t mlastcommittedWrite, ModelAction *write) {
 		lastcommittedWrite = mlastcommittedWrite;
-		reads_from = write;
+		lastwrite = write;
 	}
+	ModelAction * getLastWrite() {return lastwrite;}
+
 	modelclock_t get_last_clflush() { return last_clflush; }
 	void set_last_clflush(modelclock_t mlast_clflush) { last_clflush = mlast_clflush; }
 	bool checkAndSetCrashed() { bool tmp = hasCrashed; hasCrashed = true; return tmp;}
@@ -196,7 +194,7 @@ private:
 	 *
 	 * Only valid for reads
 	 */
-	ModelAction *reads_from;
+	ModelAction *lastwrite;
 	union {
 		uint64_t time;	//used for sleep
 		modelclock_t lastcommittedWrite;

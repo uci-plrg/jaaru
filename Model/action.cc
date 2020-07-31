@@ -34,7 +34,7 @@
 ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value, Thread *thread, uint _size) :
 	location(loc),
 	position(NULL),
-	reads_from(NULL),
+	lastwrite(NULL),
 	cv(NULL),
 	action_ref(NULL),
 	value(value),
@@ -91,7 +91,7 @@ ModelAction::ModelAction(action_type_t type) :
 ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, uint _size) :
 	location(loc),
 	position(position),
-	reads_from(NULL),
+	lastwrite(NULL),
 	cv(NULL),
 	action_ref(NULL),
 	value(value),
@@ -124,7 +124,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 ModelAction::ModelAction(action_type_t type, const char * position, memory_order order, void *loc, uint64_t value, Thread *thread) :
 	location(loc),
 	position(position),
-	reads_from(NULL),
+	lastwrite(NULL),
 	cv(NULL),
 	action_ref(NULL),
 	value(value),
@@ -517,26 +517,6 @@ modelclock_t ModelAction::get_seq_number() const
 }
 
 /**
- * @brief Get the value read by this load
- *
- * We differentiate this function from ModelAction::get_write_value and
- * ModelAction::get_value for the purpose of RMW's, which may have both a
- * 'read' and a 'write' value.
- *
- * Note: 'this' must be a load.
- *
- * @return The value read by this load
- */
-uint64_t ModelAction::get_reads_from_value() const
-{
-	ASSERT(is_read());
-	if (reads_from)
-		return reads_from->get_write_value();
-
-	return VALUE_NONE;	// Only for new actions with no reads-from
-}
-
-/**
  * @brief Get the value written by this store
  *
  * We differentiate this function from ModelAction::get_reads_from_value and
@@ -555,37 +535,6 @@ uint64_t ModelAction::get_write_value() const
 
 uint64_t ModelAction::get_value() const {
 	return value;
-}
-
-/**
- * @brief Get the value returned by this action
- *
- * For atomic reads (including RMW), an operation returns the value it read.
- * For atomic writes, an operation returns the value it wrote. For other
- * operations, the return value varies (sometimes is a "don't care"), but the
- * value is simply stored in the "value" field.
- *
- * @return This action's return value
- */
-uint64_t ModelAction::get_return_value() const
-{
-	if (is_read())
-		return get_reads_from_value();
-	else if (is_write())
-		return get_write_value();
-	else
-		return value;
-}
-
-/**
- * Update the model action's read_from action
- * @param act The action to read from; should be a write
- */
-void ModelAction::set_read_from(ModelAction *act)
-{
-	ASSERT(act);
-
-	reads_from = act;
 }
 
 /**
@@ -675,10 +624,7 @@ void ModelAction::print() const
 	model_print("%-4d %-2d   %-14s  %7s  %14p   %-#18" PRIx64,
 							seq_number, id_to_int(tid), type_str, mo_str, location, get_return_value());
 	if (is_read()) {
-		if (reads_from)
-			model_print("  %-3d", reads_from->get_seq_number());
-		else
-			model_print("  ?  ");
+		model_print("  ?  ");
 	}
 	if (cv) {
 		if (is_read())
@@ -698,11 +644,6 @@ unsigned int ModelAction::hash() const
 	hash ^= seq_number << 5;
 	hash ^= id_to_int(tid) << 6;
 
-	if (is_read()) {
-		if (reads_from)
-			hash ^= reads_from->get_seq_number();
-		hash ^= get_reads_from_value();
-	}
 	return hash;
 }
 
