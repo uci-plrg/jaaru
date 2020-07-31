@@ -8,11 +8,11 @@
 #include <inttypes.h>
 
 #define PMCHECKSTORE(size)                                                                                      \
-	void pmc_store ## size (void *addrs, uint ## size ## _t val){                                                   \
+	void pmc_store ## size (void *addrs, uint ## size ## _t val, const char * position){                                                   \
 		DEBUG("pmc_store%u:addr = %p %" PRIx64 "\n", size, addrs, (uint64_t) val);  \
 		createModelIfNotExist();                                \
 		Thread *thrd = thread_current();                        \
-		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thrd, size>>3); \
+		ModelAction * action = new ModelAction(NONATOMIC_WRITE, position, memory_order_relaxed, addrs, val, size>>3); \
 		model->switch_to_master(action);                                                                                        \
 		*((volatile uint ## size ## _t *)addrs) = val;                  \
 		*((volatile uint ## size ## _t *)lookupShadowEntry(addrs)) = val; \
@@ -29,10 +29,10 @@ PMCHECKSTORE(64)
 // PMC Non-Atomic Load
 
 #define PMCHECKLOAD(size)                                               \
-	uint ## size ## _t pmc_load ## size (void *addrs) {                   \
+	uint ## size ## _t pmc_load ## size (void *addrs, const char * position) {                   \
 		DEBUG("pmc_load%u:addr = %p\n", size, addrs);                       \
 		createModelIfNotExist();                                            \
-		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, VALUE_NONE, size>>3); \
+		ModelAction *action = new ModelAction(NONATOMIC_READ, position, memory_order_relaxed, addrs, VALUE_NONE, size>>3); \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action); \
 		DEBUG("pmc_load: addr = %p val = %" PRIx64 " val2 = %" PRIx64 "\n", addrs, (uintptr_t) val, *((uintptr_t *)addrs)); \
 		thread_id_t tid = thread_current()->get_id();                       \
