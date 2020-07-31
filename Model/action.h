@@ -97,6 +97,8 @@ public:
 	void * get_location() const { return location; }
 	const char * get_position() const { return position; }
 	modelclock_t get_seq_number() const ;
+	uint64_t get_read_value() const { return read_value; }
+	void set_read_value(uint64_t rv) { read_value = rv; }
 	uint64_t get_value() const;
 	uint64_t get_write_value() const;
 	modelclock_t get_last_write() const { return lastcommittedWrite; };
@@ -212,6 +214,7 @@ private:
 		uint64_t value;
 		modelclock_t last_clflush;
 	};
+	uint64_t read_value;
 	/** @brief Type of action (read, write, RMW, fence, thread create, etc.) */
 	action_type type;
 

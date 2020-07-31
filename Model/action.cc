@@ -38,6 +38,7 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	cv(NULL),
 	action_ref(NULL),
 	value(value),
+	read_value(VALUE_NONE),
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
@@ -65,6 +66,7 @@ ModelAction::ModelAction(action_type_t type) :
 	cv(NULL),
 	action_ref(NULL),
 	value(0),
+	read_value(VALUE_NONE),
 	type(type),
 	order(memory_order_seq_cst),
 	seq_number(ACTION_INITIAL_CLOCK),
@@ -95,6 +97,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	cv(NULL),
 	action_ref(NULL),
 	value(value),
+	read_value(VALUE_NONE),
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
@@ -128,6 +131,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	cv(NULL),
 	action_ref(NULL),
 	value(value),
+	read_value(VALUE_NONE),
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
@@ -624,7 +628,7 @@ void ModelAction::print() const
 	model_print("%-4d %-2d   %-14s  %7s  %14p   %-#18" PRIx64,
 							seq_number, id_to_int(tid), type_str, mo_str, location, get_value());
 	if (is_read()) {
-		model_print("  ?  ");
+	  model_print(" %" PRIx64 " ", get_read_value());
 	}
 	if (cv) {
 		if (is_read())
