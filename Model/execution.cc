@@ -397,7 +397,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 		initialize_curr_action(curr);
 	}
 
-
+	curr->set_read_value(value);
 	get_thread(curr)->set_return_value(value);
 }
 

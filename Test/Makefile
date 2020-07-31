@@ -9,7 +9,7 @@ include $(BASE)/common.mk
 
 DEPS := $(join $(addsuffix ., $(dir $(OBJECTS))), $(addsuffix .d, $(notdir $(OBJECTS))))
 
-CPPFLAGS += -I$(BASE) -I$(BASE)/API -I$(BASE)/Memory -I$(BASE)/Model -I$(BASE)/Schedule -I$(BASE)/Test
+CPPFLAGS += -I$(BASE) -I$(BASE)/API -I$(BASE)/Memory -I$(BASE)/Model -I$(BASE)/Schedule -I$(BASE)/Test -rdynamic
 CFLAGS += -lpthread -lpmcheck
 all: $(OBJECTS) $(COBJECTS) ../bin/run.sh $(PYOBJECT)
 

@@ -5,11 +5,13 @@ Short Term Todo List
 --------------------
 
 1) Handle injecting crashes & figure out model for what is persistent...
-2) Handle evicting items from store buffers...
-3) Hack to support RECIPE...how to:
+2) Hack to support RECIPE...how to:
    a) Make sure all data structures are heap allocated...
    b) Stash the root pointer as a global
    c) Check whether global exists before allocation data structure
+3) Create stores for overwritten initial values
+4) Figure out why we have such large state space...could be globals?  bugs in algorithm??
+5) Idea for hack...write elision...if the write is the same value as was already there, drop it...
 
 Longer Term Todos
 -----------------
@@ -18,7 +20,7 @@ Longer Term Todos
 2) Support libpmem/libpmem2 interfaces...
 3) Develop persistent location map...tracks what is & is not persistent...
 4) Support for normal reads that span multiple writes
-5) Deal with mixed size access issues...
+
 
 PMCheck is a tool for testing persistent memory tools. It is fast because it lazily simulate crashes in the code. 
 
