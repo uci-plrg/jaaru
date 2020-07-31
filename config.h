@@ -7,11 +7,11 @@
 
 /** Turn on debugging. */
 
-
-#ifndef CONFIG_DEBUG
+/*
+ #ifndef CONFIG_DEBUG
  #define CONFIG_DEBUG
  #endif
-
+ */
 
 #ifndef CONFIG_ASSERT
 #define CONFIG_ASSERT
@@ -36,7 +36,7 @@
 /** Page size configuration */
 #define PAGESIZE 4096
 
-//#define TLS 1
+#define TLS 1
 
 /** Thread parameters */
 

@@ -351,11 +351,11 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 				curr->merge_cv(cv);
 			}
 		}
-		if (exec != this) {
+		if (exec != this && exec != NULL) {
 			//Not this execution, so we need to walk list
 			void * address = curr->get_location();
 
-			for(Execution_Context * pExecution = model->getPrevContext();;pExecution=pExecution->prevContext) {
+			for(Execution_Context * pExecution = model->getPrevContext();pExecution != NULL ;pExecution=pExecution->prevContext) {
 				ModelExecution * pexec = pExecution->execution;
 
 				simple_action_list_t * writes = pexec->obj_wr_map.get(alignAddress(address));
@@ -1102,6 +1102,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 	while(it->hasNext()) {
 		rf_set->push_back(it->next());
 	}
+	ASSERT(rf_set->size() > 0);
 	delete it;
 	delete seedWrites;
 	return;
@@ -1125,7 +1126,6 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 
 	if (writes != NULL) {
 		WriteVecSet *currWrites = new WriteVecSet();
-		WriteVecSet *nextWrites = new WriteVecSet();
 		bool pastWindow = false;
 
 		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
@@ -1177,10 +1177,6 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 				}
 				delete it;
 			}
-			WriteVecSet *tmpWrites = currWrites;
-			currWrites = nextWrites;
-			nextWrites = tmpWrites;
-			nextWrites->reset();
 
 			//See if this write happened before last cache line flush
 			if (clock < begin) {
@@ -1210,7 +1206,6 @@ done:
 		}
 
 		delete seedWrites;
-		delete nextWrites;
 		*priorWrites = currWrites;
 	}
 	return isDone;
