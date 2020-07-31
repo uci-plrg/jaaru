@@ -56,6 +56,7 @@ public:
 	ucontext_t * get_system_context() { return &system_context; }
 
 	ModelExecution * get_execution() const { return execution; }
+	ModelExecution * getOrigExecution() const { return origExecution; }
 
 	int get_execution_number() const { return execution_number; }
 
@@ -86,6 +87,7 @@ private:
 	/** The scheduler to use: tracks the running/ready Threads */
 	Scheduler * scheduler;
 	ModelExecution *execution;
+	ModelExecution *origExecution;
 	NodeStack *nodestack;
 	Thread * init_thread;
 

@@ -13,7 +13,7 @@ int array[2000];
 atomic<unsigned int> y(0);
 
 extern "C" {
-  __attribute__ ((visibility ("default"))) void restart();
+__attribute__ ((visibility ("default"))) void restart();
 }
 
 void func1() {
@@ -28,18 +28,18 @@ void func1() {
 
 
 void func2() {
-  int a = y.load();
-  if (a) {
-    int b = x.load();
-    printf("%d", b);
-  }
+	int a = y.load();
+	if (a) {
+		int b = x.load();
+		printf("%d", b);
+	}
 }
 
 __attribute__ ((visibility ("default"))) void restart() {
-  func2();
+	func2();
 }
 
 int main() {
-  func1();
-  return EXIT_SUCCESS;
+	func1();
+	return EXIT_SUCCESS;
 }

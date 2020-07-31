@@ -34,7 +34,7 @@
 #define SIGSTACKSIZE 65536
 
 /** Shadow table size */
-#define SHADOWTABLESIZE 65536 
+#define SHADOWTABLESIZE 65536
 
 /** Page size configuration */
 #define PAGESIZE 4096

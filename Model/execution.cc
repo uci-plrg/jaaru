@@ -327,18 +327,11 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 
 		value = value << 8;
 
-		if (rf == NULL) {
-			//just read from memory since we didn't find a write to read from
-			value |= ((uint8_t *)curr->get_location())[i];
-			continue;
-		} else {
-			uintptr_t wbot = (uintptr_t) rf->get_location();
-			intptr_t writeoffset = ((intptr_t)address) + i - ((intptr_t)wbot);
-			uint64_t writevalue = rf->get_value();
-			writevalue = writevalue >> (8*writeoffset);
-			value |= writevalue & 0xff;
-		}
-
+		uintptr_t wbot = (uintptr_t) rf->get_location();
+		intptr_t writeoffset = ((intptr_t)address) + i - ((intptr_t)wbot);
+		uint64_t writevalue = rf->get_value();
+		writevalue = writevalue >> (8*writeoffset);
+		value |= writevalue & 0xff;
 
 		if (exec == lexec && lrf == rf)
 			continue;
@@ -536,6 +529,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr) {
 	ASSERT(curr->is_write());
+	ensureInitialValue(curr);
 	if(curr->is_rmw()) {	// curr is modified second part of a RMW and must be recorded
 		get_thread(curr)->getMemory()->addWrite(curr);
 		get_thread(curr)->getMemory()->emptyStoreBuffer();
@@ -827,7 +821,17 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	return curr;
 }
 
+void ModelExecution::ensureInitialValue(ModelAction *curr) {
+	void * align_address = alignAddress(curr->get_location());
+	simple_action_list_t * list = model->getOrigExecution()->obj_wr_map.get(align_address);
+	if (list == NULL) {
+		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), model->getOrigExecution()->model_thread, 8);
+		model->getOrigExecution()->add_write_to_lists(act);
+	}
+}
+
 void ModelExecution::handle_read(ModelAction *curr) {
+	ensureInitialValue(curr);
 	SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set;
 	build_may_read_from(curr, &rf_set);
 	int index = 0;

@@ -69,6 +69,7 @@ ModelChecker::ModelChecker() :
 	params(),
 	scheduler(new Scheduler()),
 	execution(new ModelExecution(this, scheduler)),
+	origExecution(execution),
 	nodestack(new NodeStack()),
 	prevContext(NULL),
 	execution_number(1),
@@ -429,7 +430,7 @@ snapshot_id doSnapShot() {
 }
 
 void ModelChecker::doCrash() {
-  model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
+	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
 	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, nodestack, init_thread, snapshot);
 	prevContext = ec;
 	scheduler = new Scheduler();
