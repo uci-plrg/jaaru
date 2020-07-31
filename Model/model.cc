@@ -19,6 +19,7 @@
 #include "datarace.h"
 #include "nodestack.h"
 #include "threadmemory.h"
+#include "config.h"
 
 ModelChecker *model = NULL;
 
@@ -35,7 +36,6 @@ void restart_wrapper(void *) {
 
 #include <signal.h>
 
-#define SIGSTACKSIZE 65536
 static void mprot_handle_pf(int sig, siginfo_t *si, void *unused)
 {
 	model_print("Segmentation fault at %p\n", si->si_addr);
