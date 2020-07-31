@@ -99,7 +99,6 @@ public:
 	modelclock_t get_seq_number() const ;
 	uint64_t get_value() const;
 	uint64_t get_write_value() const;
-	uint64_t get_return_value() const;
 	modelclock_t get_last_write() const { return lastcommittedWrite; };
 	uint64_t get_time() const {return time;}
 	pmc::mutex * get_mutex() const;

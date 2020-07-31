@@ -439,8 +439,8 @@ void ModelChecker::doCrash() {
 	scheduler->set_current_thread(init_thread);
 	execution->setParams(&params);
 	numcrashes++;
-	snapshot = doSnapShot();
 	resetRaceDetector();
+	snapshot = doSnapShot();
 	run();
 }
 

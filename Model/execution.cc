@@ -278,6 +278,21 @@ bool ModelExecution::is_complete_execution() const
 
 ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) {
 	uint64_t value = *((const uint64_t *) location);
+	switch(size) {
+	case 1:
+		value = value & 0xff;
+		break;
+	case 2:
+		value = value & 0xffff;
+		break;
+	case 4:
+		value = value & 0xffffffff;
+		break;
+	case 8:
+		break;
+	default:
+		ASSERT(0);
+	}
 	modelclock_t storeclock;
 	thread_id_t storethread;
 	getStoreThreadAndClock(location, &storethread, &storeclock);
@@ -319,7 +334,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 			uintptr_t wbot = (uintptr_t) rf->get_location();
 			intptr_t writeoffset = ((intptr_t)address) + i - ((intptr_t)wbot);
 			uint64_t writevalue = rf->get_value();
-			writevalue = writevalue >> writeoffset;
+			writevalue = writevalue >> (8*writeoffset);
 			value |= writevalue & 0xff;
 		}
 
@@ -1043,7 +1058,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
 			flushBuffers(curraddress);
-			ModelAction * nonatomicstore = convertNonAtomicStore(address, 1);
+			ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
 			(*write_array)[i].p1 = this;
 			(*write_array)[i].p2 = nonatomicstore;
 			numslotsleft--;
@@ -1078,15 +1093,18 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 
 	//Otherwise look in previous executions for pre-crash writes
 
-	Execution_Context * prev = model->getPrevContext();
-	while(true) {
-		ModelExecution * pExecution = prev->execution;
-		if (lookforWritesInPriorExecution(pExecution, curr, &seedWrites))
-			return;
-		prev = prev->prevContext;
-		if (prev == NULL)
-			return;
+	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev=prev->prevContext) {
+		if (lookforWritesInPriorExecution(prev->execution, curr, &seedWrites))
+			break;
 	}
+
+	WriteVecIter * it = seedWrites->iterator();
+	while(it->hasNext()) {
+		rf_set->push_back(it->next());
+	}
+	delete it;
+	delete seedWrites;
+	return;
 }
 
 

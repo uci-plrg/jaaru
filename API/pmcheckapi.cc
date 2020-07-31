@@ -5,10 +5,11 @@
 #include "datarace.h"
 #include "action.h"
 #include "threadmemory.h"
+#include <inttypes.h>
 
 #define PMCHECKSTORE(size)                                                                                      \
 	void pmc_store ## size (void *addrs, uint ## size ## _t val){                                                   \
-		DEBUG("pmc_store%u:addr = %p %lld\n", size, addrs, (uint64_t) val);  \
+		DEBUG("pmc_store%u:addr = %p %" PRIx64 "\n", size, addrs, (uint64_t) val);  \
 		createModelIfNotExist();                                \
 		Thread *thrd = thread_current();                        \
 		ModelAction * action = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, addrs, val, thrd, size>>3); \
@@ -33,7 +34,7 @@ PMCHECKSTORE(64)
 		createModelIfNotExist();                                            \
 		ModelAction *action = new ModelAction(NONATOMIC_READ, NULL, memory_order_relaxed, addrs, VALUE_NONE, size>>3); \
 		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action); \
-		DEBUG("pmc_load: addr = %p val = %llu val2 = %llu\n", addrs, (uintptr_t) val, *((uintptr_t *)addrs)); \
+		DEBUG("pmc_load: addr = %p val = %" PRIx64 " val2 = %" PRIx64 "\n", addrs, (uintptr_t) val, *((uintptr_t *)addrs)); \
 		thread_id_t tid = thread_current()->get_id();                       \
 		raceCheckRead ## size (tid, (void *)(((uintptr_t)addrs)));          \
 		return val;                                                         \
