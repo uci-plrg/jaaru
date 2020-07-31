@@ -5,7 +5,7 @@
 #include <string.h>
 #include <cstdlib>
 #include <dlfcn.h>
-
+#include <signal.h>
 
 #include "model.h"
 #include "action.h"
@@ -33,13 +33,11 @@ void restart_wrapper(void *) {
 	restart();
 }
 
-#include <signal.h>
-
-#define SIGSTACKSIZE 65536
 static void mprot_handle_pf(int sig, siginfo_t *si, void *unused)
 {
 	model_print("Segmentation fault at %p\n", si->si_addr);
 	model_print("For debugging, place breakpoint at: %s:%d\n",__FILE__, __LINE__);
+	model_print("Or attach gdb to process with id # %u\n", getpid());
 	print_trace();	// Trace printing may cause dynamic memory allocation
 	while(1)
 		;

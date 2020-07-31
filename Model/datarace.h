@@ -10,14 +10,14 @@
 #include "modeltypes.h"
 #include "classlist.h"
 #include "hashset.h"
-
+#define SHADOWTABLESIZE 65536
 struct ShadowTable {
-	void * array[65536];
+	void * array[SHADOWTABLESIZE];
 };
 
 struct ShadowBaseTable {
-	uint64_t array[65536];
-	uint8_t data[65536];
+	uint64_t array[SHADOWTABLESIZE];
+	uint8_t data[SHADOWTABLESIZE];
 };
 
 struct DataRace {
