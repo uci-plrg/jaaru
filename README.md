@@ -9,9 +9,8 @@ Short Term Todo List
    a) Make sure all data structures are heap allocated...
    b) Stash the root pointer as a global
    c) Check whether global exists before allocation data structure
-3) Create stores for overwritten initial values
-4) Figure out why we have such large state space...could be globals?  bugs in algorithm??
-5) Idea for hack...write elision...if the write is the same value as was already there, drop it...
+3) Figure out why we have such large state space...could be globals?  bugs in algorithm??
+4) Idea for hack...write elision...if the write is the same value as was already there, drop it...
 
 Longer Term Todos
 -----------------
