@@ -52,7 +52,7 @@ public:
 	ModelExecution * get_execution() const { return execution; }
 	ModelExecution * getOrigExecution() const { return origExecution; }
 
-	int get_execution_number() const { return execution_number; }
+	uint get_execution_number() const { return execution_number; }
 
 	Thread * get_thread(thread_id_t tid) const;
 	Thread * get_thread(const ModelAction *act) const;
@@ -86,7 +86,7 @@ private:
 	Thread * init_thread;
 
 	Execution_Context * prevContext;
-	int execution_number;
+	uint execution_number;
 	int numcrashes;
 
 

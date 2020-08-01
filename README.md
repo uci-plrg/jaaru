@@ -14,7 +14,6 @@ Short Term Todo List
 
 TODO
 ----
-Fix cache line updates
 Add interface for registering persistent handles
 
 Longer Term Todos

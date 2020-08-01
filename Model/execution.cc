@@ -362,19 +362,19 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 					continue;
 
 				CacheLine * cl = pexec->getCacheLine(address);
-
-				modelclock_t currend = cl->getEndRange();
+				cl->checkExecution(model->get_execution_number());
+				modelclock_t currend = cl->getEndCurrent();
 
 				if (pexec == exec) {
-					modelclock_t currbegin = cl->getBeginRange();
+					modelclock_t currbegin = cl->getBeginCurrent();
 					if (currbegin < rf->get_seq_number())
-						cl->setBeginRange(rf->get_seq_number());
+						cl->setBeginCurrent(rf->get_seq_number());
 					mllnode<ModelAction *> * node = rf->getActionRef();
 					mllnode<ModelAction *> * nextNode = node->getNext();
 					if (nextNode!=NULL) {
 						modelclock_t nextclock = nextNode->getVal()->get_seq_number();
 						if (currend == 0 || nextclock <= currend)
-							cl->setEndRange(nextclock-1);
+							cl->setEndCurrent(nextclock-1);
 					}
 					break;
 				}
@@ -385,7 +385,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 				ModelAction *first = writes->begin()->getVal();
 
 				if (currend == 0 || first->get_seq_number() <= currend)
-					cl->setEndRange(first->get_seq_number()-1);
+					cl->setEndCurrent(first->get_seq_number()-1);
 			}
 		}
 
@@ -1105,8 +1105,10 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 	uintptr_t cacheid = getCacheID(address);
 	CacheLine * cl = pExecution->obj_to_cacheline.get(cacheid);
 	WriteVecSet *seedWrites = *priorWrites;
-	modelclock_t begin = cl != NULL ? cl->getBeginRange() : 0;
-	modelclock_t end = cl != NULL ? cl->getEndRange() : 0;
+	if (cl != NULL)
+		cl->checkExecution(model->get_execution_number());
+	modelclock_t begin = cl != NULL ? cl->getBeginCurrent() : 0;
+	modelclock_t end = cl != NULL ? cl->getEndCurrent() : 0;
 	simple_action_list_t * writes = pExecution->obj_wr_map.get(alignAddress(address));
 
 	uint size = read->getOpSize();
