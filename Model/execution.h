@@ -31,6 +31,7 @@ public:
 
 	Thread * take_step(ModelAction *curr);
 
+	void clearPreRollback();
 	void print_summary();
 	void print_tail();
 	void add_thread(Thread *t);

@@ -87,14 +87,16 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 /** @brief Destructor */
 ModelExecution::~ModelExecution()
 {
+	action_trace.clearAndDeleteActions();
+	delete priv;
+}
+
+void ModelExecution::clearPreRollback() {
 	for (unsigned int i = 0;i < get_num_threads();i++) {
 		ModelAction *pending = get_thread(int_to_id(i))->get_pending();
 		if (pending != NULL)
 			delete pending;
 	}
-
-	action_trace.clearAndDeleteActions();
-	delete priv;
 }
 
 

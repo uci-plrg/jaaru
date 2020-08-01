@@ -304,7 +304,6 @@ bool ModelChecker::next_execution() {
 	if (complete) {
 		if (execution->is_deadlocked())
 			assert_bug("Deadlock detected");
-
 	}
 
 	record_stats();
@@ -316,8 +315,6 @@ bool ModelChecker::next_execution() {
 
 	execution_number ++;
 
-	bool hasmore;
-
 	//See if we are done...
 	if (!nodestack->has_another_execution()) {
 		//last execution on this stack...need to reset
@@ -325,6 +322,8 @@ bool ModelChecker::next_execution() {
 			//really done
 			return false;
 		}
+		execution->clearPreRollback();
+
 		//Delete non-snapshotting data structures
 		delete nodestack;
 		delete execution;
@@ -337,11 +336,6 @@ bool ModelChecker::next_execution() {
 		Execution_Context * tmp = prevContext->prevContext;
 		delete prevContext;
 		prevContext = tmp;
-
-		hasmore = false;
-	} else {
-		//Build new execution
-		hasmore = true;
 	}
 
 	//Reset nodestack for next execution
@@ -365,7 +359,7 @@ bool ModelChecker::next_execution() {
 		regionID.clear();
 	}
 
-	return hasmore;
+	return true;
 }
 
 /**
@@ -461,6 +455,7 @@ void ModelChecker::doCrash() {
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
+	execution->clearPreRollback();
 	reset_to_initial_state();
 	execution = new ModelExecution(this, scheduler);
 	nodestack = new NodeStack();
@@ -468,7 +463,6 @@ void ModelChecker::doCrash() {
 	execution->add_thread(init_thread);
 	execution->setParams(&params);
 	numcrashes++;
-	run();
 }
 
 /** @brief Run ModelChecker for the user program */
@@ -476,7 +470,7 @@ void ModelChecker::run()
 {
 	do {
 		Thread * t = init_thread;
-
+nextExecution:
 		do {
 			/*
 			 * Stash next pending action(s) for thread(s). There
@@ -547,6 +541,7 @@ void ModelChecker::run()
 			ModelAction *curr = t->get_pending();
 			if (shouldInsertCrash(curr)) {
 				doCrash();
+				goto nextExecution;
 			}
 
 			t->set_pending(NULL);
