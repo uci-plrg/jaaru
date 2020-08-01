@@ -300,16 +300,12 @@ bool ModelChecker::next_execution() {
 		//Only need to delete nodestack...rest are snapshotting
 		delete nodestack;
 		numcrashes--;
-		scheduler = prevContext->scheduler;
 		execution  = prevContext->execution;
 		nodestack = prevContext->nodestack;
-		init_thread = prevContext->init_thread;
-		snapshot_id oldsnap = prevContext->snapshot;
 		Execution_Context * tmp = prevContext->prevContext;
 		delete prevContext;
 		prevContext = tmp;
 		reset_to_initial_state();
-		snapshot = oldsnap;	//restore old snapshot identifier
 		return false;
 	} else {
 		//reset nodestack for next execution
@@ -408,40 +404,16 @@ bool ModelChecker::should_terminate_execution()
 	return false;
 }
 
-ucontext_t snapshot_ctxt;
-snapshot_id _snap_id;
-char snapshot_stack[4096];
-
-static void snapshot_helper() {
-	_snap_id = take_snapshot();
-	setcontext(model->get_system_context());
-}
-
-snapshot_id doSnapShot() {
-	getcontext(&snapshot_ctxt);
-	snapshot_ctxt.uc_stack.ss_sp = snapshot_stack;
-	snapshot_ctxt.uc_stack.ss_size = sizeof(snapshot_stack);
-	snapshot_ctxt.uc_link = NULL;
-	makecontext(&snapshot_ctxt, snapshot_helper, 0);
-	model_swapcontext(model->get_system_context(), &snapshot_ctxt);
-
-	return _snap_id;
-}
-
 void ModelChecker::doCrash() {
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
-	Execution_Context * ec = new Execution_Context(prevContext, scheduler, execution, nodestack, init_thread, snapshot);
+	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
-	scheduler = new Scheduler();
 	execution = new ModelExecution(this, scheduler);
 	nodestack = new NodeStack();
-	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &restart_wrapper, NULL, NULL);
 	execution->add_thread(init_thread);
-	scheduler->set_current_thread(init_thread);
 	execution->setParams(&params);
 	numcrashes++;
 	resetRaceDetector();
-	snapshot = doSnapShot();
 	run();
 }
 

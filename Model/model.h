@@ -21,21 +21,15 @@
 
 class Execution_Context {
 public:
-	Execution_Context(Execution_Context *mprev, Scheduler * mscheduler, ModelExecution *mexecution, NodeStack *mnodestack, Thread * minit_thread, snapshot_id msnapshot) :
+	Execution_Context(Execution_Context *mprev, ModelExecution *mexecution, NodeStack *mnodestack) :
 		prevContext(mprev),
-		scheduler(mscheduler),
 		execution(mexecution),
-		nodestack(mnodestack),
-		init_thread(minit_thread),
-		snapshot(msnapshot)
+		nodestack(mnodestack)
 	{}
 
 	Execution_Context *prevContext;
-	Scheduler * scheduler;
 	ModelExecution *execution;
 	NodeStack *nodestack;
-	Thread * init_thread;
-	snapshot_id snapshot;
 
 	MEMALLOC
 };
@@ -95,9 +89,8 @@ private:
 	int execution_number;
 	int numcrashes;
 
+
 	unsigned int get_num_threads() const;
-
-
 	bool shouldInsertCrash(ModelAction * act);
 	bool next_execution();
 	bool should_terminate_execution();
