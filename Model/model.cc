@@ -188,7 +188,7 @@ void ModelChecker::assert_user_bug(const char *msg)
 /** @brief Print bug report listing for this execution (if any bugs exist) */
 void ModelChecker::print_bugs() const
 {
-	SnapVector<bug_message *> *warnings = execution->get_warnings();
+	ModelVector<bug_message *> *warnings = execution->get_warnings();
 
 	model_print("Warning report: %zu warning%s detected\n",
 							warnings->size(),
@@ -196,7 +196,7 @@ void ModelChecker::print_bugs() const
 	for (unsigned int i = 0;i < warnings->size();i++)
 		(*warnings)[i] -> print();
 
-	SnapVector<bug_message *> *bugs = execution->get_bugs();
+	ModelVector<bug_message *> *bugs = execution->get_bugs();
 
 	model_print("Bug report: %zu bug%s detected\n",
 							bugs->size(),
@@ -290,6 +290,8 @@ bool ModelChecker::next_execution() {
 
 	execution_number ++;
 
+	bool hasmore;
+
 	//See if we are done...
 	if (!nodestack->has_another_execution()) {
 		//last execution on this stack...need to reset
@@ -305,42 +307,37 @@ bool ModelChecker::next_execution() {
 		//Restore previous execution information
 		execution  = prevContext->execution;
 		nodestack = prevContext->nodestack;
+
 		Execution_Context * tmp = prevContext->prevContext;
 		delete prevContext;
 		prevContext = tmp;
 
-		//Reset nodestack for next execution
-		nodestack->reset_execution();
-
-		//Delete old execution
-		delete execution;
-
-		//Reset program state
-		reset_to_initial_state();
-
-		//Build new execution
-		execution = new ModelExecution(this, scheduler);
-		execution->add_thread(init_thread);
-		execution->setParams(&params);
-
-		return false;
+		hasmore = false;
 	} else {
-		//Reset nodestack for next execution
-		nodestack->reset_execution();
-
-		//Delete old execution
-		delete execution;
-
-		//Reset program state
-		reset_to_initial_state();
-
 		//Build new execution
-		execution = new ModelExecution(this, scheduler);
-		execution->add_thread(init_thread);
-		execution->setParams(&params);
-
-		return true;
+		hasmore = true;
 	}
+
+	//Reset nodestack for next execution
+	nodestack->reset_execution();
+
+	//Delete old execution
+	delete execution;
+
+	//Reset program state
+	reset_to_initial_state();
+
+	//Build new execution
+	execution = new ModelExecution(this, scheduler);
+	execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
+	execution->add_thread(init_thread);
+	execution->setParams(&params);
+
+	//If this is the top level, need to reset the original execution also
+	if (prevContext == NULL)
+		origExecution = execution;
+
+	return hasmore;
 }
 
 /**
@@ -436,12 +433,13 @@ void ModelChecker::doCrash() {
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
+	reset_to_initial_state();
 	execution = new ModelExecution(this, scheduler);
 	nodestack = new NodeStack();
+	execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
 	execution->add_thread(init_thread);
 	execution->setParams(&params);
 	numcrashes++;
-	resetRaceDetector();
 	run();
 }
 
@@ -541,14 +539,12 @@ bool ModelChecker::shouldInsertCrash(ModelAction *act) {
 		if (numcrashes > 0)
 			return false;
 
-		//Create node decision of whether we should crash
-		Node * node = nodestack->explore_next(2);
-		if (node->get_choice() > 0)
-			return false;
-
 		ThreadMemory * memory = execution->get_thread(act)->getMemory();
-		return memory->hasPendingFlushes();
-
+		if (memory->hasPendingFlushes()) {
+			//Create node decision of whether we should crash
+			Node * node = nodestack->explore_next(2);
+			return (node->get_choice() == 0);
+		}
 	}
 	return false;
 }

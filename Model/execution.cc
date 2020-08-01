@@ -45,12 +45,12 @@ struct model_snapshot_members {
 
 	unsigned int next_thread_id;
 	modelclock_t used_sequence_numbers;
-	SnapVector<bug_message *> bugs;
-	SnapVector<bug_message *> warnings;
+	ModelVector<bug_message *> bugs;
+	ModelVector<bug_message *> warnings;
 	/** @brief Incorrectly-ordered synchronization was made */
 	bool asserted;
 
-	SNAPSHOTALLOC
+	MEMALLOC
 };
 
 /** @brief Constructor */
@@ -87,8 +87,11 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 /** @brief Destructor */
 ModelExecution::~ModelExecution()
 {
-	for (unsigned int i = 0;i < get_num_threads();i++)
-		delete get_thread(int_to_id(i));
+	for (unsigned int i = 0;i < get_num_threads();i++) {
+		ModelAction *pending = get_thread(int_to_id(i))->get_pending();
+		if (pending != NULL)
+			delete pending;
+	}
 
 	action_trace.clearAndDeleteActions();
 	delete priv;
@@ -212,12 +215,12 @@ bool ModelExecution::have_bug_reports() const
 	return priv->bugs.size() != 0;
 }
 
-SnapVector<bug_message *> * ModelExecution::get_warnings() const
+ModelVector<bug_message *> * ModelExecution::get_warnings() const
 {
 	return &priv->warnings;
 }
 
-SnapVector<bug_message *> * ModelExecution::get_bugs() const
+ModelVector<bug_message *> * ModelExecution::get_bugs() const
 {
 	return &priv->bugs;
 }

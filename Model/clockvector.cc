@@ -22,7 +22,7 @@ ClockVector::ClockVector(ClockVector *parent, const ModelAction *act)
 	if (parent && parent->num_threads > num_threads)
 		num_threads = parent->num_threads;
 
-	clock = (modelclock_t *)snapshot_calloc(num_threads, sizeof(int));
+	clock = (modelclock_t *)model_calloc(num_threads, sizeof(int));
 	if (parent)
 		std::memcpy(clock, parent->clock, parent->num_threads * sizeof(modelclock_t));
 
@@ -33,7 +33,7 @@ ClockVector::ClockVector(ClockVector *parent, const ModelAction *act)
 /** @brief Destructor */
 ClockVector::~ClockVector()
 {
-	snapshot_free(clock);
+	model_free(clock);
 }
 
 /**
@@ -46,7 +46,7 @@ bool ClockVector::merge(const ClockVector *cv)
 	ASSERT(cv != NULL);
 	bool changed = false;
 	if (cv->num_threads > num_threads) {
-		clock = (modelclock_t *)snapshot_realloc(clock, cv->num_threads * sizeof(modelclock_t));
+		clock = (modelclock_t *)model_realloc(clock, cv->num_threads * sizeof(modelclock_t));
 		for (int i = num_threads;i < cv->num_threads;i++)
 			clock[i] = 0;
 		num_threads = cv->num_threads;
@@ -72,7 +72,7 @@ bool ClockVector::minmerge(const ClockVector *cv)
 	ASSERT(cv != NULL);
 	bool changed = false;
 	if (cv->num_threads > num_threads) {
-		clock = (modelclock_t *)snapshot_realloc(clock, cv->num_threads * sizeof(modelclock_t));
+		clock = (modelclock_t *)model_realloc(clock, cv->num_threads * sizeof(modelclock_t));
 		for (int i = num_threads;i < cv->num_threads;i++)
 			clock[i] = 0;
 		num_threads = cv->num_threads;

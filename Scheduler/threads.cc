@@ -343,7 +343,8 @@ void Thread::complete()
 	if (stack)
 		stack_free(stack);
 #ifdef TLS
-	if (this != model->getInitThread()) {
+	//Don't free tls for init_thread or model_thread (id = 0)
+	if (this != model->getInitThread() && id != 0) {
 		ASSERT(thread_current()==NULL);
 		real_pthread_mutex_unlock(&mutex2);
 		real_pthread_join(thread, NULL);

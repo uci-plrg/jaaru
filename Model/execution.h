@@ -59,8 +59,8 @@ public:
 
 	bool have_bug_reports() const;
 
-	SnapVector<bug_message *> * get_bugs() const;
-	SnapVector<bug_message *> * get_warnings() const;
+	ModelVector<bug_message *> * get_bugs() const;
+	ModelVector<bug_message *> * get_warnings() const;
 
 	bool has_asserted() const;
 	void set_assert();
