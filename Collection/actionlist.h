@@ -37,13 +37,13 @@ public:
 	void addAction(ModelAction * act);
 	void removeAction(ModelAction * act);
 	void clear();
+	void clearAndDeleteActions();
 	bool isEmpty();
 	uint size() {return _size;}
 	mllnode<ModelAction *> * begin() {return head;}
 	mllnode<ModelAction *> * end() {return tail;}
 
 	MEMALLOC;
-
 private:
 	allnode root;
 	mllnode<ModelAction *> * head;

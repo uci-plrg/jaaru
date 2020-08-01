@@ -28,9 +28,9 @@ public:
 	~Node();
 
 	void increment_read_from();
-	bool read_from_empty() const;
+	bool has_more_choices() const;
 	void print_read_from();
-	int get_read_from() const;
+	int get_choice() const;
 	int get_read_from_size() const;
 	void print() const;
 
@@ -67,8 +67,8 @@ public:
 	void full_reset();
 	void print() const;
 	bool has_another_execution() {return last_backtrack != NULL;}
-	Node * create_node(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> * rfset);
-	Node * explore_next(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> * rfset);
+	Node * create_node(uint numchoices);
+	Node * explore_next(uint numchoises);
 
 	MEMALLOC
 private:

@@ -42,8 +42,7 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(_size),
-	hasCrashed(false)
+	size(_size)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_NOP);
@@ -70,8 +69,7 @@ ModelAction::ModelAction(action_type_t type) :
 	type(type),
 	order(memory_order_seq_cst),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(0),
-	hasCrashed(false)
+	size(0)
 {
 	Thread *t = thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
@@ -101,8 +99,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(_size),
-	hasCrashed(false)
+	size(_size)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -135,8 +132,7 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	seq_number(ACTION_INITIAL_CLOCK),
-	size(0),
-	hasCrashed(false)
+	size(0)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -147,8 +143,9 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 
 
 /** @brief ModelAction destructor */
-ModelAction::~ModelAction()
-{
+ModelAction::~ModelAction() {
+	if (cv)
+		delete cv;
 }
 
 uint ModelAction::getOpSize() const {

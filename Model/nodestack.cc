@@ -43,7 +43,7 @@ void Node::print_read_from()
  * Gets the next 'read_from' action from this Node. Only valid for a node
  * where this->action is a 'read'.
  */
-int Node::get_read_from() const {
+int Node::get_choice() const {
 	return read_from_idx;
 }
 
@@ -56,8 +56,8 @@ int Node::get_read_from_size() const
  * Checks whether the readsfrom set for this node is empty.
  * @return true if the readsfrom set is empty.
  */
-bool Node::read_from_empty() const {
-	return (read_from_idx + 1) >= rf_size;
+bool Node::has_more_choices() const {
+	return (read_from_idx + 1) < rf_size;
 }
 
 /**
@@ -151,25 +151,25 @@ void NodeStack::reset_execution() {
 	head_idx = -1;
 }
 
-Node * NodeStack::explore_next(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >* > * rf_set) {
+Node * NodeStack::explore_next(uint numchoices) {
 	Node * node = get_next();
 	if (node == NULL) {
-		node = create_node(rf_set);
+		node = create_node(numchoices);
 	} else {
-		ASSERT(((int)rf_set->size()) == node->get_read_from_size());
+		ASSERT(((int)numchoices) == node->get_read_from_size());
 		if (node == curr_backtrack) {
 			node->increment_read_from();
 			pop_restofstack(1);	//dump other nodes...
 			curr_backtrack = NULL;
 		}
 	}
-	if (!node->read_from_empty())
+	if (node->has_more_choices())
 		last_backtrack = node;
 	return node;
 }
 
-Node * NodeStack::create_node(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> >* > * rf_set) {
-	Node * n = new Node(rf_set->size());
+Node * NodeStack::create_node(uint numchoices) {
+	Node * n = new Node(numchoices);
 	node_list.push_back(n);
 	head_idx++;
 	return n;

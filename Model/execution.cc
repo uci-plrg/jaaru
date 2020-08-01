@@ -90,6 +90,7 @@ ModelExecution::~ModelExecution()
 	for (unsigned int i = 0;i < get_num_threads();i++)
 		delete get_thread(int_to_id(i));
 
+	action_trace.clearAndDeleteActions();
 	delete priv;
 }
 
@@ -830,6 +831,7 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 	simple_action_list_t * list = model->getOrigExecution()->obj_wr_map.get(align_address);
 	if (list == NULL) {
 		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), model->getOrigExecution()->model_thread, 8);
+		action_trace.addAction(act);
 		model->getOrigExecution()->add_write_to_lists(act);
 	}
 }
@@ -843,8 +845,8 @@ void ModelExecution::handle_read(ModelAction *curr) {
 	if (rf_set.size() != 1) {
 		//Have to make decision of what to do
 		NodeStack *stack = model->getNodeStack();
-		Node * nextnode = stack->explore_next(&rf_set);
-		index = nextnode->get_read_from();
+		Node * nextnode = stack->explore_next(rf_set.size());
+		index = nextnode->get_choice();
 	}
 
 	process_read(curr, rf_set[index]);
@@ -906,10 +908,6 @@ void ModelExecution::update_thread_local_data(ModelAction *act)
 		void *mutex_loc = (void *) act->get_value();
 		act->setActionRef(get_safe_ptr_action(&obj_map, mutex_loc)->add_back(act));
 	}
-}
-
-void insertIntoActionList(action_list_t *list, ModelAction *act) {
-	list->addAction(act);
 }
 
 void insertIntoActionListAndSetCV(action_list_t *list, ModelAction *act) {
@@ -1001,22 +999,6 @@ ClockVector * ModelExecution::get_cv(thread_id_t tid) const
 	return firstaction != NULL ? firstaction->get_cv() : NULL;
 }
 
-bool valequals(uint64_t val1, uint64_t val2, uint size) {
-	switch(size) {
-	case 1:
-		return ((uint8_t)val1) == ((uint8_t)val2);
-	case 2:
-		return ((uint16_t)val1) == ((uint16_t)val2);
-	case 4:
-		return ((uint32_t)val1) == ((uint32_t)val2);
-	case 8:
-		return val1==val2;
-	default:
-		ASSERT(0);
-		return false;
-	}
-}
-
 void ModelExecution::flushBuffers(void * address) {
 	for(uint i=0;i< get_num_threads();i++) {
 		Thread * t = get_thread(i);
@@ -1024,7 +1006,6 @@ void ModelExecution::flushBuffers(void * address) {
 		memory->emptyWrites(address);
 	}
 }
-
 
 bool ModelExecution::processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft) {
 	uint size = read->getOpSize();
@@ -1094,11 +1075,8 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		}
 	}
 
-	//TODO: If not in persistent area, we should skip this..
-
 	WriteVecSet * seedWrites = new WriteVecSet();
 	seedWrites->add(write_array);
-
 
 	//Otherwise look in previous executions for pre-crash writes
 
@@ -1111,6 +1089,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 	while(it->hasNext()) {
 		rf_set->push_back(it->next());
 	}
+
 	ASSERT(rf_set->size() > 0);
 	delete it;
 	delete seedWrites;

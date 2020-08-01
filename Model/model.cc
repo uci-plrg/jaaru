@@ -297,20 +297,48 @@ bool ModelChecker::next_execution() {
 			//really done
 			return false;
 		}
-		//Only need to delete nodestack...rest are snapshotting
+		//Delete non-snapshotting data structures
 		delete nodestack;
+		delete execution;
 		numcrashes--;
+
+		//Restore previous execution information
 		execution  = prevContext->execution;
 		nodestack = prevContext->nodestack;
 		Execution_Context * tmp = prevContext->prevContext;
 		delete prevContext;
 		prevContext = tmp;
+
+		//Reset nodestack for next execution
+		nodestack->reset_execution();
+
+		//Delete old execution
+		delete execution;
+
+		//Reset program state
 		reset_to_initial_state();
+
+		//Build new execution
+		execution = new ModelExecution(this, scheduler);
+		execution->add_thread(init_thread);
+		execution->setParams(&params);
+
 		return false;
 	} else {
-		//reset nodestack for next execution
+		//Reset nodestack for next execution
 		nodestack->reset_execution();
+
+		//Delete old execution
+		delete execution;
+
+		//Reset program state
 		reset_to_initial_state();
+
+		//Build new execution
+		execution = new ModelExecution(this, scheduler);
+		execution->add_thread(init_thread);
+		execution->setParams(&params);
+
 		return true;
 	}
 }
@@ -512,7 +540,10 @@ bool ModelChecker::shouldInsertCrash(ModelAction *act) {
 	if (act->is_mfence() || act->is_rmw_read() || (act->is_write() && act->is_seqcst())) {
 		if (numcrashes > 0)
 			return false;
-		if (act->checkAndSetCrashed())
+
+		//Create node decision of whether we should crash
+		Node * node = nodestack->explore_next(2);
+		if (node->get_choice() > 0)
 			return false;
 
 		ThreadMemory * memory = execution->get_thread(act)->getMemory();

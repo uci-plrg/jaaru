@@ -177,7 +177,6 @@ public:
 
 	modelclock_t get_last_clflush() { return last_clflush; }
 	void set_last_clflush(modelclock_t mlast_clflush) { last_clflush = mlast_clflush; }
-	bool checkAndSetCrashed() { bool tmp = hasCrashed; hasCrashed = true; return tmp;}
 
 
 	MEMALLOC
@@ -237,7 +236,6 @@ private:
 	 * (e.g. 8, 16, 32, or 64)
 	 */
 	uint size;
-	bool hasCrashed;
 };
 
 #endif	/* __ACTION_H__ */

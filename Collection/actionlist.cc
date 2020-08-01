@@ -243,6 +243,26 @@ void actionlist::clear() {
 	_size = 0;
 }
 
+void actionlist::clearAndDeleteActions() {
+	for(uint i = 0;i < ALLNODESIZE;i++) {
+		if (root.children[i] != NULL) {
+			delete root.children[i];
+			root.children[i] = NULL;
+		}
+	}
+
+	while(head != NULL) {
+		mllnode<ModelAction *> *tmp=head->next;
+		delete head->getVal();
+		delete head;
+		head = tmp;
+	}
+	tail = NULL;
+
+	root.count = 0;
+	_size = 0;
+}
+
 bool actionlist::isEmpty() {
 	return root.count == 0;
 }
