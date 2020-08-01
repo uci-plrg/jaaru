@@ -5,6 +5,7 @@
 #include "atomicapi.h"
 #include "pmcheckapi.h"
 #include "test.h"
+#include "pminterface.h"
 
 using namespace std;
 
@@ -35,11 +36,12 @@ void func2() {
 	}
 }
 
-__attribute__ ((visibility ("default"))) void restart() {
-	func2();
-}
-
 int main() {
-	func1();
+	if (getRegionFromID(0) == NULL) {
+		setRegionFromID(0, (void *) 1);
+		func1();
+	} else
+		func2();
+
 	return EXIT_SUCCESS;
 }

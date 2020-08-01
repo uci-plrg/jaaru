@@ -12,17 +12,10 @@ Short Term Todo List
 3) Figure out why we have such large state space...could be globals?  bugs in algorithm??
 4) Idea for hack...write elision...if the write is the same value as was already there, drop it...
 
-TODO
-----
-Add interface for registering persistent handles
-
 Longer Term Todos
 -----------------
 
-1) Restore state of program to initial state...means checker has to have persistent traces...
-2) Support libpmem/libpmem2 interfaces...
-3) Develop persistent location map...tracks what is & is not persistent...
-4) Support for normal reads that span multiple writes
+1) Support libpmem/libpmem2 interfaces...
 
 
 PMCheck is a tool for testing persistent memory tools. It is fast because it lazily simulate crashes in the code. 

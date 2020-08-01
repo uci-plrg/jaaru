@@ -20,18 +20,12 @@
 #include "nodestack.h"
 #include "threadmemory.h"
 #include "config.h"
+#include "pminterface.h"
 
 ModelChecker *model = NULL;
 
 void placeholder(void *) {
 	ASSERT(0);
-}
-
-void restart_wrapper(void *) {
-	void (*restart)() = ((void (*)())dlsym(RTLD_DEFAULT, "restart"));
-	if (restart == NULL)
-		model_print("Program does not export restart().  May need extern \"C\" declaration.");
-	restart();
 }
 
 static void mprot_handle_pf(int sig, siginfo_t *si, void *unused)
@@ -60,6 +54,38 @@ void install_handler() {
 		exit(EXIT_FAILURE);
 	}
 
+}
+
+void * getRegionFromID(uint ID) {
+	if (!model) {
+		snapshot_system_init(10000, 1024, 1024, 40000);
+		model = new ModelChecker();
+		model->startChecker();
+	}
+
+	return model->getRegion(ID);
+}
+
+
+void setRegionFromID(uint ID, void *ptr) {
+	if (!model) {
+		snapshot_system_init(10000, 1024, 1024, 40000);
+		model = new ModelChecker();
+		model->startChecker();
+	}
+
+	model->setRegion(ID, ptr);
+}
+
+void * ModelChecker::getRegion(uint ID) {
+	if (ID >= regionID.size())
+		return NULL;
+	else
+		return regionID[ID];
+}
+
+void ModelChecker::setRegion(uint ID, void *ptr) {
+	regionID.setExpand(ID, ptr);
 }
 
 /** @brief Constructor */
@@ -334,8 +360,10 @@ bool ModelChecker::next_execution() {
 	execution->setParams(&params);
 
 	//If this is the top level, need to reset the original execution also
-	if (prevContext == NULL)
+	if (prevContext == NULL) {
 		origExecution = execution;
+		regionID.clear();
+	}
 
 	return hasmore;
 }

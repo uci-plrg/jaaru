@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <inttypes.h>
+#include <strings.h>
 
 #include "mymemory.h"
 #include "hashtable.h"
@@ -72,6 +73,8 @@ public:
 	Scheduler * getScheduler() {return scheduler;}
 	Execution_Context * getPrevContext() {return prevContext;}
 	NodeStack * getNodeStack() {return nodestack;}
+	void * getRegion(uint ID);
+	void setRegion(uint ID, void *ptr);
 
 	MEMALLOC
 private:
@@ -88,7 +91,7 @@ private:
 	Execution_Context * prevContext;
 	uint execution_number;
 	int numcrashes;
-
+	ModelVector<void *> regionID;
 
 	unsigned int get_num_threads() const;
 	bool shouldInsertCrash(ModelAction * act);
