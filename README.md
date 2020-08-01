@@ -12,6 +12,11 @@ Short Term Todo List
 3) Figure out why we have such large state space...could be globals?  bugs in algorithm??
 4) Idea for hack...write elision...if the write is the same value as was already there, drop it...
 
+TODO
+----
+Fix cache line updates
+Add interface for registering persistent handles
+
 Longer Term Todos
 -----------------
 
