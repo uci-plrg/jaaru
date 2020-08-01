@@ -17,6 +17,7 @@
 #include "threadmemory.h"
 #include "cacheline.h"
 #include "nodestack.h"
+#include "persistentmemory.h"
 
 #define INITIAL_THREAD_ID       0
 
@@ -1130,7 +1131,7 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 	uintptr_t rbot = (uintptr_t) read->get_location();
 	uintptr_t rtop = rbot + size;
 	bool isDone = false;
-
+	bool ispersistent = isPersistent(address, size);
 
 	if (writes != NULL) {
 		WriteVecSet *currWrites = new WriteVecSet();
@@ -1151,7 +1152,7 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 			if ((wbot >= rtop) || (rbot >= wtop))
 				continue;
 
-			if (!pastWindow) {
+			if (!pastWindow  && (ispersistent || currWrites->isEmpty())) {
 				WriteVecIter * it = seedWrites->iterator();
 				while(it->hasNext()) {
 					SnapVector<Pair<ModelExecution *, ModelAction *> >* vec = it->next();
