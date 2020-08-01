@@ -25,7 +25,7 @@ class NodeStack;
 
 struct bug_message;
 
-typedef SnapList<ModelAction *> simple_action_list_t;
+typedef ModelList<ModelAction *> simple_action_list_t;
 typedef actionlist action_list_t;
 
 unsigned int cacheLineHashFunction ( CacheLine * cl);

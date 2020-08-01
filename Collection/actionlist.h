@@ -19,13 +19,13 @@ class allnode {
 public:
 	allnode();
 	~allnode();
-	SNAPSHOTALLOC;
+	MEMALLOC;
 
 private:
 	allnode * parent;
 	allnode * children[ALLNODESIZE];
 	int count;
-	sllnode<ModelAction *> * findPrev(modelclock_t index);
+	mllnode<ModelAction *> * findPrev(modelclock_t index);
 	friend class actionlist;
 	friend void decrementCount(allnode *);
 };
@@ -39,15 +39,15 @@ public:
 	void clear();
 	bool isEmpty();
 	uint size() {return _size;}
-	sllnode<ModelAction *> * begin() {return head;}
-	sllnode<ModelAction *> * end() {return tail;}
+	mllnode<ModelAction *> * begin() {return head;}
+	mllnode<ModelAction *> * end() {return tail;}
 
-	SNAPSHOTALLOC;
+	MEMALLOC;
 
 private:
 	allnode root;
-	sllnode<ModelAction *> * head;
-	sllnode<ModelAction* > * tail;
+	mllnode<ModelAction *> * head;
+	mllnode<ModelAction* > * tail;
 
 	uint _size;
 };

@@ -20,7 +20,7 @@ public:
 	void print() const;
 	modelclock_t getClock(thread_id_t thread);
 
-	SNAPSHOTALLOC
+	MEMALLOC
 private:
 	/** @brief Holds the actual clock data, as an array. */
 	modelclock_t *clock;

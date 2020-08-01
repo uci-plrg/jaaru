@@ -69,8 +69,8 @@ public:
 	bool is_deadlocked() const;
 
 	Fuzzer * getFuzzer();
-	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> * getCondMap() {return &cond_map;}
-	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> * getMutexMap() {return &mutex_map;}
+	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4, model_malloc, model_calloc, model_free> * getCondMap() {return &cond_map;}
+	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4, model_malloc, model_calloc, model_free> * getMutexMap() {return &mutex_map;}
 	ModelAction * check_current_action(ModelAction *curr);
 
 	bool isFinished() {return isfinished;}
@@ -87,7 +87,7 @@ public:
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
-	SNAPSHOTALLOC
+	MEMALLOC
 private:
 	bool processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft);
 	bool lookforWritesInPriorExecution(ModelExecution *pExecution, ModelAction *read, WriteVecSet ** priorWrites);
@@ -127,8 +127,8 @@ private:
 	Scheduler * const scheduler;
 
 
-	SnapVector<Thread *> thread_map;
-	SnapVector<Thread *> pthread_map;
+	ModelVector<Thread *> thread_map;
+	ModelVector<Thread *> pthread_map;
 	uint32_t pthread_counter;
 	uint32_t storebufferusage;
 	action_list_t action_trace;
@@ -138,21 +138,21 @@ private:
 	 * to a trace of all actions performed on the object.
 	 * Used only for unlocks, & wait.
 	 */
-	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> obj_map;
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 2, model_malloc, model_calloc, model_free> obj_map;
 
-/** Per-object list of actions. Maps an object (i.e., memory location)
- * to a trace of all actions performed on the object. */
-	HashTable<const void *, simple_action_list_t *, uintptr_t, 2> condvar_waiters_map;
+	/** Per-object list of actions. Maps an object (i.e., memory location)
+	 * to a trace of all actions performed on the object. */
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 2, model_malloc, model_calloc, model_free> condvar_waiters_map;
 
 	/** Per-object list of writes. These writes are available to all threads */
-	HashTable<const void *, simple_action_list_t *, uintptr_t, 3> obj_wr_map;
+	HashTable<const void *, simple_action_list_t *, uintptr_t, 3, model_malloc, model_calloc, model_free> obj_wr_map;
 
-	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4> mutex_map;
-	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4> cond_map;
+	HashTable<pthread_mutex_t *, pmc::snapmutex *, uintptr_t, 4, model_malloc, model_calloc, model_free> mutex_map;
+	HashTable<pthread_cond_t *, pmc::snapcondition_variable *, uintptr_t, 4, model_malloc, model_calloc, model_free> cond_map;
 
-	SnapVector<ModelAction *> thrd_last_action;
+	ModelVector<ModelAction *> thrd_last_action;
 
-	HashTable<uintptr_t, CacheLine*, uintptr_t, 6> obj_to_cacheline;
+	HashTable<uintptr_t, CacheLine*, uintptr_t, 6, model_malloc, model_calloc, model_free> obj_to_cacheline;
 	CacheLine* getCacheLine(void * address);
 
 	/** A special model-checker Thread; used for associating with

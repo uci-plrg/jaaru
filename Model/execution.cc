@@ -99,7 +99,7 @@ int ModelExecution::get_execution_number() const
 	return model->get_execution_number();
 }
 
-static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 2> * hash, void * ptr)
+static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 2, model_malloc, model_calloc, model_free> * hash, void * ptr)
 {
 	simple_action_list_t *tmp = hash->get(ptr);
 	if (tmp == NULL) {
@@ -109,7 +109,7 @@ static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple
 	return tmp;
 }
 
-static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 3> * hash, void * ptr)
+static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 3, model_malloc, model_calloc, model_free> * hash, void * ptr)
 {
 	simple_action_list_t *tmp = hash->get(ptr);
 	if (tmp == NULL) {
@@ -365,8 +365,8 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 					modelclock_t currbegin = cl->getBeginRange();
 					if (currbegin < rf->get_seq_number())
 						cl->setBeginRange(rf->get_seq_number());
-					sllnode<ModelAction *> * node = rf->getActionRef();
-					sllnode<ModelAction *> * nextNode = node->getNext();
+					mllnode<ModelAction *> * node = rf->getActionRef();
+					mllnode<ModelAction *> * nextNode = node->getNext();
 					if (nextNode!=NULL) {
 						modelclock_t nextclock = nextNode->getVal()->get_seq_number();
 						if (currend == 0 || nextclock <= currend)
@@ -462,7 +462,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 			state->locked = NULL;
 			/* remove old wait action and disable this thread */
 			simple_action_list_t * waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
-			for (sllnode<ModelAction *> * it = waiters->begin();it != NULL;it = it->getNext()) {
+			for (mllnode<ModelAction *> * it = waiters->begin();it != NULL;it = it->getNext()) {
 				ModelAction * wait = it->getVal();
 				if (wait->get_tid() == curr->get_tid()) {
 					waiters->erase(it);
@@ -503,7 +503,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 	case ATOMIC_NOTIFY_ALL: {
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		//activate all the waiting threads
-		for (sllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
+		for (mllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
 			scheduler->wake(get_thread(rit->getVal()));
 		}
 		waiters->clear();
@@ -975,7 +975,7 @@ ModelAction * ModelExecution::get_last_unlock(ModelAction *curr) const
 		return NULL;
 
 	/* Find: max({i in dom(S) | isUnlock(t_i) && samevar(t_i, t)}) */
-	sllnode<ModelAction*>* rit;
+	mllnode<ModelAction*>* rit;
 	for (rit = list->end();rit != NULL;rit=rit->getPrev())
 		if (rit->getVal()->is_unlock() || rit->getVal()->is_wait())
 			return rit->getVal();
@@ -1031,7 +1031,7 @@ bool ModelExecution::processWrites(ModelAction *read, SnapVector<Pair<ModelExecu
 	uintptr_t rbot = (uintptr_t) read->get_location();
 	uintptr_t rtop = rbot + size;
 
-	sllnode<ModelAction *> * rit;
+	mllnode<ModelAction *> * rit;
 	for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *write = rit->getVal();
 		if(write->is_write())
@@ -1137,7 +1137,7 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 		WriteVecSet *currWrites = new WriteVecSet();
 		bool pastWindow = false;
 
-		for(sllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
+		for(mllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
 			ModelAction * write = it->getVal();
 			modelclock_t clock = write->get_seq_number();
 			//see if write happens after cache line persistence
@@ -1222,7 +1222,7 @@ done:
 
 static void print_list(action_list_t *list)
 {
-	sllnode<ModelAction*> *it;
+	mllnode<ModelAction*> *it;
 
 	model_print("------------------------------------------------------------------------------------\n");
 	model_print("#    t    Action type     MO       Location         Value               Rf  CV\n");
@@ -1260,7 +1260,7 @@ void ModelExecution::print_tail()
 {
 	model_print("Execution trace %d:\n", get_execution_number());
 
-	sllnode<ModelAction*> *it;
+	mllnode<ModelAction*> *it;
 
 	model_print("------------------------------------------------------------------------------------\n");
 	model_print("#    t    Action type     MO       Location         Value               Rf  CV\n");
@@ -1270,7 +1270,7 @@ void ModelExecution::print_tail()
 
 	int length = 25;
 	int counter = 0;
-	SnapList<ModelAction *> list;
+	ModelList<ModelAction *> list;
 	for (it = action_trace.end();it != NULL;it = it->getPrev()) {
 		if (counter > length)
 			break;

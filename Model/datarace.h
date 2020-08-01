@@ -11,6 +11,7 @@
 #include "classlist.h"
 #include "hashset.h"
 #define SHADOWTABLESIZE 65536
+
 struct ShadowTable {
 	void * array[SHADOWTABLESIZE];
 };

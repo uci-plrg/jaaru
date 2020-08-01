@@ -26,7 +26,7 @@ public:
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange(modelclock_t end) { endR = end; }
 
-	SNAPSHOTALLOC;
+	MEMALLOC;
 private:
 	uintptr_t id;
 	//earliest point at which the cache line could have been written

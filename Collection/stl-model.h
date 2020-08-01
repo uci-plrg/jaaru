@@ -35,6 +35,7 @@ private:
 	_Tp val;
 	template<typename T>
 	friend class ModelList;
+	friend class actionlist;
 };
 
 template<typename _Tp>
@@ -68,6 +69,19 @@ public:
 		else tail->next = tmp;
 		tail = tmp;
 		_size++;
+	}
+
+	mllnode<_Tp> * add_back(_Tp val) {
+		mllnode<_Tp> * tmp = new mllnode<_Tp>();
+		tmp->prev = tail;
+		tmp->next = NULL;
+		tmp->val = val;
+		if (tail == NULL)
+			head = tmp;
+		else tail->next = tmp;
+		tail = tmp;
+		_size++;
+		return tmp;
 	}
 
 	void pop_front() {

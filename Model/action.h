@@ -167,8 +167,8 @@ public:
 	/* to accomodate pthread create and join */
 	Thread * thread_operand;
 	void set_thread_operand(Thread *th) { thread_operand = th; }
-	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
-	sllnode<ModelAction *> * getActionRef() { return action_ref; }
+	void setActionRef(mllnode<ModelAction *> *ref) { action_ref = ref; }
+	mllnode<ModelAction *> * getActionRef() { return action_ref; }
 	void setLastWrites(modelclock_t mlastcommittedWrite, ModelAction *write) {
 		lastcommittedWrite = mlastcommittedWrite;
 		lastwrite = write;
@@ -180,7 +180,7 @@ public:
 	bool checkAndSetCrashed() { bool tmp = hasCrashed; hasCrashed = true; return tmp;}
 
 
-	SNAPSHOTALLOC
+	MEMALLOC
 private:
 	const char * get_type_str() const;
 	const char * get_mo_str() const;
@@ -208,7 +208,7 @@ private:
  * vectors for all operations.
  */
 	ClockVector *cv;
-	sllnode<ModelAction *> * action_ref;
+	mllnode<ModelAction *> * action_ref;
 	/** @brief The value written (for write or RMW; undefined for read) */
 	union {
 		uint64_t value;
