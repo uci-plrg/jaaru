@@ -12,6 +12,13 @@ Short Term Todo List
 3) Figure out why we have such large state space...could be globals?  bugs in algorithm??
 4) Idea for hack...write elision...if the write is the same value as was already there, drop it...
 
+TODO
+----
+
+1) Persistent memory region is still not quite right...  Should return
+exactly to where it was on next child execution...but persist across new
+base executions
+
 Longer Term Todos
 -----------------
 

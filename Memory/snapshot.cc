@@ -13,10 +13,11 @@
 #include "common.h"
 #include "context.h"
 #include "model.h"
+#include "persistentmemory.h"
 
-
-#define SHARED_MEMORY_DEFAULT  (200 * ((size_t)1 << 20))	// 100mb for the shared memory
+#define SHARED_MEMORY_DEFAULT  (400 * ((size_t)1 << 20))	// 400mb for the shared memory
 #define STACK_SIZE_DEFAULT      (((size_t)1 << 20) * 20)	// 20 mb out of the above 100 mb for my stack
+
 
 struct fork_snapshotter {
 	/** @brief Pointer to the shared (non-snapshot) memory heap base
@@ -94,7 +95,7 @@ static void fork_exit()
 static void createSharedMemory()
 {
 	//step 1. create shared memory.
-	void *memMapBase = mmap(0, SHARED_MEMORY_DEFAULT + STACK_SIZE_DEFAULT, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
+	void *memMapBase = mmap(0, SHARED_MEMORY_DEFAULT + STACK_SIZE_DEFAULT + PERSISTENT_MEMORY_DEFAULT, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
 	if (memMapBase == MAP_FAILED) {
 		perror("mmap");
 		exit(EXIT_FAILURE);
@@ -107,6 +108,8 @@ static void createSharedMemory()
 	fork_snap->mStackSize = STACK_SIZE_DEFAULT;
 	fork_snap->mIDToRollback = -1;
 	fork_snap->currSnapShotID = 0;
+	persistentMemoryRegion = fork_snap->mStackBase+STACK_SIZE_DEFAULT;
+	initializePersistentMemory();
 }
 
 /**

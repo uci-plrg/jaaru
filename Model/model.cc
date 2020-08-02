@@ -21,6 +21,7 @@
 #include "threadmemory.h"
 #include "config.h"
 #include "pminterface.h"
+#include "persistentmemory.h"
 
 ModelChecker *model = NULL;
 
@@ -356,6 +357,7 @@ bool ModelChecker::next_execution() {
 	//If this is the top level, need to reset the original execution also
 	if (prevContext == NULL) {
 		origExecution = execution;
+		initializePersistentMemory();
 		regionID.clear();
 	}
 

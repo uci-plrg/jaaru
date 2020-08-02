@@ -8,68 +8,77 @@ void* __libc_calloc(size_t n, size_t size);
 void* __libc_realloc(void* address, size_t size);
 void* __libc_memalign(size_t alignment, size_t size);
 void __libc_free(void* ptr);
-}	// extern "C"
+typedef void * mspace;
+extern void * mspace_malloc(mspace msp, size_t bytes);
+extern void mspace_free(mspace msp, void* mem);
+extern void * mspace_realloc(mspace msp, void* mem, size_t newsize);
+extern void * mspace_calloc(mspace msp, size_t n_elements, size_t elem_size);
+extern void * mspace_memalign(mspace msp, size_t alignment, size_t bytes);
+extern mspace create_mspace_with_base(void* base, size_t capacity, int locked);
+extern mspace create_mspace(size_t capacity, int locked);
+extern mspace model_snapshot_space;
+};
 
-uintptr_t low_mem = 0;
-uintptr_t high_mem = 0;
-
+void * persistentMemoryRegion;
+mspace mallocSpace = NULL;
 
 void initializePersistentMemory() {
+	mallocSpace = create_mspace_with_base(persistentMemoryRegion, PERSISTENT_MEMORY_DEFAULT, 1);
 }
 
 bool isPersistent(void *address, uint size) {
-	return (low_mem != 0) && (((uintptr_t)address) >= low_mem &&
-														((uintptr_t) address) < high_mem);
+	return ((persistentMemoryRegion != NULL) &&
+					(((uintptr_t)address) >= ((uintptr_t)persistentMemoryRegion)) &&
+					(((uintptr_t)address) < (((uintptr_t)persistentMemoryRegion) + PERSISTENT_MEMORY_DEFAULT)));
 }
 
 void *malloc(size_t size) {
-	void * result = __libc_malloc(size);
-	if (result != NULL) {
-		if (((uintptr_t) result) < low_mem || low_mem == 0) {
-			low_mem = (uintptr_t)result;
-		}
-		if ((((uintptr_t) result) + size) > high_mem) {
-			high_mem = ((uintptr_t)result) + size;
-		}
+	if (mallocSpace) {
+		void * tmp = mspace_malloc(mallocSpace, size);
+		ASSERT(tmp);
+		return tmp;
+	} else {
+		return __libc_malloc(size);
 	}
-	return result;
 }
 
 void *calloc(size_t count, size_t size) {
-	void * result = __libc_calloc(count, size);
-	if (result != NULL) {
-		if (((uintptr_t) result) < low_mem || low_mem == 0) {
-			low_mem = (uintptr_t)result;
-		}
-		if ((((uintptr_t) result) + size) > high_mem) {
-			high_mem = ((uintptr_t)result) + size;
-		}
+	if (mallocSpace) {
+		void * tmp = mspace_calloc(mallocSpace, count, size);
+		ASSERT(tmp);
+		return tmp;
+	} else {
+		return __libc_calloc(count, size);
 	}
-	return result;
 }
 
 void *realloc(void * ptr, size_t size) {
-	void * result = __libc_realloc(ptr, size);
-	if (result != NULL) {
-		if (((uintptr_t) result) < low_mem || low_mem == 0) {
-			low_mem = (uintptr_t)result;
-		}
-		if ((((uintptr_t) result) + size) > high_mem) {
-			high_mem = ((uintptr_t)result) + size;
-		}
+	if (mallocSpace) {
+		void * tmp = mspace_realloc(mallocSpace, ptr, size);
+		ASSERT(tmp);
+		return tmp;
+	} else {
+		return __libc_realloc(ptr, size);
 	}
-	return result;
 }
 
 void *memalign(size_t align, size_t size) {
-	void * result = __libc_memalign(align, size);
-	if (result != NULL) {
-		if (((uintptr_t) result) < low_mem || low_mem == 0) {
-			low_mem = (uintptr_t)result;
-		}
-		if ((((uintptr_t) result) + size) > high_mem) {
-			high_mem = ((uintptr_t)result) + size;
+	if (mallocSpace) {
+		void * tmp = mspace_memalign(mallocSpace, align, size);
+		ASSERT(tmp);
+		return tmp;
+	} else {
+		return __libc_memalign(align, size);
+	}
+}
+
+void free(void *ptr) {
+	if (mallocSpace) {
+		if ((((uintptr_t)ptr) >= ((uintptr_t)persistentMemoryRegion)) &&
+				(((uintptr_t)ptr) < (((uintptr_t)persistentMemoryRegion) + PERSISTENT_MEMORY_DEFAULT))) {
+			mspace_free(mallocSpace, ptr);
+			return;
 		}
 	}
-	return result;
+	return __libc_free(ptr);
 }
