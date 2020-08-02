@@ -19,6 +19,10 @@ TODO
 exactly to where it was on next child execution...but persist across new
 base executions
 
+2) Intercept memcpy/other functions
+
+3) 
+
 Longer Term Todos
 -----------------
 

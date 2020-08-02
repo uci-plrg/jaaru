@@ -97,6 +97,7 @@ void ModelExecution::clearPreRollback() {
 		if (pending != NULL)
 			delete pending;
 	}
+	freeThreadBuffers();
 }
 
 
@@ -805,7 +806,6 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		initialize_curr_action(curr);
 	} else if (curr->is_sfence()) {
 		process_store_fence(curr);
-		initialize_curr_action(curr);
 	} else if(!curr->is_write() && !curr->is_cache_op()) {
 		initialize_curr_action(curr);
 	}
@@ -832,11 +832,15 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 }
 
 void ModelExecution::ensureInitialValue(ModelAction *curr) {
-	void * align_address = alignAddress(curr->get_location());
-	simple_action_list_t * list = model->getOrigExecution()->obj_wr_map.get(align_address);
+	void * address = curr->get_location();
+	void * align_address = alignAddress(address);
+	bool ispersistent = isPersistent(align_address, 8);
+
+	simple_action_list_t * list = ispersistent ? model->getOrigExecution()->obj_wr_map.get(align_address) : model->get_execution()->obj_wr_map.get(align_address) ;
+
 	if (list == NULL) {
 		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), model->getOrigExecution()->model_thread, 8);
-		action_trace.addAction(act);
+		model->getOrigExecution()->action_trace.addAction(act);
 		model->getOrigExecution()->add_write_to_lists(act);
 	}
 }
@@ -1005,13 +1009,21 @@ ClockVector * ModelExecution::get_cv(thread_id_t tid) const
 }
 
 bool ModelExecution::flushBuffers(void * address) {
-  bool didflush = false;
+	bool didflush = false;
 	for(uint i=0;i< get_num_threads();i++) {
 		Thread * t = get_thread(i);
 		ThreadMemory * memory = t->getMemory();
 		didflush |= memory->emptyWrites(address);
 	}
-  return didflush;
+	return didflush;
+}
+
+void ModelExecution::freeThreadBuffers() {
+	for(uint i=0;i< get_num_threads();i++) {
+		Thread * t = get_thread(i);
+		ThreadMemory * memory = t->getMemory();
+		memory->freeActions();
+	}
 }
 
 bool ModelExecution::processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft) {
@@ -1030,35 +1042,35 @@ bool ModelExecution::processWrites(ModelAction *read, SnapVector<Pair<ModelExecu
 }
 
 bool ModelExecution::hasValidValue(void * address) {
-  uint8_t val = * (uint8_t *) address;
-  uintptr_t addr = (uintptr_t) address;
-  ModelExecution * mexec = this;
-  Execution_Context * context = model->getPrevContext();
-  do {
-    simple_action_list_t * writes = mexec->obj_wr_map.get(alignAddress(address));
-    if (writes != NULL) {
-      for(mllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
-        ModelAction * write = it->getVal();
-        uintptr_t wbot = (uintptr_t) write->get_location();
-        uint wsize = write->getOpSize();
-        uintptr_t wtop = wbot + wsize;
-        
-        //skip on if there is no overlap
-        if ((addr < wbot) || (addr > wtop))
-          continue;
-        
-        uint64_t wval = write->get_value();
-        wval = wval >> (wbot - addr);
-        wval = wval & 0xff;
-        return (wval == val);
-      }
-    }
-    if (context == NULL)
-      break;
-    mexec = context->execution;
-    context = context->prevContext;
-  } while (true);
-  return false;
+	uint8_t val = *(uint8_t *) address;
+	uintptr_t addr = (uintptr_t) address;
+	ModelExecution * mexec = this;
+	Execution_Context * context = model->getPrevContext();
+	do {
+		simple_action_list_t * writes = mexec->obj_wr_map.get(alignAddress(address));
+		if (writes != NULL) {
+			for(mllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
+				ModelAction * write = it->getVal();
+				uintptr_t wbot = (uintptr_t) write->get_location();
+				uint wsize = write->getOpSize();
+				uintptr_t wtop = wbot + wsize;
+
+				//skip on if there is no overlap
+				if ((addr < wbot) || (addr > wtop))
+					continue;
+
+				uint64_t wval = write->get_value();
+				wval = wval >> (wbot - addr);
+				wval = wval & 0xff;
+				return (wval == val);
+			}
+		}
+		if (context == NULL)
+			break;
+		mexec = context->execution;
+		context = context->prevContext;
+	} while (true);
+	return false;
 }
 
 /**
@@ -1082,16 +1094,16 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 
 	uint numslotsleft = size;
 
-	for(uint i=0;i< size;i++) {
+	for(uint i=0;i < size;i++) {
 		void * curraddress = (void *)(((uintptr_t)address) + i);
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
 			if (flushBuffers(curraddress) || !isPersistent(curraddress, 1) || !hasValidValue(curraddress)) {
-        ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
-        (*write_array)[i].p1 = this;
-        (*write_array)[i].p2 = nonatomicstore;
-        numslotsleft--;
-      }
+				ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
+				(*write_array)[i].p1 = this;
+				(*write_array)[i].p2 = nonatomicstore;
+				numslotsleft--;
+			}
 		}
 	}
 
@@ -1125,17 +1137,6 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev=prev->prevContext) {
 			if (lookforWritesInPriorExecution(prev->execution, curr, &seedWrites))
 				break;
-		}
-	} else {
-		ModelExecution *origExecution = model->getOrigExecution();
-		simple_action_list_t * list = origExecution->obj_wr_map.get(alignAddress(address));
-		ModelAction *init = list->front();
-		ASSERT(init->is_initialization());
-		for(uint i=0;i < size;i++) {
-			if ((*write_array)[i].p2 == NULL) {
-				(*write_array)[i].p1 = origExecution;
-				(*write_array)[i].p2 = init;
-			}
 		}
 	}
 

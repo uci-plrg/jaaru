@@ -46,6 +46,7 @@ public:
 	void emptyFlushBuffer();
 	bool emptyWrites(void * address);
 	bool hasPendingFlushes();
+	void freeActions();
 
 	SNAPSHOTALLOC;
 private:

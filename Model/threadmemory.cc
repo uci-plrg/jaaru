@@ -57,11 +57,13 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		evictWrite(act);
 	} else if (act->is_sfence()) {
 		emptyFlushBuffer();
+		model->get_execution()->initialize_curr_action(act);
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
 			lastclflush = act;
 			model->get_execution()->evictCacheOp(act);
 			flushcount--;
+			model->get_execution()->initialize_curr_action(act);
 		} else {
 			evictFlushOpt(act);
 		}
@@ -100,9 +102,27 @@ void ThreadMemory::emptyFlushBuffer() {
 	sllnode<ModelAction *> * it;
 	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
 		ModelAction *curr = it->getVal();
+		model->get_execution()->initialize_curr_action(curr);
 		model->get_execution()->evictCacheOp(curr);
 		flushcount--;
 	}
+	flushBuffer.clear();
+}
+
+void ThreadMemory::freeActions() {
+	sllnode<ModelAction *> * it;
+	for (it = storeBuffer.begin();it != NULL;it=it->getNext()) {
+		ModelAction *curr = it->getVal();
+		delete curr;
+	}
+	model->get_execution()->updateStoreBuffer(-storeBuffer.size());
+	storeBuffer.clear();
+
+	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
+		ModelAction *curr = it->getVal();
+		delete curr;
+	}
+	flushcount = 0;
 	flushBuffer.clear();
 }
 
@@ -130,7 +150,7 @@ bool ThreadMemory::emptyWrites(void * address) {
 			it = next;
 		}
 	}
-  return false;
+	return false;
 }
 
 bool ThreadMemory::hasPendingFlushes() {

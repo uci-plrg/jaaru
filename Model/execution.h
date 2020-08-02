@@ -84,22 +84,22 @@ public:
 	void evictCacheOp(ModelAction *cacheop);
 	uint32_t getStoreBuffer() { return storebufferusage; }
 	void updateStoreBuffer(int32_t delta) { storebufferusage+=delta; }
-
+	void initialize_curr_action(ModelAction *curr);
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
 	MEMALLOC
 private:
+	void freeThreadBuffers();
 	bool processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft);
 	bool lookforWritesInPriorExecution(ModelExecution *pExecution, ModelAction *read, WriteVecSet ** priorWrites);
-  bool hasValidValue(void * address);
+	bool hasValidValue(void * address);
 	void ensureInitialValue(ModelAction *curr);
 	int get_execution_number() const;
 	bool should_wake_up(const ModelAction *curr, const Thread *thread) const;
 	void wake_up_sleeping_actions(ModelAction *curr);
 	modelclock_t get_next_seq_num();
 	bool next_execution();
-	void initialize_curr_action(ModelAction *curr);
 	void process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
 	void handle_read(ModelAction *curr);
 	void process_write(ModelAction *curr);

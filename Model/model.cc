@@ -168,7 +168,6 @@ Thread * ModelChecker::get_current_thread() const
  */
 Thread * ModelChecker::get_next_thread()
 {
-
 	/*
 	 * Have we completed exploring the preselected path? Then let the
 	 * scheduler decide
