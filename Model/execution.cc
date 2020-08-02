@@ -1085,9 +1085,23 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 
 	//Otherwise look in previous executions for pre-crash writes
 
-	for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev=prev->prevContext) {
-		if (lookforWritesInPriorExecution(prev->execution, curr, &seedWrites))
-			break;
+	bool ispersistent = isPersistent(address, size);
+	if (ispersistent) {
+		for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev=prev->prevContext) {
+			if (lookforWritesInPriorExecution(prev->execution, curr, &seedWrites))
+				break;
+		}
+	} else {
+		ModelExecution *origExecution = model->getOrigExecution();
+		simple_action_list_t * list = origExecution->obj_wr_map.get(alignAddress(address));
+		ModelAction *init = list->front();
+		ASSERT(init->is_initialization());
+		for(uint i=0;i < size;i++) {
+			if ((*write_array)[i].p2 == NULL) {
+				(*write_array)[i].p1 = origExecution;
+				(*write_array)[i].p2 = init;
+			}
+		}
 	}
 
 	WriteVecIter * it = seedWrites->iterator();
@@ -1117,7 +1131,6 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 	uintptr_t rbot = (uintptr_t) read->get_location();
 	uintptr_t rtop = rbot + size;
 	bool isDone = false;
-	bool ispersistent = isPersistent(address, size);
 
 	if (writes != NULL) {
 		WriteVecSet *currWrites = new WriteVecSet();
@@ -1138,7 +1151,7 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 			if ((wbot >= rtop) || (rbot >= wtop))
 				continue;
 
-			if (!pastWindow  && (ispersistent || currWrites->isEmpty())) {
+			if (!pastWindow) {
 				WriteVecIter * it = seedWrites->iterator();
 				while(it->hasNext()) {
 					SnapVector<Pair<ModelExecution *, ModelAction *> >* vec = it->next();
