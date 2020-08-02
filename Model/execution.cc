@@ -836,12 +836,14 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 	void * align_address = alignAddress(address);
 	bool ispersistent = isPersistent(align_address, 8);
 
-	simple_action_list_t * list = ispersistent ? model->getOrigExecution()->obj_wr_map.get(align_address) : model->get_execution()->obj_wr_map.get(align_address) ;
+	ModelExecution * exec = ispersistent ? model->getOrigExecution() : model->get_execution();
+
+	simple_action_list_t * list = exec->obj_wr_map.get(align_address);
 
 	if (list == NULL) {
-		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), model->getOrigExecution()->model_thread, 8);
-		model->getOrigExecution()->action_trace.addAction(act);
-		model->getOrigExecution()->add_write_to_lists(act);
+		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), exec->model_thread, 8);
+		exec->action_trace.addAction(act);
+		exec->add_write_to_lists(act);
 	}
 }
 

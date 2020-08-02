@@ -63,7 +63,6 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 			lastclflush = act;
 			model->get_execution()->evictCacheOp(act);
 			flushcount--;
-			model->get_execution()->initialize_curr_action(act);
 		} else {
 			evictFlushOpt(act);
 		}
@@ -102,7 +101,6 @@ void ThreadMemory::emptyFlushBuffer() {
 	sllnode<ModelAction *> * it;
 	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
 		ModelAction *curr = it->getVal();
-		model->get_execution()->initialize_curr_action(curr);
 		model->get_execution()->evictCacheOp(curr);
 		flushcount--;
 	}
