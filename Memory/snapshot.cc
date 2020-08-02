@@ -108,7 +108,7 @@ static void createSharedMemory()
 	fork_snap->mStackSize = STACK_SIZE_DEFAULT;
 	fork_snap->mIDToRollback = -1;
 	fork_snap->currSnapShotID = 0;
-	persistentMemoryRegion = fork_snap->mStackBase+STACK_SIZE_DEFAULT;
+	persistentMemoryRegion = (void *) ((uintptr_t)fork_snap->mStackBase+STACK_SIZE_DEFAULT);
 	initializePersistentMemory();
 }
 

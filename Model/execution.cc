@@ -1004,12 +1004,14 @@ ClockVector * ModelExecution::get_cv(thread_id_t tid) const
 	return firstaction != NULL ? firstaction->get_cv() : NULL;
 }
 
-void ModelExecution::flushBuffers(void * address) {
+bool ModelExecution::flushBuffers(void * address) {
+  bool didflush = false;
 	for(uint i=0;i< get_num_threads();i++) {
 		Thread * t = get_thread(i);
 		ThreadMemory * memory = t->getMemory();
-		memory->emptyWrites(address);
+		didflush |= memory->emptyWrites(address);
 	}
+  return didflush;
 }
 
 bool ModelExecution::processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft) {
@@ -1025,6 +1027,38 @@ bool ModelExecution::processWrites(ModelAction *read, SnapVector<Pair<ModelExecu
 				return true;
 	}
 	return false;
+}
+
+bool ModelExecution::hasValidValue(void * address) {
+  uint8_t val = * (uint8_t *) address;
+  uintptr_t addr = (uintptr_t) address;
+  ModelExecution * mexec = this;
+  Execution_Context * context = model->getPrevContext();
+  do {
+    simple_action_list_t * writes = mexec->obj_wr_map.get(alignAddress(address));
+    if (writes != NULL) {
+      for(mllnode<ModelAction *> * it = writes->end();it != NULL;it = it->getPrev()) {
+        ModelAction * write = it->getVal();
+        uintptr_t wbot = (uintptr_t) write->get_location();
+        uint wsize = write->getOpSize();
+        uintptr_t wtop = wbot + wsize;
+        
+        //skip on if there is no overlap
+        if ((addr < wbot) || (addr > wtop))
+          continue;
+        
+        uint64_t wval = write->get_value();
+        wval = wval >> (wbot - addr);
+        wval = wval & 0xff;
+        return (wval == val);
+      }
+    }
+    if (context == NULL)
+      break;
+    mexec = context->execution;
+    context = context->prevContext;
+  } while (true);
+  return false;
 }
 
 /**
@@ -1052,11 +1086,12 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		void * curraddress = (void *)(((uintptr_t)address) + i);
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
-			flushBuffers(curraddress);
-			ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
-			(*write_array)[i].p1 = this;
-			(*write_array)[i].p2 = nonatomicstore;
-			numslotsleft--;
+			if (flushBuffers(curraddress) || !hasValidValue(curraddress)) {
+        ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
+        (*write_array)[i].p1 = this;
+        (*write_array)[i].p2 = nonatomicstore;
+        numslotsleft--;
+      }
 		}
 	}
 

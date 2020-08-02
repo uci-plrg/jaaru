@@ -44,7 +44,7 @@ public:
 	void writeToCacheLine(ModelAction *write);
 	void emptyStoreBuffer();
 	void emptyFlushBuffer();
-	void emptyWrites(void * address);
+	bool emptyWrites(void * address);
 	bool hasPendingFlushes();
 
 	SNAPSHOTALLOC;

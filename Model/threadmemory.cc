@@ -106,7 +106,7 @@ void ThreadMemory::emptyFlushBuffer() {
 	flushBuffer.clear();
 }
 
-void ThreadMemory::emptyWrites(void * address) {
+bool ThreadMemory::emptyWrites(void * address) {
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.end();rit != NULL;rit=rit->getPrev()) {
 		ModelAction *curr = rit->getVal();
@@ -126,10 +126,11 @@ void ThreadMemory::emptyWrites(void * address) {
 			storeBuffer.erase(it);
 			model->get_execution()->updateStoreBuffer(-1);
 			if (it == rit)
-				break;
+				return true;
 			it = next;
 		}
 	}
+  return false;
 }
 
 bool ThreadMemory::hasPendingFlushes() {

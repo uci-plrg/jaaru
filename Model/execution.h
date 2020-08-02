@@ -92,7 +92,7 @@ public:
 private:
 	bool processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft);
 	bool lookforWritesInPriorExecution(ModelExecution *pExecution, ModelAction *read, WriteVecSet ** priorWrites);
-
+  bool hasValidValue(void * address);
 	void ensureInitialValue(ModelAction *curr);
 	int get_execution_number() const;
 	bool should_wake_up(const ModelAction *curr, const Thread *thread) const;
@@ -115,7 +115,7 @@ private:
 	ModelAction * get_last_unlock(ModelAction *curr) const;
 	void build_may_read_from(ModelAction *curr, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
 	ModelAction * convertNonAtomicStore(void*, uint size);
-	void flushBuffers(void *address);
+	bool flushBuffers(void *address);
 
 
 #ifdef TLS
