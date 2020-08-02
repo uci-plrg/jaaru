@@ -1086,7 +1086,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		void * curraddress = (void *)(((uintptr_t)address) + i);
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
-			if (flushBuffers(curraddress) || !hasValidValue(curraddress)) {
+			if (flushBuffers(curraddress) || !isPersistent(curraddress, 1) || !hasValidValue(curraddress)) {
         ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
         (*write_array)[i].p1 = this;
         (*write_array)[i].p2 = nonatomicstore;
