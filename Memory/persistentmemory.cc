@@ -4,6 +4,7 @@
 #include "pmcheckapi.h"
 #include <string.h>
 #include <dlfcn.h>
+#include "model.h"
 
 extern "C" {
 void* __libc_malloc(size_t size);
@@ -20,7 +21,6 @@ extern void * mspace_calloc(mspace msp, size_t n_elements, size_t elem_size);
 extern void * mspace_memalign(mspace msp, size_t alignment, size_t bytes);
 extern mspace create_mspace_with_base(void* base, size_t capacity, int locked);
 extern mspace create_mspace(size_t capacity, int locked);
-extern mspace model_snapshot_space;
 };
 
 void * persistentMemoryRegion;
@@ -84,15 +84,16 @@ void free(void *ptr) {
 			return;
 		}
 	}
-	return __libc_free(ptr);
+	__libc_free(ptr);
+	return;
 }
 
 void * (*memcpy_real)(void * dst, const void *src, size_t n) = NULL;
 const char * memstring = "memcpy";
 void * memcpy(void * dst, const void * src, size_t n) {
-	if (isPersistent(dst,1)) {
+	if (isPersistent(dst,1) && !inside_model) {
 		for(uint i=0;i<n;i++) {
-			uint8_t val =pmc_load8(((char *) src) + i, memstring);
+			uint8_t val = pmc_load8(((char *) src) + i, memstring);
 			pmc_store8(((char *) dst)+i, val, memstring);
 		}
 		return dst;
@@ -107,7 +108,7 @@ void * memcpy(void * dst, const void * src, size_t n) {
 void * (*memmove_real)(void * dst, const void *src, size_t len) = NULL;
 const char * memmovestring = "memmove";
 void * memmove(void *dst, const void *src, size_t len) {
-	if (isPersistent(dst,1)) {
+	if (isPersistent(dst,1) && !inside_model) {
 		for(uint i=0;i<len;i++) {
 			uint8_t val =pmc_load8(((char *) src) + i, memmovestring);
 			pmc_store8(((char *) dst)+i, val, memmovestring);
@@ -124,7 +125,7 @@ void * memmove(void *dst, const void *src, size_t len) {
 void * (*memset_real)(void * dst, int c, size_t len) = NULL;
 const char * memsetstring = "memset";
 void * memset(void *dst, int c, size_t len) {
-	if (isPersistent(dst,1)) {
+	if (isPersistent(dst,1) && !inside_model) {
 		for(uint i=0;i<len;i++) {
 			pmc_store8(((char *) dst)+i, c, memsetstring);
 		}
@@ -136,3 +137,4 @@ void * memset(void *dst, int c, size_t len) {
 		return memset_real(dst, c, len);
 	}
 }
+

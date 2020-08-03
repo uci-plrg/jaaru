@@ -24,6 +24,7 @@
 #include "persistentmemory.h"
 
 ModelChecker *model = NULL;
+int inside_model = 0;
 
 void placeholder(void *) {
 	ASSERT(0);
@@ -59,9 +60,11 @@ void install_handler() {
 
 void * getRegionFromID(uint ID) {
 	if (!model) {
+		inside_model = 1;
 		snapshot_system_init(10000, 1024, 1024, 40000);
 		model = new ModelChecker();
 		model->startChecker();
+		inside_model = 0;
 	}
 
 	return model->getRegion(ID);
@@ -70,9 +73,11 @@ void * getRegionFromID(uint ID) {
 
 void setRegionFromID(uint ID, void *ptr) {
 	if (!model) {
+		inside_model = 1;
 		snapshot_system_init(10000, 1024, 1024, 40000);
 		model = new ModelChecker();
 		model->startChecker();
+		inside_model = 0;
 	}
 
 	model->setRegion(ID, ptr);
@@ -404,6 +409,7 @@ Thread * ModelChecker::get_thread(const ModelAction *act) const {
  */
 void ModelChecker::switch_from_master(Thread *thread) {
 	scheduler->set_current_thread(thread);
+	inside_model = 0;
 	Thread::swap(&system_context, thread);
 }
 
@@ -435,6 +441,7 @@ uint64_t ModelChecker::switch_to_master(ModelAction *act) {
 	scheduler->set_current_thread(NULL);
 	ASSERT(!old->get_pending());
 
+	inside_model = 1;
 	old->set_pending(act);
 	if (Thread::swap(old, &system_context) < 0) {
 		perror("swap threads");
