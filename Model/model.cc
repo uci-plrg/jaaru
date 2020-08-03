@@ -99,7 +99,8 @@ ModelChecker::ModelChecker() :
 	nodestack(new NodeStack()),
 	prevContext(NULL),
 	execution_number(1),
-	numcrashes(0)
+	numcrashes(0),
+	replaystack()
 {
 	model_print("PMCheck\n"
 							"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
@@ -327,7 +328,6 @@ bool ModelChecker::next_execution() {
 		//Delete non-snapshotting data structures
 		delete nodestack;
 		delete execution;
-		numcrashes--;
 
 		//Restore previous execution information
 		execution  = prevContext->execution;
@@ -338,8 +338,23 @@ bool ModelChecker::next_execution() {
 		prevContext = tmp;
 	}
 
+	while (prevContext != NULL) {
+		delete execution;
+		nodestack->reset_execution();
+		replaystack.push_front(nodestack);
+		execution = prevContext->execution;
+		nodestack = prevContext->nodestack;
+		Execution_Context * tmp = prevContext->prevContext;
+		delete prevContext;
+		prevContext = tmp;
+	}
+
 	//Reset nodestack for next execution
 	nodestack->reset_execution();
+
+	//If not the top of the stack we do a replay
+	if (!replaystack.empty())
+		nodestack->repeat_prev_execution();
 
 	//Delete old execution
 	delete execution;
@@ -353,12 +368,11 @@ bool ModelChecker::next_execution() {
 	execution->add_thread(init_thread);
 	execution->setParams(&params);
 
-	//If this is the top level, need to reset the original execution also
-	if (prevContext == NULL) {
-		origExecution = execution;
-		initializePersistentMemory();
-		regionID.clear();
-	}
+	//We need to reset the original execution also and reset the persistent memory
+	origExecution = execution;
+	initializePersistentMemory();
+	regionID.clear();
+	numcrashes = 0;
 
 	return true;
 }
@@ -459,7 +473,13 @@ void ModelChecker::doCrash() {
 	execution->clearPreRollback();
 	reset_to_initial_state();
 	execution = new ModelExecution(this, scheduler);
-	nodestack = new NodeStack();
+	if (replaystack.empty())
+		nodestack = new NodeStack();
+	else {
+		nodestack = replaystack.pop_front();
+		if (!replaystack.empty())
+			nodestack->repeat_prev_execution();
+	}
 	execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
 	execution->add_thread(init_thread);
 	execution->setParams(&params);

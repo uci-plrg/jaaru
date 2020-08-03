@@ -1,6 +1,9 @@
 #include "persistentmemory.h"
 #include "malloc.h"
 #include "config.h"
+#include "pmcheckapi.h"
+#include <string.h>
+#include <dlfcn.h>
 
 extern "C" {
 void* __libc_malloc(size_t size);
@@ -8,6 +11,7 @@ void* __libc_calloc(size_t n, size_t size);
 void* __libc_realloc(void* address, size_t size);
 void* __libc_memalign(size_t alignment, size_t size);
 void __libc_free(void* ptr);
+
 typedef void * mspace;
 extern void * mspace_malloc(mspace msp, size_t bytes);
 extern void mspace_free(mspace msp, void* mem);
@@ -81,4 +85,54 @@ void free(void *ptr) {
 		}
 	}
 	return __libc_free(ptr);
+}
+
+void * (*memcpy_real)(void * dst, const void *src, size_t n) = NULL;
+const char * memstring = "memcpy";
+void * memcpy(void * dst, const void * src, size_t n) {
+	if (isPersistent(dst,1)) {
+		for(uint i=0;i<n;i++) {
+			uint8_t val =pmc_load8(((char *) src) + i, memstring);
+			pmc_store8(((char *) dst)+i, val, memstring);
+		}
+		return dst;
+	} else {
+		if (!memcpy_real) {
+			memcpy_real = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memcpy");
+		}
+		return memcpy_real(dst, src, n);
+	}
+}
+
+void * (*memmove_real)(void * dst, const void *src, size_t len) = NULL;
+const char * memmovestring = "memmove";
+void * memmove(void *dst, const void *src, size_t len) {
+	if (isPersistent(dst,1)) {
+		for(uint i=0;i<len;i++) {
+			uint8_t val =pmc_load8(((char *) src) + i, memmovestring);
+			pmc_store8(((char *) dst)+i, val, memmovestring);
+		}
+		return dst;
+	} else {
+		if (!memmove_real) {
+			memmove_real = (void * (*)(void * dst, const void *src, size_t len))dlsym(RTLD_NEXT, "memmove");
+		}
+		return memmove_real(dst, src, len);
+	}
+}
+
+void * (*memset_real)(void * dst, int c, size_t len) = NULL;
+const char * memsetstring = "memset";
+void * memset(void *dst, int c, size_t len) {
+	if (isPersistent(dst,1)) {
+		for(uint i=0;i<len;i++) {
+			pmc_store8(((char *) dst)+i, c, memsetstring);
+		}
+		return dst;
+	} else {
+		if (!memset_real) {
+			memset_real = (void * (*)(void * dst, int c, size_t len))dlsym(RTLD_NEXT, "memset");
+		}
+		return memset_real(dst, c, len);
+	}
 }

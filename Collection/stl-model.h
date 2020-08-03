@@ -84,15 +84,17 @@ public:
 		return tmp;
 	}
 
-	void pop_front() {
+	_Tp pop_front() {
 		mllnode<_Tp> *tmp = head;
 		head = head->next;
 		if (head == NULL)
 			tail = NULL;
 		else
 			head->prev = NULL;
+		_Tp val = tmp->val;
 		delete tmp;
 		_size--;
+		return val;
 	}
 
 	void pop_back() {
@@ -102,8 +104,10 @@ public:
 			head = NULL;
 		else
 			tail->next = NULL;
+		_Tp val = tmp->val;
 		delete tmp;
 		_size--;
+		return val;
 	}
 
 	void clear() {

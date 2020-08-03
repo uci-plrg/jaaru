@@ -92,6 +92,7 @@ private:
 	uint execution_number;
 	int numcrashes;
 	ModelVector<void *> regionID;
+	ModelList<NodeStack *> replaystack;
 
 	unsigned int get_num_threads() const;
 	bool shouldInsertCrash(ModelAction * act);
