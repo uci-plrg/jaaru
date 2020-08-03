@@ -50,6 +50,8 @@ void *calloc(size_t count, size_t size) {
 	if (mallocSpace) {
 		void * tmp = mspace_calloc(mallocSpace, count, size);
 		ASSERT(tmp);
+		//make sure we see the zero's...
+		bzero(tmp, count * size);
 		return tmp;
 	} else {
 		return __libc_calloc(count, size);
@@ -134,5 +136,20 @@ void * memset(void *dst, int c, size_t len) {
 			memset_real = (void * (*)(void * dst, int c, size_t len))dlsym(RTLD_NEXT, "memset");
 		}
 		return memset_real(dst, c, len);
+	}
+}
+
+void (*bzero_real)(void * dst, size_t len) = NULL;
+const char * bzerostring = "bzero";
+void bzero(void *dst, size_t len) {
+	if (isPersistent(dst,1)) {
+		for(uint i=0;i<len;i++) {
+			pmc_store8(((char *) dst)+i, 0, memsetstring);
+		}
+	} else {
+		if (!bzero_real) {
+			bzero_real = (void (*)(void * dst, size_t len))dlsym(RTLD_NEXT, "bzero");
+		}
+		bzero_real(dst, len);
 	}
 }
