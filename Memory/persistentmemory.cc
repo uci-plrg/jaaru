@@ -153,3 +153,22 @@ void bzero(void *dst, size_t len) {
 		bzero_real(dst, len);
 	}
 }
+
+char * (*strcpy_real)(char * dst, const char *src) = NULL;
+const char * strcpystring = "strcpy";
+char * strcpy(char *dst, const char *src) {
+	if (isPersistent(dst,1)) {
+		size_t len = 1; // +1 to include the null at the end.
+		while(src[len] != '\0') len++;
+		for(uint i=0;i<=len;i++) {
+			uint8_t val =pmc_load8(((char *) src) + i, strcpystring);
+			pmc_store8(((char *) dst)+i, val, strcpystring);
+		}
+		return dst;
+	} else {
+		if (!strcpy_real) {
+			strcpy_real = (char * (*)(char * dst, const char *src))dlsym(RTLD_NEXT, strcpystring);
+		}
+		return strcpy_real(dst, src);
+	}
+}
