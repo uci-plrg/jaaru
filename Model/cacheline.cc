@@ -10,10 +10,7 @@ CacheLine::CacheLine(void *address) :
 	lastWrite(NULL),
 	lastCacheOp(NULL),
 	beginR(0),
-	endR(0),
-	beginC(0),
-	endC(0),
-	execnum(0)
+	endR(0)
 {
 }
 
@@ -22,9 +19,6 @@ CacheLine::CacheLine(uintptr_t _id) :
 	lastWrite(NULL),
 	lastCacheOp(NULL),
 	beginR(0),
-	endR(0),
-	beginC(0),
-	endC(0),
-	execnum(0)
+	endR(0)
 {
 }

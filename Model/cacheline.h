@@ -19,17 +19,12 @@ public:
 	uintptr_t getId() { return id; }
 	modelclock_t getBeginRange(){ return beginR; }
 	modelclock_t getEndRange(){ return endR; }
-	modelclock_t getBeginCurrent(){ return beginC; }
-	modelclock_t getEndCurrent(){ return endC; }
 	ModelAction * getLastCacheOp() { return lastCacheOp; }
 	void setLastCacheOp(ModelAction *clop) { lastCacheOp = clop; }
 	ModelAction * getLastWrite() { return lastWrite; }
 	void setLastWrite(ModelAction *clwr) { lastWrite = clwr; }
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange(modelclock_t end) { endR = end; }
-	void setBeginCurrent(modelclock_t begin) { beginC = begin; }
-	void setEndCurrent(modelclock_t end) { endC = end; }
-	void checkExecution(uint exec) {if (exec != execnum) {execnum = exec; beginC = beginR; endC = endR;}}
 
 	MEMALLOC;
 private:
@@ -45,9 +40,6 @@ private:
 	//persisted. Inclusive, so this includes write with endR sequence
 	//number
 	modelclock_t endR;
-	modelclock_t beginC;
-	modelclock_t endC;
-	uint execnum;
 };
 
 inline uintptr_t getCacheID(void *address) {
