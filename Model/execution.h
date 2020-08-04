@@ -85,6 +85,8 @@ public:
 	uint32_t getStoreBuffer() { return storebufferusage; }
 	void updateStoreBuffer(int32_t delta) { storebufferusage+=delta; }
 	void initialize_curr_action(ModelAction *curr);
+	void ensureInitialValue(ModelAction *curr);
+
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
@@ -94,7 +96,6 @@ private:
 	bool processWrites(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > * writes, simple_action_list_t *list, uint & numslotsleft);
 	bool lookforWritesInPriorExecution(ModelExecution *pExecution, ModelAction *read, WriteVecSet ** priorWrites);
 	bool hasValidValue(void * address);
-	void ensureInitialValue(ModelAction *curr);
 	int get_execution_number() const;
 	bool should_wake_up(const ModelAction *curr, const Thread *thread) const;
 	void wake_up_sleeping_actions(ModelAction *curr);

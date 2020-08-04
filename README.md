@@ -1,27 +1,10 @@
-PMCheck: A modle checker for persistent memory
+PMCheck: A model checker for persistent memory
 =====================================================
 
 Short Term Todo List
 --------------------
 
-1) Handle injecting crashes & figure out model for what is persistent...
-2) Hack to support RECIPE...how to:
-   a) Make sure all data structures are heap allocated...
-   b) Stash the root pointer as a global
-   c) Check whether global exists before allocation data structure
-3) Figure out why we have such large state space...could be globals?  bugs in algorithm??
-4) Idea for hack...write elision...if the write is the same value as was already there, drop it...
-
-TODO
-----
-
-1) Persistent memory region is still not quite right...  Should return
-exactly to where it was on next child execution...but persist across new
-base executions
-
-2) Intercept memcpy/other functions
-
-3) 
+1) Think about resetting heap after each execution...
 
 Longer Term Todos
 -----------------

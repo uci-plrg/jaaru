@@ -539,7 +539,6 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr) {
 	ASSERT(curr->is_write());
-	ensureInitialValue(curr);
 	if(curr->is_rmw()) {	// curr is modified second part of a RMW and must be recorded
 		get_thread(curr)->getMemory()->addWrite(curr);
 		get_thread(curr)->getMemory()->emptyStoreBuffer();
@@ -847,7 +846,6 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 }
 
 void ModelExecution::handle_read(ModelAction *curr) {
-	ensureInitialValue(curr);
 	SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set;
 	build_may_read_from(curr, &rf_set);
 	int index = 0;

@@ -511,6 +511,10 @@ nextExecution:
 				Thread *thr = get_thread(tid);
 				if (!thr->is_model_thread() && !thr->is_complete() && !thr->get_pending()) {
 					switch_from_master(thr);
+					ModelAction *pendact = thr->get_pending();
+					if (pendact!= NULL && (pendact->is_write() || pendact->is_read())) {
+						execution->ensureInitialValue(pendact);
+					}
 					if (thr->is_waiting_on(thr))
 						assert_bug("Deadlock detected (thread %u)", i);
 				}
