@@ -50,6 +50,8 @@ void *calloc(size_t count, size_t size) {
 	if (mallocSpace) {
 		void * tmp = mspace_calloc(mallocSpace, count, size);
 		ASSERT(tmp);
+		//make sure we see the zero's...
+		bzero(tmp, count * size);
 		return tmp;
 	} else {
 		return __libc_calloc(count, size);
@@ -138,3 +140,36 @@ void * memset(void *dst, int c, size_t len) {
 	}
 }
 
+void (*bzero_real)(void * dst, size_t len) = NULL;
+const char * bzerostring = "bzero";
+void bzero(void *dst, size_t len) {
+	if (isPersistent(dst,1) && !inside_model) {
+		for(uint i=0;i<len;i++) {
+			pmc_store8(((char *) dst)+i, 0, memsetstring);
+		}
+	} else {
+		if (!bzero_real) {
+			bzero_real = (void (*)(void * dst, size_t len))dlsym(RTLD_NEXT, "bzero");
+		}
+		bzero_real(dst, len);
+	}
+}
+
+char * (*strcpy_real)(char * dst, const char *src) = NULL;
+const char * strcpystring = "strcpy";
+char * strcpy(char *dst, const char *src) {
+	if (isPersistent(dst,1) && !inside_model) {
+		size_t len = 0;
+		while(src[len] != '\0') len++;
+		for(uint i=0;i<=len;i++) {
+			uint8_t val =pmc_load8(((char *) src) + i, strcpystring);
+			pmc_store8(((char *) dst)+i, val, strcpystring);
+		}
+		return dst;
+	} else {
+		if (!strcpy_real) {
+			strcpy_real = (char * (*)(char * dst, const char *src))dlsym(RTLD_NEXT, strcpystring);
+		}
+		return strcpy_real(dst, src);
+	}
+}
