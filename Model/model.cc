@@ -497,6 +497,8 @@ void ModelChecker::doCrash() {
 void ModelChecker::run()
 {
 	do {
+		if (params.pmdebug && prevContext != NULL)
+			model_print("Execution %u\n", get_execution_number());
 		Thread * t = init_thread;
 nextExecution:
 		do {

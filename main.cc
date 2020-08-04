@@ -17,11 +17,10 @@
 void param_defaults(struct model_params *params)
 {
 	params->verbose = !!DBG_ENABLED();
-	params->maxexecutions = 10;
-	params->traceminsize = 0;
 	params->nofork = false;
 	params->evictmax = 30;
 	params->storebufferthreshold = 40;
+	params->pmdebug = 0;
 }
 
 static void print_usage(struct model_params *params)
@@ -44,24 +43,18 @@ static void print_usage(struct model_params *params)
 		"                              0 is quiet; 1 shows valid executions; 2 is noisy;\n"
 		"                              3 is noisier.\n"
 		"                              Default: %d\n"
-		"-x, --maxexec=NUM           Maximum number of executions.\n"
-		"                            Default: %u\n"
+		"-p                          PMDebug level\n"
 		"-n                          No fork\n"
-		"-m, --minsize=NUM           Minimum number of actions to keep\n"
 		"                            Default: %u\n",
-		params->verbose,
-		params->maxexecutions,
-		params->traceminsize);
+		params->verbose);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hrnt:o:x:v:m:f:";
+	const char *shortopts = "hnv:p:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
-		{"maxexecutions", required_argument, NULL, 'x'},
-		{"minsize", required_argument, NULL, 'm'},
 		{0, 0, 0, 0}	/* Terminator */
 	};
 	int opt, longindex;
@@ -98,14 +91,11 @@ void parse_options(struct model_params *params) {
 		case 'n':
 			params->nofork = true;
 			break;
-		case 'x':
-			params->maxexecutions = atoi(optarg);
-			break;
 		case 'v':
 			params->verbose = optarg ? atoi(optarg) : 1;
 			break;
-		case 'm':
-			params->traceminsize = atoi(optarg);
+		case 'p':
+			params->pmdebug = optarg ? atoi(optarg) : 1;
 			break;
 		default:	/* '?' */
 			error = true;

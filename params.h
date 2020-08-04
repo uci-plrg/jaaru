@@ -6,12 +6,11 @@
  * the model checker.
  */
 struct model_params {
-	int maxexecutions;
 	bool nofork;
-	modelclock_t traceminsize;
 	uint storebufferthreshold;
 	uint evictmax;
 	int verbose;
+	uint pmdebug;
 };
 
 void param_defaults(struct model_params *params);

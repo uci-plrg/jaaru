@@ -716,6 +716,8 @@ void ModelExecution::initialize_curr_action(ModelAction *curr)
 	curr->merge_cv(get_parent_action(curr->get_tid()));
 
 	action_trace.addAction(curr);
+	if (params->pmdebug != 0 && model->getPrevContext() != NULL)
+		curr->print();
 }
 
 /**
@@ -855,6 +857,31 @@ void ModelExecution::handle_read(ModelAction *curr) {
 		NodeStack *stack = model->getNodeStack();
 		Node * nextnode = stack->explore_next(rf_set.size());
 		index = nextnode->get_choice();
+		if (params->pmdebug != 0 && model->getPrevContext() != NULL) {
+			model_print("Load with multiple rf:\n");
+			curr->print();
+			model_print("can read from:\n");
+			for(uint i=0;i<rf_set.size();i++) {
+				SnapVector<Pair<ModelExecution *, ModelAction *> > * rfarray = rf_set[i];
+				if (i == (uint)index)
+					model_print("=>");
+				ModelAction *rffirst = (*rfarray)[0].p2;
+				bool allsame = true;
+				for(uint j=1;j<rfarray->size();j++) {
+					if ((*rfarray)[j].p2 != rffirst)
+						allsame = false;
+				}
+				if (allsame) {
+					rffirst->print();
+				} else {
+					model_print("{");
+					for(uint j=0;j<rfarray->size();j++) {
+						(*rfarray)[j].p2->print();
+					}
+					model_print("}");
+				}
+			}
+		}
 	}
 
 	process_read(curr, rf_set[index]);
@@ -936,6 +963,8 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 	ASSERT(act->is_write());
 	int tid = id_to_int(act->get_tid());
 	insertIntoActionListAndSetCV(&action_trace, act);
+	if (params->pmdebug != 0 && model->getPrevContext() != NULL)
+		act->print();
 
 	ModelAction * lastact = thrd_last_action[tid];
 	// Update thrd_last_action, the last action taken by each thrad
