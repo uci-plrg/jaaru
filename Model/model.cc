@@ -474,6 +474,9 @@ bool ModelChecker::should_terminate_execution()
 }
 
 void ModelChecker::doCrash() {
+	if (params.verbose >= 4) {
+		execution->print_summary();
+	}
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
