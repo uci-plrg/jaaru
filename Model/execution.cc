@@ -893,9 +893,13 @@ void ModelExecution::handle_read(ModelAction *curr) {
 		Node * nextnode = stack->explore_next(rf_set.size());
 		index = nextnode->get_choice();
 		if (params->pmdebug != 0 && model->getPrevContext() != NULL) {
+			model_print("\n*****************************************************************\n");
 			model_print("Load with multiple rf:\n");
 			curr->print();
+			if (curr->get_position()!=NULL)
+				model_print("at %s\n", curr->get_position());
 			model_print("can read from:\n");
+			model_print("-----------------------------------------------------------------\n");
 			for(uint i=0;i<rf_set.size();i++) {
 				SnapVector<Pair<ModelExecution *, ModelAction *> > * rfarray = rf_set[i];
 				if (i == (uint)index)
@@ -908,14 +912,19 @@ void ModelExecution::handle_read(ModelAction *curr) {
 				}
 				if (allsame) {
 					rffirst->print();
+					if (rffirst->get_position()!=NULL)
+						model_print("at %s\n", rffirst->get_position());
 				} else {
 					model_print("{");
 					for(uint j=0;j<rfarray->size();j++) {
 						(*rfarray)[j].p2->print();
+						if ((*rfarray)[j].p2->get_position()!=NULL)
+							model_print("at %s\n", (*rfarray)[j].p2->get_position());
 					}
 					model_print("}");
 				}
 			}
+			model_print("*****************************************************************\n\n");
 		}
 	}
 

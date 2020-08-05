@@ -497,10 +497,14 @@ void ModelChecker::doCrash() {
 void ModelChecker::run()
 {
 	do {
-		if (params.pmdebug && prevContext != NULL)
-			model_print("Execution %u\n", get_execution_number());
 		Thread * t = init_thread;
 nextExecution:
+		if (params.pmdebug && prevContext != NULL) {
+			model_print("\n\n*******************************************************************\n");
+			model_print("Execution %u\n", get_execution_number());
+			model_print("*******************************************************************\n\n");
+		}
+
 		do {
 			/*
 			 * Stash next pending action(s) for thread(s). There
