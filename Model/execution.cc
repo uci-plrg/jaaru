@@ -1519,6 +1519,8 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 
 	ASSERT(check_action_enabled(curr));	/* May have side effects? */
 	curr = check_current_action(curr);
+	if (hasCrashed)
+		return NULL;
 	ASSERT(curr);
 
 	/* Process this action in ModelHistory for records */
