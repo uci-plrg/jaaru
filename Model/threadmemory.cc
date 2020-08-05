@@ -49,19 +49,21 @@ bool ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read, ModelExecution
 	return false;
 }
 
-void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
+bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	ASSERT(act->is_write() || act->is_cache_op() || act->is_sfence());
 	if(act->is_nonatomic_write()) {
 		evictNonAtomicWrite(act);
 	} else if (act->is_write()) {
 		evictWrite(act);
 	} else if (act->is_sfence()) {
-		emptyFlushBuffer();
+		if (emptyFlushBuffer())
+			return true;
 		model->get_execution()->initialize_curr_action(act);
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
 			lastclflush = act;
-			model->get_execution()->evictCacheOp(act);
+			if (model->get_execution()->evictCacheOp(act))
+				return true;
 			flushcount--;
 		} else {
 			evictFlushOpt(act);
@@ -70,6 +72,7 @@ void ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
 		ASSERT(0);
 	}
+	return false;
 }
 
 void ThreadMemory::evictFlushOpt(ModelAction *act) {
@@ -78,33 +81,39 @@ void ThreadMemory::evictFlushOpt(ModelAction *act) {
 	flushBuffer.push_back(act);
 }
 
-void ThreadMemory::popFromStoreBuffer() {
+bool ThreadMemory::popFromStoreBuffer() {
 	if (storeBuffer.size() > 0) {
 		ModelAction *head = storeBuffer.front();
 		storeBuffer.pop_front();
 		model->get_execution()->updateStoreBuffer(-1);
-		evictOpFromStoreBuffer(head);
+		if (evictOpFromStoreBuffer(head))
+			return true;
 	}
+	return false;
 }
 
-void ThreadMemory::emptyStoreBuffer() {
+bool ThreadMemory::emptyStoreBuffer() {
 	sllnode<ModelAction *> * rit;
 	for (rit = storeBuffer.begin();rit != NULL;rit=rit->getNext()) {
 		ModelAction *curr = rit->getVal();
-		evictOpFromStoreBuffer(curr);
+		if (evictOpFromStoreBuffer(curr))
+			return true;
 	}
 	model->get_execution()->updateStoreBuffer(-storeBuffer.size());
 	storeBuffer.clear();
+	return false;
 }
 
-void ThreadMemory::emptyFlushBuffer() {
+bool ThreadMemory::emptyFlushBuffer() {
 	sllnode<ModelAction *> * it;
 	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
 		ModelAction *curr = it->getVal();
-		model->get_execution()->evictCacheOp(curr);
+		if (model->get_execution()->evictCacheOp(curr))
+			return true;
 		flushcount--;
 	}
 	flushBuffer.clear();
+	return false;
 }
 
 void ThreadMemory::freeActions() {
@@ -140,7 +149,8 @@ bool ThreadMemory::emptyWrites(void * address) {
 		for(it = storeBuffer.begin();it!= NULL;) {
 			sllnode<ModelAction *> *next = it->getNext();
 			ModelAction *curr = it->getVal();
-			evictOpFromStoreBuffer(curr);
+			if (evictOpFromStoreBuffer(curr))
+				return false;
 			storeBuffer.erase(it);
 			model->get_execution()->updateStoreBuffer(-1);
 			if (it == rit)

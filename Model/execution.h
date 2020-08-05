@@ -81,11 +81,13 @@ public:
 	void remove_action_from_store_buffer(ModelAction *act);
 	void add_write_to_lists(ModelAction *act);
 	void persistCacheLine(CacheLine *cl, ModelAction *clflush);
-	void evictCacheOp(ModelAction *cacheop);
+	bool evictCacheOp(ModelAction *cacheop);
 	uint32_t getStoreBuffer() { return storebufferusage; }
 	void updateStoreBuffer(int32_t delta) { storebufferusage+=delta; }
 	void initialize_curr_action(ModelAction *curr);
 	void ensureInitialValue(ModelAction *curr);
+	bool getCrashed() {return hasCrashed;}
+	bool shouldInsertCrash();
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
@@ -169,7 +171,8 @@ private:
 	Thread * action_select_next_thread(const ModelAction *curr) const;
 	bool paused_by_fuzzer(const ModelAction * act) const;
 	bool isfinished;
-
+	bool hasCrashed;
+	bool noWriteSinceCrashCheck;
 };
 
 inline void * alignAddress(void * addr) {

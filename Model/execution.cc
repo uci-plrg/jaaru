@@ -72,7 +72,9 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	obj_to_cacheline(),
 	priv(new struct model_snapshot_members ()),
 	fuzzer(new Fuzzer()),
-	isfinished(false)
+	isfinished(false),
+	hasCrashed(false),
+	noWriteSinceCrashCheck(false)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
 	model_thread = new Thread(get_next_id());
@@ -541,8 +543,9 @@ void ModelExecution::process_write(ModelAction *curr) {
 	ASSERT(curr->is_write());
 	if(curr->is_rmw()) {	// curr is modified second part of a RMW and must be recorded
 		get_thread(curr)->getMemory()->addWrite(curr);
-		get_thread(curr)->getMemory()->emptyStoreBuffer();
-		get_thread(curr)->getMemory()->emptyFlushBuffer();
+		if (get_thread(curr)->getMemory()->emptyStoreBuffer()||
+				get_thread(curr)->getMemory()->emptyFlushBuffer())
+			return;
 	} else {	//curr is just an atomic write
 		get_thread(curr)->getMemory()->addWrite(curr);
 	}
@@ -566,8 +569,9 @@ void ModelExecution::process_cache_op(ModelAction *curr) {
 void ModelExecution::process_memory_fence(ModelAction *curr)
 {
 	ASSERT(curr->is_mfence());
-	get_thread(curr)->getMemory()->emptyStoreBuffer();
-	get_thread(curr)->getMemory()->emptyFlushBuffer();
+	if (get_thread(curr)->getMemory()->emptyStoreBuffer() ||
+			get_thread(curr)->getMemory()->emptyFlushBuffer())
+		return;
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
 
@@ -589,11 +593,15 @@ void ModelExecution::persistCacheLine(CacheLine *cacheline, ModelAction *clflush
 	}
 }
 
-void ModelExecution::evictCacheOp(ModelAction *cacheop) {
+bool ModelExecution::evictCacheOp(ModelAction *cacheop) {
+	if (shouldInsertCrash())
+		return true;
+
 	remove_action_from_store_buffer(cacheop);
 	void * loc = cacheop->get_location();
 	CacheLine *cacheline = getCacheLine(loc);
 	persistCacheLine(cacheline, cacheop);
+	return false;
 }
 
 CacheLine* ModelExecution::getCacheLine(void * address) {
@@ -614,6 +622,21 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 {
 	ASSERT(curr->is_sfence());
 	get_thread(curr)->getMemory()->addOp(curr);
+}
+
+
+bool ModelExecution::shouldInsertCrash() {
+	if (model->getNumCrashes() > 0 || noWriteSinceCrashCheck)
+		return false;
+
+	//Create node decision of whether we should crash
+	Node * node = model->getNodeStack()->explore_next(2);
+	if (node->get_choice() == 0) {
+		hasCrashed = true;
+		return true;
+	}
+	noWriteSinceCrashCheck = true;
+	return false;
 }
 
 /**
@@ -795,14 +818,22 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	if(second_part_of_rmw) {
 		// Swap with previous rmw_read action and delete the second part.
 		curr = swap_rmw_write_part(curr);
+		if (hasCrashed)
+			return NULL;
 	} else if(curr->is_locked_operation()) {
-		get_thread(curr)->getMemory()->emptyStoreBuffer();
-		get_thread(curr)->getMemory()->emptyFlushBuffer();
+		if (get_thread(curr)->getMemory()->emptyStoreBuffer() ||
+				get_thread(curr)->getMemory()->emptyFlushBuffer())
+			return NULL;
 		initialize_curr_action(curr);
 	} else if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
 		handle_read(curr);
+		if (hasCrashed)
+			return NULL;
 	} else if (curr->is_mfence()) {
 		process_memory_fence(curr);
+		if (hasCrashed)
+			return NULL;
+
 		initialize_curr_action(curr);
 	} else if (curr->is_sfence()) {
 		process_store_fence(curr);
@@ -819,9 +850,12 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 	if (curr->is_write())  {	//Processing RMW, and different types of writes
 		process_write(curr);
+		if (hasCrashed)
+			return NULL;
 		if(curr->is_seqcst()) {
-			get_thread(curr)->getMemory()->emptyStoreBuffer();
-			get_thread(curr)->getMemory()->emptyFlushBuffer();
+			if (get_thread(curr)->getMemory()->emptyStoreBuffer() ||
+					get_thread(curr)->getMemory()->emptyFlushBuffer())
+				return NULL;
 		}
 	} else if (curr->is_cache_op()) {	//CLFLUSH, CLFLUSHOPT
 		process_cache_op(curr);
@@ -851,7 +885,8 @@ void ModelExecution::handle_read(ModelAction *curr) {
 	SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set;
 	build_may_read_from(curr, &rf_set);
 	int index = 0;
-
+	if (hasCrashed)
+		return;
 	if (rf_set.size() != 1) {
 		//Have to make decision of what to do
 		NodeStack *stack = model->getNodeStack();
@@ -912,8 +947,9 @@ ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
 	lastread->process_rmw(act);
 	if (act->is_rmw_cas_fail()) {
 		initialize_curr_action(lastread);
-		get_thread(act)->getMemory()->emptyStoreBuffer();
-		get_thread(act)->getMemory()->emptyFlushBuffer();
+		if (get_thread(act)->getMemory()->emptyStoreBuffer() ||
+				get_thread(act)->getMemory()->emptyFlushBuffer())
+			return NULL;
 	}
 	delete act;
 	return lastread;
@@ -977,6 +1013,7 @@ void ModelExecution::add_write_to_lists(ModelAction *write) {
 	simple_action_list_t *list= get_safe_ptr_action(&obj_wr_map, alignAddress(write->get_location()));
 
 	write->setActionRef(list->add_back(write));
+	noWriteSinceCrashCheck = false;
 }
 
 /**
@@ -1042,6 +1079,8 @@ bool ModelExecution::flushBuffers(void * address) {
 		Thread * t = get_thread(i);
 		ThreadMemory * memory = t->getMemory();
 		didflush |= memory->emptyWrites(address);
+		if (hasCrashed)
+			return false;
 	}
 	return didflush;
 }
@@ -1127,6 +1166,8 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
 			if (flushBuffers(curraddress) || !isPersistent(curraddress, 1) || !hasValidValue(curraddress)) {
+				if (hasCrashed)
+					return;
 				ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
 				(*write_array)[i].p1 = this;
 				(*write_array)[i].p2 = nonatomicstore;

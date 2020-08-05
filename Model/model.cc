@@ -527,7 +527,10 @@ nextExecution:
 				uint numberEvict = random() % params.evictmax;
 				ThreadMemory * mem = get_thread(int_to_id(targetthread))->getMemory();
 				for(uint i=0;i<numberEvict;i++) {
-					mem->popFromStoreBuffer();
+					if (mem->popFromStoreBuffer()) {
+						doCrash();
+						goto nextExecution;
+					}
 				}
 			}
 
@@ -573,13 +576,13 @@ nextExecution:
 
 			/* Consume the next action for a Thread */
 			ModelAction *curr = t->get_pending();
-			if (shouldInsertCrash(curr)) {
-				doCrash();
-				goto nextExecution;
-			}
 
 			t->set_pending(NULL);
 			t = execution->take_step(curr);
+			if (execution->getCrashed()) {
+				doCrash();
+				goto nextExecution;
+			}
 		} while (!should_terminate_execution());
 	} while(next_execution());
 	model_print("******* Model-checking complete: *******\n");
@@ -591,17 +594,4 @@ nextExecution:
 	unlink(filename);
 }
 
-bool ModelChecker::shouldInsertCrash(ModelAction *act) {
-	if (act->is_mfence() || act->is_rmw_read() || (act->is_write() && act->is_seqcst())) {
-		if (numcrashes > 0)
-			return false;
 
-		ThreadMemory * memory = execution->get_thread(act)->getMemory();
-		if (memory->hasPendingFlushes()) {
-			//Create node decision of whether we should crash
-			Node * node = nodestack->explore_next(2);
-			return (node->get_choice() == 0);
-		}
-	}
-	return false;
-}
