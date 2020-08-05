@@ -542,10 +542,14 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 void ModelExecution::process_write(ModelAction *curr) {
 	ASSERT(curr->is_write());
 	if(curr->is_rmw()) {	// curr is modified second part of a RMW and must be recorded
-		get_thread(curr)->getMemory()->addWrite(curr);
 		if (get_thread(curr)->getMemory()->emptyStoreBuffer()||
 				get_thread(curr)->getMemory()->emptyFlushBuffer())
 			return;
+		//Do the flushes first...so we have the option to
+		//inject crash without incorrectly seeing this store
+		get_thread(curr)->getMemory()->addWrite(curr);
+		//This emptyStoreBuffer should be safe w/o the check because there are no flushes left.
+		get_thread(curr)->getMemory()->emptyStoreBuffer();
 	} else {	//curr is just an atomic write
 		get_thread(curr)->getMemory()->addWrite(curr);
 	}
