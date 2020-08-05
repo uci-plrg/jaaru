@@ -919,13 +919,13 @@ void ModelExecution::handle_read(ModelAction *curr) {
 					if (rffirst->get_position()!=NULL)
 						model_print("at %s\n", rffirst->get_position());
 				} else {
-					model_print("{");
+					model_print("\n{");
 					for(uint j=0;j<rfarray->size();j++) {
 						(*rfarray)[j].p2->print();
 						if ((*rfarray)[j].p2->get_position()!=NULL)
 							model_print("at %s\n", (*rfarray)[j].p2->get_position());
 					}
-					model_print("}");
+					model_print("}\n");
 				}
 			}
 			model_print("*****************************************************************\n\n");

@@ -88,6 +88,7 @@ public:
 	void ensureInitialValue(ModelAction *curr);
 	bool getCrashed() {return hasCrashed;}
 	bool shouldInsertCrash();
+	bool hasNoWriteSinceCrashCheck() {return noWriteSinceCrashCheck;}
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}

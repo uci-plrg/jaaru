@@ -322,7 +322,7 @@ bool ModelChecker::next_execution() {
 	execution_number ++;
 
 	//See if we are done...
-	if (!nodestack->has_another_execution()) {
+	while (!nodestack->has_another_execution()) {
 		//last execution on this stack...need to reset
 		if (prevContext == NULL) {
 			//really done
@@ -591,6 +591,11 @@ nextExecution:
 				goto nextExecution;
 			}
 		} while (!should_terminate_execution());
+		//one last crash
+		if (getNumCrashes() == 0 && !execution->hasNoWriteSinceCrashCheck()) {
+			doCrash();
+			goto nextExecution;
+		}
 	} while(next_execution());
 	model_print("******* Model-checking complete: *******\n");
 	print_stats();
