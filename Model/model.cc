@@ -504,7 +504,11 @@ void ModelChecker::run()
 nextExecution:
 		if (params.pmdebug && prevContext != NULL) {
 			model_print("\n\n*******************************************************************\n");
-			model_print("Execution %u\n", get_execution_number());
+			model_print("Post-Crash Execution %u\n", get_execution_number());
+			model_print("*******************************************************************\n\n");
+		} else if (params.pmdebug) {
+			model_print("\n\n*******************************************************************\n");
+			model_print("Pre-Crash Execution %u\n", get_execution_number());
 			model_print("*******************************************************************\n\n");
 		}
 

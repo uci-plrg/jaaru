@@ -395,15 +395,15 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 
 	}
 
-	if (!curr->is_rmw_read()) {
-		initialize_curr_action(curr);
-	}
-
 	/* Store value in ModelAction so printed traces look nice */
 	curr->set_read_value(value);
 
 	/* Return value to thread so code executes */
 	get_thread(curr)->set_return_value(value);
+
+	if (!curr->is_rmw_read()) {
+		initialize_curr_action(curr);
+	}
 }
 
 /**
@@ -743,7 +743,7 @@ void ModelExecution::initialize_curr_action(ModelAction *curr)
 	curr->merge_cv(get_parent_action(curr->get_tid()));
 
 	action_trace.addAction(curr);
-	if (params->pmdebug != 0 && model->getPrevContext() != NULL)
+	if (params->pmdebug != 0)
 		curr->print();
 }
 
@@ -1012,7 +1012,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 	ASSERT(act->is_write());
 	int tid = id_to_int(act->get_tid());
 	insertIntoActionListAndSetCV(&action_trace, act);
-	if (params->pmdebug != 0 && model->getPrevContext() != NULL)
+	if (params->pmdebug != 0)
 		act->print();
 
 	ModelAction * lastact = thrd_last_action[tid];
@@ -1136,11 +1136,11 @@ bool ModelExecution::hasValidValue(void * address) {
 				uintptr_t wtop = wbot + wsize;
 
 				//skip on if there is no overlap
-				if ((addr < wbot) || (addr > wtop))
+				if ((addr < wbot) || (addr >= wtop))
 					continue;
 
 				uint64_t wval = write->get_value();
-				wval = wval >> (wbot - addr);
+				wval = wval >> (8*(addr - wbot));
 				wval = wval & 0xff;
 				return (wval == val);
 			}
@@ -1178,7 +1178,8 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		void * curraddress = (void *)(((uintptr_t)address) + i);
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
-			if (flushBuffers(curraddress) || !isPersistent(curraddress, 1) || !hasValidValue(curraddress)) {
+			if (!isPersistent(curraddress, 1) || !hasValidValue(curraddress)) {
+				flushBuffers(curraddress);
 				if (hasCrashed)
 					return;
 				ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
