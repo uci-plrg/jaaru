@@ -78,6 +78,17 @@ inline bool ValidateAddress8(void * address) {
 	return val;
 }
 
+//Address must be 8 byte aligned
+inline bool ValidateAddress64(void * address) {
+	ASSERT((((uintptr_t)address)&0x7)==0);
+	volatile uint64_t * val1 = ((volatile uint64_t *)(lookupShadowEntry(address)));
+	uint64_t val2 = *((volatile uint64_t *)address);
+	bool val = (*val1) != val2;
+	if (val)
+		*val1 = val2;
+	return val;
+}
+
 /**
  * @brief A record of information for detecting data races
  */

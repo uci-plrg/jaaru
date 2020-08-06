@@ -309,7 +309,10 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
 	getStoreThreadAndClock(location, &storethread, &storeclock);
 	setAtomicStoreFlag(location);
 	ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, location, value, get_thread(storethread), size);
-	act->set_seq_number(storeclock);
+	if (storeclock == 0)
+		act->set_seq_number(get_next_seq_num());
+	else
+		act->set_seq_number(storeclock);
 	add_normal_write_to_lists(act);
 	add_write_to_lists(act);
 	return act;
@@ -880,6 +883,7 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 
 	if (list == NULL) {
 		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), exec->model_thread, 8);
+		ValidateAddress64(align_address);
 		exec->action_trace.addAction(act);
 		exec->add_write_to_lists(act);
 	}
