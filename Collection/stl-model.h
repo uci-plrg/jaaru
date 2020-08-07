@@ -276,15 +276,17 @@ public:
 		return tmp;
 	}
 
-	void pop_front() {
+	_Tp pop_front() {
 		sllnode<_Tp> *tmp = head;
 		head = head->next;
 		if (head == NULL)
 			tail = NULL;
 		else
 			head->prev = NULL;
+		_Tp tmpval = tmp->val;
 		delete tmp;
 		_size--;
+		return tmpval;
 	}
 
 	void pop_back() {

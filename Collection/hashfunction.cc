@@ -19,7 +19,8 @@ unsigned int int64_hash(uint64_t key) {
 }
 
 unsigned int cacheLineHashFunction ( CacheLine *cl) {
-	return ((unsigned int) (cl->getId() >> 6));
+	uintptr_t id = cl->getId();
+	return ((unsigned int) (id ^ (id >> 3) ^ (id >>6)));
 }
 
 bool cacheLineEquals(CacheLine *c1, CacheLine *c2) {

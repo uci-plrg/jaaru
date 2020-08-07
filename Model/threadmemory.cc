@@ -93,26 +93,24 @@ bool ThreadMemory::popFromStoreBuffer() {
 }
 
 bool ThreadMemory::emptyStoreBuffer() {
-	sllnode<ModelAction *> * rit;
-	for (rit = storeBuffer.begin();rit != NULL;rit=rit->getNext()) {
-		ModelAction *curr = rit->getVal();
+	uint count =0;
+	while(storeBuffer.size() > 0) {
+		ModelAction *curr = storeBuffer.pop_front();
 		if (evictOpFromStoreBuffer(curr))
 			return true;
+		count++;
 	}
-	model->get_execution()->updateStoreBuffer(-storeBuffer.size());
-	storeBuffer.clear();
+	model->get_execution()->updateStoreBuffer(-count);
 	return false;
 }
 
 bool ThreadMemory::emptyFlushBuffer() {
-	sllnode<ModelAction *> * it;
-	for (it = flushBuffer.begin();it != NULL;it=it->getNext()) {
-		ModelAction *curr = it->getVal();
+	while(flushBuffer.size() > 0) {
+		ModelAction *curr = storeBuffer.pop_front();
 		if (model->get_execution()->evictCacheOp(curr))
 			return true;
 		flushcount--;
 	}
-	flushBuffer.clear();
 	return false;
 }
 

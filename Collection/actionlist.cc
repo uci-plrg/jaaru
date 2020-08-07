@@ -91,6 +91,11 @@ void actionlist::addAction(ModelAction * act) {
 	_size++;
 	int shiftbits = MODELCLOCKBITS - ALLBITS;
 	modelclock_t clock = act->get_seq_number();
+	mllnode<ModelAction *> * tmpn = head;
+	while(tmpn != NULL) {
+		ASSERT(tmpn->getVal() != act);
+		tmpn = tmpn->next;
+	}
 
 	allnode * ptr = &root;
 	do {
