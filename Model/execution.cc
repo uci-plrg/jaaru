@@ -1308,7 +1308,7 @@ bool ModelExecution::lookforWritesInPriorExecution(ModelExecution *pExecution, M
 			}
 
 			//See if this write happened before last cache line flush
-			if (clock < begin || write->is_initialization()) {
+			if (clock <= begin || write->is_initialization()) {
 				pastWindow = true;
 				//all slots full...done
 				if (!hasNull) {
