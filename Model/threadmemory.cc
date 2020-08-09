@@ -9,7 +9,7 @@ ThreadMemory::ThreadMemory() :
 	storeBuffer(),
 	obj_to_last_write(),
 	flushBuffer(),
-	lastclflush(NULL),
+	lastsfence(NULL),
 	flushcount(0) {
 }
 
@@ -19,6 +19,10 @@ void ThreadMemory::addCacheOp(ModelAction * act) {
 	storeBuffer.push_back(act);
 	ModelAction *lastWrite = obj_to_last_write.get(getCacheID(act->get_location()));
 	act->setLastWrites(model->get_execution()->get_curr_seq_num(), lastWrite);
+	if (act->is_clflush()) {
+		obj_to_last_write.put(getCacheID(act->get_location()), act);
+	}
+
 	model->get_execution()->updateStoreBuffer(1);
 	flushcount++;
 }
@@ -58,10 +62,10 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	} else if (act->is_sfence()) {
 		if (emptyFlushBuffer())
 			return true;
+		lastsfence = act;
 		model->get_execution()->initialize_curr_action(act);
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
-			lastclflush = act;
 			if (model->get_execution()->evictCacheOp(act))
 				return true;
 			flushcount--;
@@ -76,8 +80,8 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 }
 
 void ThreadMemory::evictFlushOpt(ModelAction *act) {
-	if (lastclflush != NULL)
-		act->set_last_clflush(lastclflush->get_seq_number());
+	if (lastsfence != NULL)
+		act->set_last_clflush(lastsfence->get_seq_number());
 	flushBuffer.push_back(act);
 }
 

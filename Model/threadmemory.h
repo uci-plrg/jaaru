@@ -58,7 +58,7 @@ private:
 	SnapList<ModelAction*> storeBuffer;
 	HashTable<uintptr_t, ModelAction *, uintptr_t, 6> obj_to_last_write;
 	SnapList<ModelAction *> flushBuffer;
-	ModelAction * lastclflush;
+	ModelAction * lastsfence;
 	int flushcount = 0;
 };
 #endif
