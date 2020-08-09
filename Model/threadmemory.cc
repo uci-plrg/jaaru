@@ -106,7 +106,7 @@ bool ThreadMemory::emptyStoreBuffer() {
 
 bool ThreadMemory::emptyFlushBuffer() {
 	while(flushBuffer.size() > 0) {
-		ModelAction *curr = storeBuffer.pop_front();
+		ModelAction *curr = flushBuffer.pop_front();
 		if (model->get_execution()->evictCacheOp(curr))
 			return true;
 		flushcount--;
