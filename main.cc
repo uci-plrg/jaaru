@@ -99,7 +99,7 @@ void parse_options(struct model_params *params) {
 			params->pmdebug = optarg ? atoi(optarg) : 1;
 			break;
 		case 'f':
-			FILLBYTES = atoi(optarg);
+			FILLBYTE = atoi(optarg);
 			break;
 		default:	/* '?' */
 			error = true;

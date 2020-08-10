@@ -114,7 +114,7 @@ private:
 
 extern ModelChecker *model;
 extern int inside_model;
-extern int FILLBYTES;
+extern int FILLBYTE;
 void createModelIfNotExist();
 void parse_options(struct model_params *params);
 
