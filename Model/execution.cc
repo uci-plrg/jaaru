@@ -746,8 +746,11 @@ void ModelExecution::initialize_curr_action(ModelAction *curr)
 	curr->merge_cv(get_parent_action(curr->get_tid()));
 
 	action_trace.addAction(curr);
-	if (params->pmdebug != 0)
+	if (params->pmdebug != 0) {
 		curr->print();
+		if (curr->get_position()!=NULL)
+			model_print("at %s\n", curr->get_position());
+	}
 }
 
 /**
@@ -1016,8 +1019,11 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 	ASSERT(act->is_write());
 	int tid = id_to_int(act->get_tid());
 	insertIntoActionListAndSetCV(&action_trace, act);
-	if (params->pmdebug != 0)
+	if (params->pmdebug != 0) {
+		if (act->get_position()!=NULL)
+			model_print("at %s\n", act->get_position());
 		act->print();
+	}
 
 	ModelAction * lastact = thrd_last_action[tid];
 	// Update thrd_last_action, the last action taken by each thrad

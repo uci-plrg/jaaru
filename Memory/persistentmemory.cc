@@ -37,6 +37,7 @@ bool isPersistent(void *address, uint size) {
 }
 
 void *malloc(size_t size) {
+	createModelIfNotExist();
 	if (mallocSpace) {
 		void * tmp = mspace_malloc(mallocSpace, size);
 		ASSERT(tmp);
@@ -47,6 +48,7 @@ void *malloc(size_t size) {
 }
 
 void *calloc(size_t count, size_t size) {
+	createModelIfNotExist();
 	if (mallocSpace) {
 		void * tmp = mspace_calloc(mallocSpace, count, size);
 		ASSERT(tmp);
@@ -57,6 +59,7 @@ void *calloc(size_t count, size_t size) {
 }
 
 void *realloc(void * ptr, size_t size) {
+	createModelIfNotExist();
 	if (mallocSpace) {
 		void * tmp = mspace_realloc(mallocSpace, ptr, size);
 		ASSERT(tmp);
@@ -67,6 +70,7 @@ void *realloc(void * ptr, size_t size) {
 }
 
 void *memalign(size_t align, size_t size) {
+	createModelIfNotExist();
 	if (mallocSpace) {
 		void * tmp = mspace_memalign(mallocSpace, align, size);
 		ASSERT(tmp);
@@ -76,7 +80,21 @@ void *memalign(size_t align, size_t size) {
 	}
 }
 
+int posix_memalign(void ** addr, size_t align, size_t size) {
+	createModelIfNotExist();
+	void *tmp;
+	if (mallocSpace) {
+		tmp = mspace_memalign(mallocSpace, align, size);
+	} else {
+		tmp = __libc_memalign(align, size);
+	}
+	ASSERT(tmp);
+	*addr = tmp;
+	return 0;
+}
+
 void free(void *ptr) {
+	createModelIfNotExist();
 	if (mallocSpace) {
 		if ((((uintptr_t)ptr) >= ((uintptr_t)persistentMemoryRegion)) &&
 				(((uintptr_t)ptr) < (((uintptr_t)persistentMemoryRegion) + PERSISTENT_MEMORY_DEFAULT))) {
