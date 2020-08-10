@@ -9,29 +9,33 @@
 
 using namespace std;
 
-atomic<unsigned int> x(0);
-int array[2000];
-atomic<unsigned int> y(0);
+struct foo {
+	atomic<unsigned int> x;
+	int array[2000];
+	atomic<unsigned int> y;
+};
+
+struct foo * ptr = NULL;
 
 extern "C" {
 __attribute__ ((visibility ("default"))) void restart();
 }
 
 void func1() {
-	x.store(1);
-	x.store(5);
-	cacheOperation(CLFLUSHOPT, (char *)&x, sizeof(unsigned int));
+	ptr->x.store(1);
+	ptr->x.store(5);
+	cacheOperation(CLFLUSHOPT, (char *)&ptr->x, sizeof(unsigned int));
 	mfence();
-	y.store(1);
-	cacheOperation(CLFLUSHOPT, (char *)&x, sizeof(unsigned int));
+	ptr->y.store(1);
+	cacheOperation(CLFLUSHOPT, (char *)&ptr->x, sizeof(unsigned int));
 	mfence();
 }
 
 
 void func2() {
-	int a = y.load();
+	int a = ptr->y.load();
 	if (a) {
-		int b = x.load();
+		int b = ptr->x.load();
 		printf("%d", b);
 	}
 }
@@ -42,6 +46,5 @@ int main() {
 		func1();
 	} else
 		func2();
-
 	return EXIT_SUCCESS;
 }
