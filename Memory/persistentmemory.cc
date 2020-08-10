@@ -23,8 +23,10 @@ extern mspace create_mspace_with_base(void* base, size_t capacity, int locked);
 extern mspace create_mspace(size_t capacity, int locked);
 };
 
+int FILLBYTE=0;
 void * persistentMemoryRegion;
 mspace mallocSpace = NULL;
+void * realmemset(void *dst, int c, size_t n);
 
 void initializePersistentMemory() {
 	mallocSpace = create_mspace_with_base(persistentMemoryRegion, PERSISTENT_MEMORY_DEFAULT, 1);
@@ -41,6 +43,7 @@ void *malloc(size_t size) {
 	if (mallocSpace) {
 		void * tmp = mspace_malloc(mallocSpace, size);
 		ASSERT(tmp);
+		realmemset(tmp, FILLBYTE, size);
 		return tmp;
 	} else {
 		return __libc_malloc(size);
@@ -74,6 +77,7 @@ void *memalign(size_t align, size_t size) {
 	if (mallocSpace) {
 		void * tmp = mspace_memalign(mallocSpace, align, size);
 		ASSERT(tmp);
+		realmemset(tmp, FILLBYTE, size);
 		return tmp;
 	} else {
 		return __libc_memalign(align, size);
@@ -85,6 +89,7 @@ int posix_memalign(void ** addr, size_t align, size_t size) {
 	void *tmp;
 	if (mallocSpace) {
 		tmp = mspace_memalign(mallocSpace, align, size);
+		realmemset(tmp, FILLBYTE, size);
 	} else {
 		tmp = __libc_memalign(align, size);
 	}
@@ -172,6 +177,12 @@ void * memmove(void *dst, const void *src, size_t n) {
 
 void * (*memset_real)(void * dst, int c, size_t len) = NULL;
 const char * memsetstring = "memset";
+void * realmemset(void *dst, int c, size_t n) {
+	if (!memset_real) {
+		memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
+	}
+	return memset_real(dst, c, n);
+}
 void * memset(void *dst, int c, size_t n) {
 	if (isPersistent(dst,1) && !inside_model) {
 		uint8_t cs = c&0xff;

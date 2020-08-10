@@ -44,6 +44,7 @@ static void print_usage(struct model_params *params)
 		"                              3 is noisier.\n"
 		"                              Default: %d\n"
 		"-p                          PMDebug level\n"
+		"-f                          Memory initialization byte\n"
 		"-n                          No fork\n"
 		"                            Default: %u\n",
 		params->verbose);
@@ -51,7 +52,7 @@ static void print_usage(struct model_params *params)
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hnv:p:";
+	const char *shortopts = "hnv::p::f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -96,6 +97,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'p':
 			params->pmdebug = optarg ? atoi(optarg) : 1;
+			break;
+		case 'f':
+			FILLBYTES = atoi(optarg);
 			break;
 		default:	/* '?' */
 			error = true;
