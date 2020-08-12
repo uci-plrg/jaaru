@@ -91,6 +91,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 ModelExecution::~ModelExecution()
 {
 	action_trace.clearAndDeleteActions();
+	obj_wr_map.resetanddelete();
+	obj_to_cacheline.resetanddelete();
 	delete priv;
 }
 

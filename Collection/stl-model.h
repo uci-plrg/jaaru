@@ -46,6 +46,10 @@ public:
 		tail(NULL), _size(0) {
 	}
 
+	~ModelList() {
+		clear();
+	}
+
 	void push_front(_Tp val) {
 		mllnode<_Tp> * tmp = new mllnode<_Tp>();
 		tmp->prev = NULL;

@@ -611,6 +611,11 @@ nextExecution:
 	model_print("******* Model-checking complete: *******\n");
 	print_stats();
 
+	delete nodestack;
+	nodestack = NULL;
+	delete execution;
+	execution = NULL;
+
 	/* unlink tmp file created by last child process */
 	char filename[256];
 	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());

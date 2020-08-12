@@ -124,8 +124,8 @@ public:
 	void resetanddelete() {
 		for(unsigned int i=0;i<capacity;i++) {
 			struct hashlistnode<_Key, _Val> *bin = &table[i];
-			if (bin->key != NULL) {
-				bin->key = NULL;
+			if (bin->key != ((_Key) 0)) {
+				bin->key = ((_Key) 0);
 				if (bin->val != NULL) {
 					delete bin->val;
 					bin->val = NULL;
