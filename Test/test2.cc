@@ -42,9 +42,11 @@ void func2() {
 
 int main() {
 	if (getRegionFromID(0) == NULL) {
-		setRegionFromID(0, (void *) 1);
+		setRegionFromID(0, ptr = (struct foo *) calloc(sizeof(struct foo), 1));
 		func1();
-	} else
+	} else {
+		ptr = (struct foo *) getRegionFromID(0);
 		func2();
+	}
 	return EXIT_SUCCESS;
 }
