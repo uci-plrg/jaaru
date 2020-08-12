@@ -622,8 +622,8 @@ void ModelAction::print() const
 {
 	const char *type_str = get_type_str(), *mo_str = get_mo_str();
 
-	model_print("%-4d %-2d   %-14s  %7s  %14p   %-#18" PRIx64,
-							seq_number, id_to_int(tid), type_str, mo_str, location, get_value());
+	model_print("%-4d %-2d   %-14s  %7s  %14p   %-#18" PRIx64 " %-2d",
+							seq_number, id_to_int(tid), type_str, mo_str, location, get_value(), getOpSize());
 	if (is_read()) {
 		model_print(" %" PRIx64 " ", get_read_value());
 	}

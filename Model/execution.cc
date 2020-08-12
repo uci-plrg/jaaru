@@ -337,7 +337,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 		i--;
 		ModelExecution * exec = (*rfarray)[i].p1;
 		ModelAction *rf = (*rfarray)[i].p2;
-
+		uintptr_t curraddress = ((uintptr_t)address) + i;
 		value = value << 8;
 
 		uintptr_t wbot = (uintptr_t) rf->get_location();
@@ -378,6 +378,15 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 						cl->setBeginRange(rf->get_seq_number());
 					mllnode<ModelAction *> * node = rf->getActionRef();
 					mllnode<ModelAction *> * nextNode = node->getNext();
+
+					while(nextNode!=NULL) {
+						ModelAction *act = nextNode->getVal();
+						uintptr_t actbot = (uintptr_t) act->get_location();
+						uintptr_t acttop = actbot + act->getOpSize();
+						if ((curraddress>=actbot) && (curraddress <acttop))
+							break;
+						nextNode=nextNode->getNext();
+					}
 					if (nextNode!=NULL) {
 						modelclock_t nextclock = nextNode->getVal()->get_seq_number();
 						if (currend == 0 || nextclock <= currend)
@@ -389,10 +398,20 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 				//Didn't read from this execution, so cache line must not
 				//have been written out after first write from this
 				//execution...
-				ModelAction *first = writes->begin()->getVal();
+				mllnode<ModelAction *> *first = writes->begin();
+				while(first!=NULL) {
+					ModelAction *act = first->getVal();
+					uintptr_t actbot = (uintptr_t) act->get_location();
+					uintptr_t acttop = actbot + act->getOpSize();
+					if ((curraddress>=actbot) && (curraddress <acttop))
+						break;
+					first=first->getNext();
+				}
 
-				if (currend == 0 || first->get_seq_number() <= currend)
-					cl->setEndRange(first->get_seq_number()-1);
+				if (first != NULL) {
+					if (currend == 0 || first->getVal()->get_seq_number() <= currend)
+						cl->setEndRange(first->getVal()->get_seq_number()-1);
+				}
 			}
 		}
 
