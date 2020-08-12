@@ -11,6 +11,7 @@ struct model_params {
 	uint evictmax;
 	int verbose;
 	uint pmdebug;
+	bool printSpace;
 };
 
 void param_defaults(struct model_params *params);

@@ -478,15 +478,16 @@ void ModelChecker::doCrash() {
 		execution->print_summary();
 	}
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
-	model_print("Num naive execution = %" PRIx64 "\n", execution->computeCombinations());
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
 	execution->clearPreRollback();
 	reset_to_initial_state();
 	execution = new ModelExecution(this, scheduler);
-	if (replaystack.empty())
+	if (replaystack.empty()) {
+		if (params.printSpace)
+			model_print("Num naive execution = %" PRIu64 "\n", prevContext->execution->computeCombinations());
 		nodestack = new NodeStack();
-	else {
+	}     else {
 		nodestack = replaystack.pop_front();
 		if (!replaystack.empty())
 			nodestack->repeat_prev_execution();

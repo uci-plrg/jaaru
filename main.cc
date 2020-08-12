@@ -21,6 +21,7 @@ void param_defaults(struct model_params *params)
 	params->evictmax = 30;
 	params->storebufferthreshold = 40;
 	params->pmdebug = 0;
+	params->printSpace = false;
 }
 
 static void print_usage(struct model_params *params)
@@ -46,13 +47,14 @@ static void print_usage(struct model_params *params)
 		"-p                          PMDebug level\n"
 		"-f                          Memory initialization byte\n"
 		"-n                          No fork\n"
+		"-s                          Print size of exploration space\n"
 		"                            Default: %u\n",
 		params->verbose);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hnv::p::f:";
+	const char *shortopts = "hsnv::p::f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -88,6 +90,9 @@ void parse_options(struct model_params *params) {
 		switch (opt) {
 		case 'h':
 			print_usage(params);
+			break;
+		case 's':
+			params->printSpace = true;
 			break;
 		case 'n':
 			params->nofork = true;
