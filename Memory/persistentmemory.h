@@ -3,7 +3,7 @@
 #include "classlist.h"
 
 void initializePersistentMemory();
-bool isPersistent(void *address, uint size);
+bool isPersistent(const void *address, uint size);
 
 extern void * persistentMemoryRegion;
 

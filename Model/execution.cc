@@ -102,6 +102,65 @@ void ModelExecution::clearPreRollback() {
 	freeThreadBuffers();
 }
 
+class CLData {
+public:
+	uint64_t cacheline;
+	uint64_t numwrites;
+	CLData(uint64_t a, uint64_t b) : cacheline(a), numwrites(b) {}
+};
+
+unsigned int CLFunction ( CLData *cl) {
+	uintptr_t id = cl->cacheline;
+	return ((unsigned int) (id ^ (id >> 3) ^ (id >>6)));
+}
+
+bool CLEquals(CLData *c1, CLData *c2) {
+	return c1->cacheline == c2->cacheline;
+}
+
+
+uint64_t ModelExecution::computeCombinations() {
+	HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * tmpset = new HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals>();
+	for(uint i=0;i<obj_wr_map.capacity;i++) {
+		struct hashlistnode<const void *, simple_action_list_t *> entry = obj_wr_map.table[i];
+		if (entry.key == NULL || !isPersistent(entry.key, 1))
+			continue;
+		simple_action_list_t * writes = entry.val;
+		uintptr_t clid = getCacheID(entry.key);
+		CacheLine *cl = obj_to_cacheline.get(clid);
+		uintptr_t begin = cl != NULL ? cl->getBeginRange() : 0;
+		uintptr_t count = 0;
+		mllnode<ModelAction *> * it = writes->end();
+		while (it != NULL) {
+			ModelAction *act = it->getVal();
+			if (act->get_seq_number() <= begin)
+				break;
+			count++;
+			it = it->getPrev();
+		}
+		if (it == NULL)
+			count--;
+		CLData c(clid, count);
+		if (tmpset->contains(&c)) {
+			tmpset->get(&c)->numwrites+=count;
+		} else {
+			tmpset->add(new CLData(clid, count + 1));
+		}
+	}
+
+	uint64_t combos=1;
+	HSIterator<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * setit = tmpset->iterator();
+	while(setit->hasNext()) {
+		CLData * cl = setit->next();
+		combos *= cl->numwrites;
+		delete cl;
+	}
+
+	delete setit;
+	delete tmpset;
+	return combos;
+}
+
 
 int ModelExecution::get_execution_number() const
 {

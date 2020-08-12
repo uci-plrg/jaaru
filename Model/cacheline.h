@@ -42,7 +42,7 @@ private:
 	modelclock_t endR;
 };
 
-inline uintptr_t getCacheID(void *address) {
+inline uintptr_t getCacheID(const void *address) {
 	return ((uintptr_t)address) & ~(CACHELINESIZE - 1);
 }
 #endif

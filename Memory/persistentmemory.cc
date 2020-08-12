@@ -32,7 +32,7 @@ void initializePersistentMemory() {
 	mallocSpace = create_mspace_with_base(persistentMemoryRegion, PERSISTENT_MEMORY_DEFAULT, 1);
 }
 
-bool isPersistent(void *address, uint size) {
+bool isPersistent(const void *address, uint size) {
 	return ((persistentMemoryRegion != NULL) &&
 					(((uintptr_t)address) >= ((uintptr_t)persistentMemoryRegion)) &&
 					(((uintptr_t)address) < (((uintptr_t)persistentMemoryRegion) + PERSISTENT_MEMORY_DEFAULT)));
