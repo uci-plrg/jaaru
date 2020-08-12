@@ -49,7 +49,7 @@ void restart(){
     *(addr1+3) = 'l';
 	model_pmem_flush(addr1,256);
 	model_pmem_drain();
-	fprintf(stdout,"-----%s-----\n\n", *((char**)addr1));
+	fprintf(stdout,"-----%s-----\n\n", addr1);
 	/*move*/
 	model_pmem_memmove(addr1+2, addr1, 1);
 	/*copy*/
