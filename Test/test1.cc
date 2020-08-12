@@ -5,6 +5,11 @@
 #include "atomicapi.h"
 #include "pmcheckapi.h"
 #include "test.h"
+#include "mylibpmem.h"
+#include "map.h"
+#include "mymemory.h"
+#include "pminterface.h"
+#include "common.h"
 
 using namespace std;
 #define NUMTHREADS 2
@@ -12,44 +17,44 @@ using namespace std;
 atomic<unsigned int> x(0);
 atomic<unsigned int> y(0);
 
-void *func1(void *)
-{
-	x.store(1);
-	y.store(3);
-	x.store(5);
-	cacheOperation(CLWB, (char *)&x, sizeof(unsigned int));
-	x.store(9);
-	mfence();
-	printf("Func1: Value X= %u\n", x.load());
-	return NULL;
-}
-
-
-void *func2(void *)
-{
-	x.store(2);
-	y.store(4);
-	x.store(6);
-	cacheOperation(CLWB, (char*)&x, sizeof(unsigned int));
-	x.store(8);
-	mfence();
-	printf("Func2: Value X= %u\n", x.load());
-	return NULL;
+extern "C" {
+__attribute__ ((visibility ("default"))) void restart();
 }
 
 void restart(){
-	pthread_t threads[NUMTHREADS];
-	void *(*funcptr[])(void *) = {func1, func2};
-	for (int i=0;i< NUMTHREADS;i++) {
-		if( int retval = pthread_create(&threads[i], NULL, funcptr[i], NULL ) ) {
-			fprintf(stderr, "Unable to create a pthread. Return value %d\n", retval);
-			throw EXIT_FAILURE;
-		}
-	}
+	model_pmem_map_file_init();
+	char* addr1 = (char*)model_pmem_map_file("/path/file", 64);
+	/*get correct addr*/
+	char* addr2 = (char*)model_pmem_file("/path/file");
+    (*addr1) = 'a';
+    *(addr1+1) = 'b';
+    *(addr1+2) = 'c';
+    *(addr1+3) = 'd';
+	fprintf(stdout,"-----%u-----\n\n", addr1);
+	fprintf(stdout,"-----%u-----\n\n", addr2);
+	/*is pmem correct*/
+	int ispmem = model_pmem_is_pmem(addr1,64);
+	fprintf(stdout,"-----%u-----\n\n", ispmem);
+	/*persist 1*/
+    (*addr1) = 'e';
+    *(addr1+1) = 'f';
+    *(addr1+2) = 'g';
+    *(addr1+3) = 'h';
+	model_pmem_persist(addr1,64);
+	fprintf(stdout,"-----%s-----\n\n", *((char**)addr1));
+	/*persist 2*/
+    (*addr1) = 'i';
+    *(addr1+1) = 'j';
+    *(addr1+2) = 'k';
+    *(addr1+3) = 'l';
+	model_pmem_flush(addr1,256);
+	model_pmem_drain();
+	fprintf(stdout,"-----%s-----\n\n", *((char**)addr1));
+	/*move*/
+	model_pmem_memmove(addr1+2, addr1, 1);
+	/*copy*/
+	/*set*/
 
-	for(int i=0;i< NUMTHREADS;i++) {
-		pthread_join(threads[i], NULL);
-	}
 }
 
 int main() {
@@ -61,3 +66,4 @@ int main() {
 
 	return EXIT_SUCCESS;
 }
+
