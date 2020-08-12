@@ -18,6 +18,7 @@
 #include "cacheline.h"
 #include "nodestack.h"
 #include "persistentmemory.h"
+#include <math.h>
 
 #define INITIAL_THREAD_ID       0
 
@@ -119,7 +120,7 @@ bool CLEquals(CLData *c1, CLData *c2) {
 }
 
 
-uint64_t ModelExecution::computeCombinations() {
+double ModelExecution::computeCombinations() {
 	HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * tmpset = new HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals>();
 	for(uint i=0;i<obj_wr_map.capacity;i++) {
 		struct hashlistnode<const void *, simple_action_list_t *> entry = obj_wr_map.table[i];
@@ -148,14 +149,16 @@ uint64_t ModelExecution::computeCombinations() {
 		}
 	}
 
-	uint64_t combos=1;
+	double combos=1;
+	long double logsum=0;
 	HSIterator<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * setit = tmpset->iterator();
 	while(setit->hasNext()) {
 		CLData * cl = setit->next();
 		combos *= cl->numwrites;
+		logsum += log10l(cl->numwrites);
 		delete cl;
 	}
-
+	model_print("base 10 log sum = %.10g\n", ((double)logsum));
 	delete setit;
 	delete tmpset;
 	return combos;
