@@ -41,7 +41,7 @@ void restart(){
     *(addr1+2) = 'g';
     *(addr1+3) = 'h';
 	model_pmem_persist(addr1,64);
-	fprintf(stdout,"-----%s-----\n\n", *((char**)addr1));
+	fprintf(stdout,"-----%s-----\n\n", addr1);
 	/*persist 2*/
     (*addr1) = 'i';
     *(addr1+1) = 'j';
