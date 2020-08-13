@@ -97,7 +97,7 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
 		return getRegionFromID(id);
 	}
 	id = getNextRegionID();
-	size_t pathSize = strlen(path);
+	size_t pathSize = strlen(path) + 1;
 	char * pathCopy = (char*) pmdk_malloc(sizeof(char)*pathSize);
 	memmove(pathCopy, path, sizeof(char)*pathSize);
 	fileIDMap->put(pathCopy, id);
