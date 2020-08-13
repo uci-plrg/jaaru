@@ -8,8 +8,8 @@ UNAME := $(shell uname)
 LIB_NAME := pmcheck
 LIB_SO := lib$(LIB_NAME).so
 
-CFLAGS := -Wall -O3 -g
-CPPFLAGS += -Wall -g -O3
+CFLAGS := -Wall -O0 -g
+CPPFLAGS += -Wall -g -O0
 
 # Mac OSX options
 ifeq ($(UNAME), Darwin)
