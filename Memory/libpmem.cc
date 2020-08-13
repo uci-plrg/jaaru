@@ -33,6 +33,15 @@ void createFileIDMap(){
 	}
 }
 
+void * pmdk_malloc(size_t size) {
+	if(!mallocSpace){
+		pmem_init();
+	}
+	void * addr = mspace_malloc(mallocSpace, size);
+	ASSERT(addr);
+	return addr;
+}
+
 void pmem_drain(void)
 {
 	pmc_sfence();
@@ -88,12 +97,11 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
 		return getRegionFromID(id);
 	}
 	id = getNextRegionID();
-	fileIDMap->put(path, id);
-	if(!mallocSpace){
-		pmem_init();
-	}
-	void * addr = mspace_malloc(mallocSpace, len);
-	ASSERT(addr);
+	size_t pathSize = strlen(path);
+	char * pathCopy = (char*) pmdk_malloc(sizeof(char)*pathSize);
+	memmove(pathCopy, path, sizeof(char)*pathSize);
+	fileIDMap->put(pathCopy, id);
+	void * addr = pmdk_malloc(len);
 	setRegionFromID(id, addr);
 	if(is_pmemp)
 		*is_pmemp = true;
