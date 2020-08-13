@@ -4,5 +4,6 @@
 extern "C" {
 void * getRegionFromID(uint ID);
 void setRegionFromID(uint ID, void *ptr);
+uint getNextRegionID();
 }
 #endif

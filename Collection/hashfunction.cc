@@ -50,3 +50,27 @@ bool WriteVecEquals(SnapVector<Pair<ModelExecution *, ModelAction *> > * vec1,
 	}
 	return true;
 }
+
+
+unsigned int filenameHashFunction ( const char * f) {
+	unsigned int hash = 1;
+	uint index = 0;
+	while(f[index] != '\0') {
+		hash ^= f[index] ^ index << 8;
+		hash = hash >> 3 ^ hash << 10;
+		index++;
+	}
+	return hash;
+}
+
+bool filenameEquals(const char *f1, const char *f2) {
+	uint index = 0;
+	while (f1[index] != '\0' && f2[index] != '\0') {
+		if (f1[index] != f2[index]) {
+			return false;
+		}
+		index++;
+	}
+	//One of them or both of them are NULL now.
+	return f1[index] == f2[index];
+}

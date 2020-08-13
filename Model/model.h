@@ -74,6 +74,7 @@ public:
 	Execution_Context * getPrevContext() {return prevContext;}
 	NodeStack * getNodeStack() {return nodestack;}
 	void * getRegion(uint ID);
+	uint getNextRegionID() { return regionID.size() + 1;}
 	void setRegion(uint ID, void *ptr);
 	int getNumCrashes() {return numcrashes;}
 

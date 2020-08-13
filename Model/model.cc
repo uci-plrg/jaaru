@@ -70,6 +70,17 @@ void * getRegionFromID(uint ID) {
 	return model->getRegion(ID);
 }
 
+uint getNextRegionID() {
+	if (!model) {
+		inside_model = 1;
+		snapshot_system_init(10000, 1024, 1024, 40000);
+		model = new ModelChecker();
+		model->startChecker();
+		inside_model = 0;
+	}
+	return model->getNextRegionID();
+}
+
 
 void setRegionFromID(uint ID, void *ptr) {
 	if (!model) {
@@ -375,7 +386,7 @@ bool ModelChecker::next_execution() {
 
 	//We need to reset the original execution also and reset the persistent memory
 	origExecution = execution;
-	initializePersistentMemory();
+	pmem_init();
 	regionID.clear();
 	numcrashes = 0;
 

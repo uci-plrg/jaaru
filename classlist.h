@@ -32,6 +32,8 @@ unsigned int cacheLineHashFunction ( CacheLine * cl);
 bool cacheLineEquals(CacheLine *c1, CacheLine *c2);
 unsigned int WriteVecHashFunction(SnapVector<Pair<ModelExecution *, ModelAction *> > * vec);
 bool WriteVecEquals(SnapVector<Pair<ModelExecution *, ModelAction *> > * vec1, SnapVector<Pair<ModelExecution *, ModelAction *> > * vec2);
+unsigned int filenameHashFunction ( const char * f);
+bool filenameEquals(const char *f1, const char *f2);
 
 typedef HashSet<SnapVector<Pair<ModelExecution *, ModelAction *> >*, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free, WriteVecHashFunction, WriteVecEquals> WriteVecSet;
 typedef HSIterator<SnapVector<Pair<ModelExecution *, ModelAction *> >*, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free, WriteVecHashFunction, WriteVecEquals> WriteVecIter;
@@ -40,6 +42,7 @@ typedef HSIterator<SnapVector<Pair<ModelExecution *, ModelAction *> >*, uintptr_
 typedef HashSet<CacheLine *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free, cacheLineHashFunction, cacheLineEquals> CacheLineSet;
 typedef HSIterator<CacheLine *, uintptr_t, 0, snapshot_malloc, snapshot_calloc, snapshot_free, cacheLineHashFunction, cacheLineEquals> CacheLineSetIter;
 
+typedef HashTable<const char*, uint64_t, uintptr_t, 0, model_malloc, model_calloc, model_free, filenameHashFunction, filenameEquals> FileMap;
 
 extern volatile int modellock;
 #endif

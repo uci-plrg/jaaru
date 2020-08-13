@@ -5,7 +5,7 @@
 #include "atomicapi.h"
 #include "pmcheckapi.h"
 #include "test.h"
-#include "mylibpmem.h"
+#include "libpmem.h"
 #include "map.h"
 #include "mymemory.h"
 #include "pminterface.h"

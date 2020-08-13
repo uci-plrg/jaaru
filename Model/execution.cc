@@ -18,6 +18,7 @@
 #include "cacheline.h"
 #include "nodestack.h"
 #include "persistentmemory.h"
+#include "libpmem.h"
 
 #define INITIAL_THREAD_ID       0
 
@@ -123,7 +124,7 @@ uint64_t ModelExecution::computeCombinations() {
 	HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * tmpset = new HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals>();
 	for(uint i=0;i<obj_wr_map.capacity;i++) {
 		struct hashlistnode<const void *, simple_action_list_t *> entry = obj_wr_map.table[i];
-		if (entry.key == NULL || !isPersistent(entry.key, 1))
+		if (entry.key == NULL || !pmem_is_pmem(entry.key, 1))
 			continue;
 		simple_action_list_t * writes = entry.val;
 		uintptr_t clid = getCacheID(entry.key);
@@ -956,7 +957,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 void ModelExecution::ensureInitialValue(ModelAction *curr) {
 	void * address = curr->get_location();
 	void * align_address = alignAddress(address);
-	bool ispersistent = isPersistent(align_address, 8);
+	bool ispersistent = pmem_is_pmem(align_address, 8);
 
 	ModelExecution * exec = ispersistent ? model->getOrigExecution() : model->get_execution();
 
@@ -1266,7 +1267,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 		void * curraddress = (void *)(((uintptr_t)address) + i);
 		bool hasExtraWrite = ValidateAddress8(curraddress);
 		if (hasExtraWrite) {
-			if (!isPersistent(curraddress, 1) || !hasValidValue(curraddress)) {
+			if (!pmem_is_pmem(curraddress, 1) || !hasValidValue(curraddress)) {
 				flushBuffers(curraddress);
 				if (hasCrashed)
 					return;
@@ -1303,7 +1304,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 
 	//Otherwise look in previous executions for pre-crash writes
 
-	bool ispersistent = isPersistent(address, size);
+	bool ispersistent = pmem_is_pmem(address, size);
 	if (ispersistent) {
 		for(Execution_Context * prev = model->getPrevContext();prev != NULL;prev=prev->prevContext) {
 			if (lookforWritesInPriorExecution(prev->execution, curr, &seedWrites))
