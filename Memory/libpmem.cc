@@ -90,7 +90,8 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
 	void * addr = mspace_malloc(mallocSpace, len);
 	ASSERT(addr);
 	setRegionFromID(id, addr);
-	*is_pmemp = true;
+	if(is_pmemp)
+		*is_pmemp = true;
 	return addr;
 }
 
