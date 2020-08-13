@@ -45,19 +45,30 @@ void * memmove(void *dst, const void *src, size_t n) {
 	}
 }
 
-void * (*memset_real)(void * dst, int c, size_t len) = NULL;
+void * (*volatile memset_real)(void * dst, int c, size_t len) = NULL;
+
 void * realmemset(void *dst, int c, size_t n) {
 	if (!memset_real) {
 		memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
 	}
 	return memset_real(dst, c, n);
 }
+
 void * memset(void *dst, int c, size_t n) {
 	if (pmem_is_pmem(dst,1) && !inside_model) {
 		return pmem_memset(dst, c, n, PMEM_F_MEM_NOFLUSH);
 	} else {
-		if (!memset_real) {
-			memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
+		if (((uintptr_t)memset_real) < 2) {
+			if (memset_real == NULL) {
+				memset_real = (void * (*)(void * dst, int c, size_t n)) 1;
+				memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
+			} else {
+				//stuck in dynamic linker alloc cycle...
+				for(size_t s=0;s<n;s++) {
+					((volatile char *)dst)[s] = (char) c;
+				}
+				return dst;
+			}
 		}
 		return memset_real(dst, c, n);
 	}

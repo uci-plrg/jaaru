@@ -104,7 +104,7 @@ private:
 	void reset_to_initial_state();
 
 	ucontext_t system_context;
-
+	double totalstates;
 	/** @brief The cumulative execution stats */
 	struct execution_stats stats;
 	void record_stats();
