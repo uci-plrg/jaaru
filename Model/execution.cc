@@ -598,7 +598,9 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		//activate all the waiting threads
 		for (mllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
-			scheduler->wake(get_thread(rit->getVal()));
+			Thread * thread = get_thread(rit->getVal());
+			if (thread->get_state() != THREAD_COMPLETED)
+				scheduler->wake(thread);
 		}
 		waiters->clear();
 		break;
@@ -607,7 +609,8 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		if (waiters->size() != 0) {
 			Thread * thread = fuzzer->selectNotify(waiters);
-			scheduler->wake(thread);
+			if (thread->get_state() != THREAD_COMPLETED)
+				scheduler->wake(thread);
 		}
 		break;
 	}
