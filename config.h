@@ -39,7 +39,7 @@
 #define TLS 1
 
 /*Enabling PMDK or enabling VMEM library which overrides malloc*/
-#define ENABLE_VMEM
+//#define ENABLE_VMEM
 
 /*Only one of CLFLUSH CLFLUSH_OPT CLWB must be defined*/
 #define CLFLUSH

@@ -23,22 +23,22 @@ int pmem_deep_persist(const void *addr, size_t len);
 void pmem_drain(void);
 int pmem_has_hw_drain(void);
 
-#define PMEM_F_MEM_NODRAIN	(1U << 0)
+#define PMEM_F_MEM_NODRAIN      (1U << 0)
 
-#define PMEM_F_MEM_NONTEMPORAL	(1U << 1)
-#define PMEM_F_MEM_TEMPORAL	(1U << 2)
+#define PMEM_F_MEM_NONTEMPORAL  (1U << 1)
+#define PMEM_F_MEM_TEMPORAL     (1U << 2)
 
-#define PMEM_F_MEM_WC		(1U << 3)
-#define PMEM_F_MEM_WB		(1U << 4)
+#define PMEM_F_MEM_WC           (1U << 3)
+#define PMEM_F_MEM_WB           (1U << 4)
 
-#define PMEM_F_MEM_NOFLUSH	(1U << 5)
+#define PMEM_F_MEM_NOFLUSH      (1U << 5)
 
 #define PMEM_F_MEM_VALID_FLAGS (PMEM_F_MEM_NODRAIN | \
-				PMEM_F_MEM_NONTEMPORAL | \
-				PMEM_F_MEM_TEMPORAL | \
-				PMEM_F_MEM_WC | \
-				PMEM_F_MEM_WB | \
-				PMEM_F_MEM_NOFLUSH)
+																PMEM_F_MEM_NONTEMPORAL | \
+																PMEM_F_MEM_TEMPORAL | \
+																PMEM_F_MEM_WC | \
+																PMEM_F_MEM_WB | \
+																PMEM_F_MEM_NOFLUSH)
 
 void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len);
 void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len);

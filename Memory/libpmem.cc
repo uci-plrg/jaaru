@@ -11,7 +11,7 @@
 #include "pmcheckapi.h"
 #include "persistentmemory.h"
 #include "pminterface.h"
-
+#include "model.h"
 
 #define CACHE_LINE_SIZE 64
 FileMap *fileIDMap = NULL;
@@ -34,7 +34,7 @@ void createFileIDMap(){
 }
 
 void * pmdk_malloc(size_t size) {
-	if(!mallocSpace){
+	if(!mallocSpace) {
 		pmem_init();
 	}
 	void * addr = mspace_malloc(mallocSpace, size);
@@ -50,7 +50,7 @@ void pmem_drain(void)
 void pmem_flush(const void *addr, size_t len)
 {
 	char *ptr = (char *)((unsigned long)addr &~(CACHE_LINE_SIZE-1));
-    for(; ptr<(char*)addr + len; ptr += CACHE_LINE_SIZE){
+	for(;ptr<(char*)addr + len;ptr += CACHE_LINE_SIZE) {
 #ifdef CLFLUSH
 		pmc_clflush(ptr);
 #elif CLFLUSH_OPT
@@ -58,7 +58,7 @@ void pmem_flush(const void *addr, size_t len)
 #elif CLWB
 		pmc_clwb(ptr);
 #endif
-    }
+	}
 }
 
 int pmem_has_auto_flush(void) {
@@ -83,7 +83,7 @@ void pmem_persist(const void *addr, size_t len)
  */
 int pmem_msync(const void *addr, size_t len)
 {
-	if(pmem_is_pmem(addr, len)){
+	if(pmem_is_pmem(addr, len)) {
 		pmem_persist(addr, len);
 	}
 	return true;
@@ -91,9 +91,9 @@ int pmem_msync(const void *addr, size_t len)
 
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp)
 {
-	createFileIDMap();
+	createModelIfNotExist();
 	uint64_t id = fileIDMap->get(path);
-	if( id!= 0) { //No one is using ID = 0
+	if( id!= 0) {	//No one is using ID = 0
 		return getRegionFromID(id);
 	}
 	id = getNextRegionID();
@@ -206,7 +206,7 @@ void *pmem_memmove(void *dst, const void *src, size_t n, unsigned flags) {
 	if ((flags & PMEM_F_MEM_NOFLUSH) == 0) {
 		pmem_flush(dst, n);
 	}
-	
+
 	if ((flags & (PMEM_F_MEM_NODRAIN | PMEM_F_MEM_NOFLUSH)) == 0) {
 		pmem_drain();
 	}

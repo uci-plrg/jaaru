@@ -7,7 +7,7 @@
 #include "libpmem.h"
 
 using namespace std;
-typedef struct Node{
+typedef struct Node {
 	uint64_t key;
 	char value[8];
 } Node;

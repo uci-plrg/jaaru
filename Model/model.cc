@@ -71,13 +71,7 @@ void * getRegionFromID(uint ID) {
 }
 
 uint getNextRegionID() {
-	if (!model) {
-		inside_model = 1;
-		snapshot_system_init(10000, 1024, 1024, 40000);
-		model = new ModelChecker();
-		model->startChecker();
-		inside_model = 0;
-	}
+	createModelIfNotExist();
 	return model->getNextRegionID();
 }
 
