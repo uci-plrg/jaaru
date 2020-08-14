@@ -552,6 +552,13 @@ bool ModelAction::synchronize_with(const ModelAction *act)
 	return true;
 }
 
+void ModelAction::setLastWrite(ModelAction *wr)
+{
+	ASSERT(!lastwrite);
+	lastwrite = wr;
+}
+
+
 bool ModelAction::has_synchronized_with(const ModelAction *act) const
 {
 	return cv->synchronized_since(act);
