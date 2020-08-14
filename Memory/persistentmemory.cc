@@ -13,6 +13,38 @@ extern "C" {
 
 int FILLBYTE=0;
 void * persistentMemoryRegion;
+void * (*volatile memcpy_real)(void * dst, const void *src, size_t n) = NULL;
+void * (*volatile memmove_real)(void * dst, const void *src, size_t len) = NULL;
+void (*volatile bzero_real)(void * dst, size_t len) = NULL;
+void * (*volatile memset_real)(void * dst, int c, size_t len) = NULL;
+char * (*volatile strcpy_real)(char * dst, const char *src) = NULL;
+
+
+void init_memory_ops() {
+	if (!memcpy_real) {
+		memcpy_real = (void * (*)(void * dst, const void *src, size_t n)) 1;
+		memcpy_real = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memcpy");
+	}
+	if (!memmove_real) {
+		memmove_real = (void * (*)(void * dst, const void *src, size_t n)) 1;
+		memmove_real = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memmove");
+	}
+
+	if (!memset_real) {
+		memset_real = (void * (*)(void * dst, int c, size_t n)) 1;
+		memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
+	}
+
+	if (!strcpy_real) {
+		strcpy_real = (char * (*)(char * dst, const char *src)) 1;
+		strcpy_real = (char * (*)(char * dst, const char *src))dlsym(RTLD_NEXT, "strcpy");
+	}
+	if (!bzero_real) {
+		bzero_real = (void (*)(void * dst, size_t len)) 1;
+		bzero_real = (void (*)(void * dst, size_t len))dlsym(RTLD_NEXT, "bzero");
+	}
+}
+
 
 int pmem_is_pmem(const void *address, size_t size) {
 	return ((persistentMemoryRegion != NULL) &&
@@ -21,35 +53,47 @@ int pmem_is_pmem(const void *address, size_t size) {
 }
 
 
-void * (*memcpy_real)(void * dst, const void *src, size_t n) = NULL;
 void * memcpy(void * dst, const void * src, size_t n) {
 	if (pmem_is_pmem(dst,1) && !inside_model) {
 		return pmem_memcpy(dst, src, n, PMEM_F_MEM_NOFLUSH);
 	} else {
-		if (!memcpy_real) {
-			memcpy_real = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memcpy");
+		if (((uintptr_t)memcpy_real) < 2) {
+			for(uint i=0;i<n;i++) {
+				((volatile char *)dst)[i] = ((char *)src)[i];
+			}
+			return dst;
 		}
 		return memcpy_real(dst, src, n);
 	}
 }
 
-void * (*memmove_real)(void * dst, const void *src, size_t len) = NULL;
 void * memmove(void *dst, const void *src, size_t n) {
 	if (pmem_is_pmem(dst,1) && !inside_model) {
 		return pmem_memmove(dst, src, n, PMEM_F_MEM_NOFLUSH);
 	} else {
-		if (!memmove_real) {
-			memmove_real = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memmove");
+		if (((uintptr_t)memmove_real) < 2) {
+			if (((uintptr_t)dst) < ((uintptr_t)src))
+				for(uint i=0;i<n;i++) {
+					((volatile char *)dst)[i] = ((char *)src)[i];
+				}
+			else
+				for(uint i=n;i!=0; ) {
+					i--;
+					((volatile char *)dst)[i] = ((char *)src)[i];
+				}
+			return dst;
 		}
 		return memmove_real(dst, src, n);
 	}
 }
 
-void * (*volatile memset_real)(void * dst, int c, size_t len) = NULL;
-
 void * realmemset(void *dst, int c, size_t n) {
-	if (!memset_real) {
-		memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
+	if (((uintptr_t)memset_real) < 2) {
+		//stuck in dynamic linker alloc cycle...
+		for(size_t s=0;s<n;s++) {
+			((volatile char *)dst)[s] = (char) c;
+		}
+		return dst;
 	}
 	return memset_real(dst, c, n);
 }
@@ -58,23 +102,11 @@ void * memset(void *dst, int c, size_t n) {
 	if (pmem_is_pmem(dst,1) && !inside_model) {
 		return pmem_memset(dst, c, n, PMEM_F_MEM_NOFLUSH);
 	} else {
-		if (((uintptr_t)memset_real) < 2) {
-			if (memset_real == NULL) {
-				memset_real = (void * (*)(void * dst, int c, size_t n)) 1;
-				memset_real = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
-			} else {
-				//stuck in dynamic linker alloc cycle...
-				for(size_t s=0;s<n;s++) {
-					((volatile char *)dst)[s] = (char) c;
-				}
-				return dst;
-			}
-		}
-		return memset_real(dst, c, n);
+		return realmemset(dst, c, n);
 	}
 }
 
-void (*bzero_real)(void * dst, size_t len) = NULL;
+
 const char * bzerostring = "bzero";
 void bzero(void *dst, size_t n) {
 	if (pmem_is_pmem(dst,1) && !inside_model) {
@@ -95,15 +127,18 @@ void bzero(void *dst, size_t n) {
 		}
 
 	} else {
-		if (!bzero_real) {
-			bzero_real = (void (*)(void * dst, size_t len))dlsym(RTLD_NEXT, "bzero");
+		if (((uintptr_t)bzero_real) < 2) {
+			for(size_t s=0;s<n;s++) {
+				((volatile char *)dst)[s] = 0;
+			}
+			return;
 		}
 		bzero_real(dst, n);
 	}
 }
 
-char * (*strcpy_real)(char * dst, const char *src) = NULL;
 const char * strcpystring = "strcpy";
+
 char * strcpy(char *dst, const char *src) {
 	if (pmem_is_pmem(dst,1) && !inside_model) {
 		size_t n = 0;
@@ -129,9 +164,15 @@ char * strcpy(char *dst, const char *src) {
 		}
 		return dst;
 	} else {
-		if (!strcpy_real) {
-			strcpy_real = (char * (*)(char * dst, const char *src))dlsym(RTLD_NEXT, strcpystring);
+		if ((uintptr_t) strcpy_real < 2) {
+			size_t n = 0;
+			while(src[n] != '\0') n++;
+			for(uint i=0;i<n;i++) {
+				((volatile char *)dst)[i] = ((char *)src)[i];
+			}
+			return dst;
+		} else {
+			return strcpy_real(dst, src);
 		}
-		return strcpy_real(dst, src);
 	}
 }

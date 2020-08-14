@@ -20,6 +20,7 @@ mspace mallocSpace = NULL;
 
 void pmem_init() {
 	mallocSpace = create_mspace_with_base(persistentMemoryRegion, PERSISTENT_MEMORY_DEFAULT, 1);
+	init_memory_ops();
 	if(fileIDMap == NULL) {
 		fileIDMap = new FileMap();
 	} else {
