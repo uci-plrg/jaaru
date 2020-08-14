@@ -174,7 +174,6 @@ public:
 		lastwrite = write;
 	}
 	ModelAction * getLastWrite() {return lastwrite;}
-	void setLastWrite(ModelAction *write);
 	modelclock_t get_last_clflush() { return last_clflush; }
 	void set_last_clflush(modelclock_t mlast_clflush) { last_clflush = mlast_clflush; }
 
@@ -192,7 +191,7 @@ private:
 	/**
 	 * @brief The store that this action reads from
 	 *
-	 * Last write for cache opeartion action and for RMW or CAS it is the first part ...
+	 * Last write for cache opeartion action
 	 */
 	ModelAction *lastwrite;
 	union {

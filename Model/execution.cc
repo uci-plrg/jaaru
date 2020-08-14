@@ -915,6 +915,10 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 			return NULL;
 		initialize_curr_action(curr);
 	} else if(curr->is_read() & !second_part_of_rmw) {	//Read and RMW
+		if(curr->is_rmw_read()) {
+			get_thread(curr)->getMemory()->emptyStoreBuffer();
+			get_thread(curr)->getMemory()->emptyFlushBuffer();
+		}
 		handle_read(curr);
 		if (hasCrashed)
 			return NULL;
@@ -1041,8 +1045,7 @@ void ModelExecution::remove_action_from_store_buffer(ModelAction *act){
  **/
 ModelAction * ModelExecution::swap_rmw_write_part(ModelAction *act) {
 	ASSERT(act->is_rmw() || act->is_rmw_cas_fail());
-	//ModelAction *lastread = get_last_action(act->get_tid());
-	ModelAction *lastread = act->getLastWrite();
+	ModelAction *lastread = get_last_action(act->get_tid());
 	ASSERT(lastread->is_rmw_read());
 	lastread->process_rmw(act);
 	if (act->is_rmw_cas_fail()) {
