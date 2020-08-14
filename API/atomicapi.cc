@@ -159,7 +159,7 @@ ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const c
 
 // pmc atomic exchange
 #define PMCATOMICEXCHANGE(size)                                         \
-	uint ## size ## _t cds_atomic_exchange ## size(void* addr, uint ## size ## _t val, int atomic_index, const char * position) { \
+	uint ## size ## _t pmc_atomic_exchange ## size(void* addr, uint ## size ## _t val, int atomic_index, const char * position) { \
 		_ATOMIC_RMW_( =, size, addr, val, atomic_index, position);          \
 	}
 
