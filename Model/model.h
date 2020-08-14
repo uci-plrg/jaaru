@@ -76,7 +76,7 @@ public:
 	void * getRegion(uint ID);
 	uint getNextRegionID() { return regionID.size() + 1;}
 	void setRegion(uint ID, void *ptr);
-	int getNumCrashes() {return numcrashes;}
+	uint getNumCrashes() {return numcrashes;}
 
 	MEMALLOC
 private:
@@ -92,7 +92,7 @@ private:
 
 	Execution_Context * prevContext;
 	uint execution_number;
-	int numcrashes;
+	uint numcrashes;
 	ModelVector<void *> regionID;
 	ModelList<NodeStack *> replaystack;
 
