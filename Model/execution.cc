@@ -935,7 +935,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	}
 
 	// All operation except write and cache operation will update the thread local data.
-	if(!curr->is_write() && !curr->is_cache_op() && !second_part_of_rmw) {
+	if(!curr->is_write() && !curr->is_sfence() && !curr->is_cache_op() && !second_part_of_rmw) {
 		update_thread_local_data(curr);
 		wake_up_sleeping_actions(curr);
 	}
@@ -1032,7 +1032,7 @@ void ModelExecution::handle_read(ModelAction *curr) {
  * @param act is a write or cache operation
  */
 void ModelExecution::remove_action_from_store_buffer(ModelAction *act){
-	ASSERT(act->is_write() || act->is_cache_op());
+	ASSERT(act->is_write() || act->is_cache_op() || act->is_sfence());
 	initialize_curr_action(act);
 	update_thread_local_data(act);
 	wake_up_sleeping_actions(act);

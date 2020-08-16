@@ -63,7 +63,7 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		if (emptyFlushBuffer())
 			return true;
 		lastsfence = act;
-		model->get_execution()->initialize_curr_action(act);
+		model->get_execution()->remove_action_from_store_buffer(act);
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
 			if (model->get_execution()->evictCacheOp(act))
