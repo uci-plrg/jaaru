@@ -9,7 +9,8 @@
 #include <snapshot.h>
 
 extern "C" {
-
+struct pool_set_part;
+int util_map_part(struct pool_set_part *part, void *addr, size_t size, size_t offset, int flags, unsigned long Pagesize);
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 int pmem_unmap(void *addr, size_t len);
 int pmem_is_pmem(const void *addr, size_t len);

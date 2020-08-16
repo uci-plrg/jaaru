@@ -16,6 +16,24 @@
 #define CACHE_LINE_SIZE 64
 FileMap *fileIDMap = NULL;
 mspace mallocSpace = NULL;
+#define	POOL_HDR_UUID_LEN	16 /* uuid byte length */
+typedef unsigned char uuid_t[POOL_HDR_UUID_LEN]; /* 16 byte binary uuid value */
+
+struct pool_set_part {
+	/* populated by a pool set file parser */
+	const char *path;
+	size_t filesize;	/* aligned to page size */
+	int fd;
+	int created;		/* indicates newly created (zeroed) file */
+
+	/* util_poolset_open/create */
+	void *hdr;		/* base address of header */
+	size_t hdrsize;		/* size of the header mapping */
+	void *addr;		/* base address of the mapping */
+	size_t size;		/* size of the mapping - page aligned */
+	int rdonly;
+	uuid_t uuid;
+};
 
 
 void pmem_init() {
@@ -25,6 +43,26 @@ void pmem_init() {
 	} else {
 		fileIDMap->reset();
 	}
+}
+
+
+int util_map_part(struct pool_set_part *part, void *addr, size_t size, size_t offset, int flags, unsigned long Pagesize)
+{
+	ASSERT((uintptr_t)addr % Pagesize == 0);
+	ASSERT(offset % Pagesize == 0);
+	ASSERT(size % Pagesize == 0);
+	ASSERT(((off_t)offset) >= 0);
+	void *addrp = pmem_map_file(part->path, size, flags, 0, 0, NULL);
+	if(!size) { //Address already allocated for the entire replica	
+		size = (part->filesize & ~(Pagesize - 1)) - offset;
+		addrp = addr;
+		ASSERT(pmem_is_pmem(addrp, size));
+	}
+
+	part->addr = addrp;
+	part->size = size;
+
+	return 0;
 }
 
 void createFileIDMap(){
