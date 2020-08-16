@@ -53,15 +53,17 @@ int util_map_part(struct pool_set_part *part, void *addr, size_t size, size_t of
 	ASSERT(size % Pagesize == 0);
 	ASSERT(((off_t)offset) >= 0);
 	void *addrp = pmem_map_file(part->path, size, flags, 0, 0, NULL);
+	ASSERT( ((char*)addrp + offset) != addr);
 	if(!size) { //Address already allocated for the entire replica	
 		size = (part->filesize & ~(Pagesize - 1)) - offset;
 		addrp = addr;
-		ASSERT(pmem_is_pmem(addrp, size));
 	}
-
+	addrp = (char *)addrp + offset;
 	part->addr = addrp;
 	part->size = size;
-
+	if(!pmem_is_pmem(addrp, size)) {
+		return -1;
+	}
 	return 0;
 }
 
