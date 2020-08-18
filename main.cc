@@ -22,6 +22,7 @@ void param_defaults(struct model_params *params)
 	params->storebufferthreshold = 40;
 	params->pmdebug = 0;
 	params->printSpace = false;
+	params->numcrashes = 1;
 }
 
 static void print_usage(struct model_params *params)
@@ -48,13 +49,14 @@ static void print_usage(struct model_params *params)
 		"-f                          Memory initialization byte\n"
 		"-n                          No fork\n"
 		"-s                          Print size of exploration space\n"
+		"-c                          Number of nested crashes\n"
 		"                            Default: %u\n",
 		params->verbose);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsnv::p::f:";
+	const char *shortopts = "hsnv::p::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -105,6 +107,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'f':
 			FILLBYTE = atoi(optarg);
+			break;
+		case 'c':
+			params->numcrashes = atoi(optarg);
 			break;
 		default:	/* '?' */
 			error = true;

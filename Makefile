@@ -61,7 +61,7 @@ ${OBJ_DIR}/$(LIB_SO): $(OBJECTS)
 	$(CXX) -g $(SHARED) -o ${OBJ_DIR}/$(LIB_SO) $+ $(LDFLAGS)
 
 ${OBJ_DIR}/%.o: %.cc
-	$(CXX) -fPIC -c $< -o $@ $(CFLAGS) -Wno-unused-variable $(CXXFLAGS)
+	$(CXX) -fPIC -c $< -o $@ $(CFLAGS) $(CPPFLAGS) -Wno-unused-variable
 
 ${OBJ_DIR}/%.o: %.c
 	$(CC) -fPIC -c $< -o $@ $(CFLAGS) -Wno-unused-variable

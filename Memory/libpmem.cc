@@ -17,9 +17,13 @@
 FileMap *fileIDMap = NULL;
 mspace mallocSpace = NULL;
 
-void createFileIDMap(){
+void pmem_init() {
+	mallocSpace = create_mspace_with_base(persistentMemoryRegion, PERSISTENT_MEMORY_DEFAULT, 1);
+	init_memory_ops();
 	if(fileIDMap == NULL) {
 		fileIDMap = new FileMap();
+	} else {
+		fileIDMap->reset();
 	}
 }
 
@@ -41,16 +45,6 @@ void * pmdk_malloc(size_t size) {
 	void * addr = mspace_malloc(mallocSpace, size);
 	ASSERT(addr);
 	return addr;
-}
-
-
-void pmem_init() {
-	mallocSpace = create_mspace_with_base(persistentMemoryRegion, PERSISTENT_MEMORY_DEFAULT, 1);
-	if(fileIDMap == NULL) {
-		fileIDMap = new FileMap();
-	} else {
-		fileIDMap->reset();
-	}
 }
 
 void pmem_register_file(const char *path, void * addr) {
@@ -77,13 +71,7 @@ void pmem_flush(const void *addr, size_t len)
 {
 	char *ptr = (char *)((unsigned long)addr &~(CACHE_LINE_SIZE-1));
 	for(;ptr<(char*)addr + len;ptr += CACHE_LINE_SIZE) {
-#ifdef CLFLUSH
-		pmc_clflush(ptr);
-#elif CLFLUSH_OPT
 		pmc_clflushopt(ptr);
-#elif CLWB
-		pmc_clwb(ptr);
-#endif
 	}
 }
 

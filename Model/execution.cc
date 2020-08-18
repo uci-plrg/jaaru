@@ -19,6 +19,7 @@
 #include "nodestack.h"
 #include "persistentmemory.h"
 #include "libpmem.h"
+#include <math.h>
 
 #define INITIAL_THREAD_ID       0
 
@@ -91,6 +92,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 ModelExecution::~ModelExecution()
 {
 	action_trace.clearAndDeleteActions();
+	obj_wr_map.resetanddelete();
+	obj_to_cacheline.resetanddelete();
 	delete priv;
 }
 
@@ -120,7 +123,7 @@ bool CLEquals(CLData *c1, CLData *c2) {
 }
 
 
-uint64_t ModelExecution::computeCombinations() {
+double ModelExecution::computeCombinations() {
 	HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * tmpset = new HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals>();
 	for(uint i=0;i<obj_wr_map.capacity;i++) {
 		struct hashlistnode<const void *, simple_action_list_t *> entry = obj_wr_map.table[i];
@@ -149,14 +152,16 @@ uint64_t ModelExecution::computeCombinations() {
 		}
 	}
 
-	uint64_t combos=1;
+	double combos=1;
+	long double logsum=0;
 	HSIterator<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * setit = tmpset->iterator();
 	while(setit->hasNext()) {
 		CLData * cl = setit->next();
 		combos *= cl->numwrites;
+		logsum += log10l(cl->numwrites);
 		delete cl;
 	}
-
+	model_print("base 10 log sum = %.10g\n", ((double)logsum));
 	delete setit;
 	delete tmpset;
 	return combos;
@@ -594,7 +599,9 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		//activate all the waiting threads
 		for (mllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
-			scheduler->wake(get_thread(rit->getVal()));
+			Thread * thread = get_thread(rit->getVal());
+			if (thread->get_state() != THREAD_COMPLETED)
+				scheduler->wake(thread);
 		}
 		waiters->clear();
 		break;
@@ -603,7 +610,8 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		if (waiters->size() != 0) {
 			Thread * thread = fuzzer->selectNotify(waiters);
-			scheduler->wake(thread);
+			if (thread->get_state() != THREAD_COMPLETED)
+				scheduler->wake(thread);
 		}
 		break;
 	}
@@ -712,7 +720,7 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 
 
 bool ModelExecution::shouldInsertCrash() {
-	if (model->getNumCrashes() > 0 || noWriteSinceCrashCheck)
+	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck)
 		return false;
 
 	//Create node decision of whether we should crash
@@ -825,7 +833,7 @@ void ModelExecution::initialize_curr_action(ModelAction *curr)
 	curr->merge_cv(get_parent_action(curr->get_tid()));
 
 	action_trace.addAction(curr);
-	if (params->pmdebug != 0) {
+	if (params->pmdebug > 1) {
 		curr->print();
 		if (curr->get_position()!=NULL)
 			model_print("at %s\n", curr->get_position());
@@ -1102,7 +1110,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 	ASSERT(act->is_write());
 	int tid = id_to_int(act->get_tid());
 	insertIntoActionListAndSetCV(&action_trace, act);
-	if (params->pmdebug != 0) {
+	if (params->pmdebug > 1) {
 		if (act->get_position()!=NULL)
 			model_print("at %s\n", act->get_position());
 		act->print();

@@ -41,11 +41,6 @@
 /*Enabling PMDK or enabling VMEM library which overrides malloc*/
 //#define ENABLE_VMEM
 
-/*Only one of CLFLUSH CLFLUSH_OPT CLWB must be defined*/
-#define CLFLUSH
-//#define CLFLUSH_OPT
-//#define CLWB
-
 /** Thread parameters */
 
 /* Size of stack to allocate for a thread. */

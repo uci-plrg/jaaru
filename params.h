@@ -12,6 +12,7 @@ struct model_params {
 	int verbose;
 	uint pmdebug;
 	bool printSpace;
+	uint numcrashes;
 };
 
 void param_defaults(struct model_params *params);

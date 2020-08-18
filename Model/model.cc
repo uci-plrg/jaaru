@@ -109,7 +109,9 @@ ModelChecker::ModelChecker() :
 	prevContext(NULL),
 	execution_number(1),
 	numcrashes(0),
-	replaystack()
+	replaystack(),
+	totalstates(0),
+	totalexplorepoints(0)
 {
 	model_print("PMCheck\n"
 							"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
@@ -488,10 +490,16 @@ void ModelChecker::doCrash() {
 	reset_to_initial_state();
 	execution = new ModelExecution(this, scheduler);
 	if (replaystack.empty()) {
-		if (params.printSpace)
-			model_print("Num naive execution = %" PRIu64 "\n", prevContext->execution->computeCombinations());
+		if (params.printSpace) {
+			double combos = prevContext->execution->computeCombinations();
+			totalstates += combos;
+			totalexplorepoints++;
+			model_print("Num naive execution = %.10E\n", combos);
+			model_print("Total naive execution = %.10E\n", totalstates);
+			model_print("Total number of stop points = %d\n", totalexplorepoints);
+		}
 		nodestack = new NodeStack();
-	}     else {
+	} else {
 		nodestack = replaystack.pop_front();
 		if (!replaystack.empty())
 			nodestack->repeat_prev_execution();
@@ -609,6 +617,11 @@ nextExecution:
 	} while(next_execution());
 	model_print("******* Model-checking complete: *******\n");
 	print_stats();
+
+	delete nodestack;
+	nodestack = NULL;
+	delete execution;
+	execution = NULL;
 
 	/* unlink tmp file created by last child process */
 	char filename[256];
