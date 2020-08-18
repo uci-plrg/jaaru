@@ -206,7 +206,7 @@ private:
  * vectors for all operations.
  */
 	ClockVector *cv;
-	
+
 	mllnode<ModelAction *> * action_ref;
 
 	/** @brief The value written (for write or RMW; undefined for read) */

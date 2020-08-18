@@ -34,7 +34,8 @@ struct hashlistnode {
 
 template<typename _Key, int _Shift, typename _KeyInt>
 inline unsigned int default_hash_function(_Key hash) {
-	return (unsigned int)(((_KeyInt)hash) >> _Shift);
+	unsigned int t = (unsigned int)(((_KeyInt)hash) >> _Shift);
+	return t ^ (t << 5);
 }
 
 template<typename _Key>
