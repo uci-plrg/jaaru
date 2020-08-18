@@ -23,6 +23,17 @@ void createFileIDMap(){
 	}
 }
 
+void *pmdk_pagealigned_calloc(size_t size){
+	if(!mallocSpace) {
+		pmem_init();
+	}
+	size_t newSize = size + 4095;
+	void * addr = mspace_calloc(mallocSpace, 1, newSize);
+	addr = (void *) (((uintptr_t)addr + 4095)&~4095);
+	ASSERT(addr);
+	return addr;
+}
+
 void * pmdk_malloc(size_t size) {
 	if(!mallocSpace) {
 		pmem_init();

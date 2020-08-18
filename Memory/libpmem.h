@@ -53,6 +53,7 @@ void *pmem_memset(void *pmemdest, int c, size_t len, unsigned flags);
 
 
 void * pmdk_malloc(size_t size);
+void *pmdk_pagealigned_calloc(size_t size);
 void pmem_register_file(const char *path, void * addr);
 }
 
