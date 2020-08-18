@@ -9,12 +9,6 @@
 #include <snapshot.h>
 
 extern "C" {
-struct pool_set_part;
-struct pool_set;
-int util_poolset_create(struct pool_set **setp, const char *path, size_t poolsize, size_t minsize, int pagesize);
-int util_replica_create(struct pool_set *set, unsigned repidx, int flags, const char *sig, uint32_t major, uint32_t compat, uint32_t incompat, uint32_t ro_compat, int Pool_hdr_size, int pagesize);
-int util_poolset_open(struct pool_set **setp, const char *path, size_t minsize);
-
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 int pmem_unmap(void *addr, size_t len);
 int pmem_is_pmem(const void *addr, size_t len);
@@ -57,6 +51,9 @@ void *pmem_memmove(void *pmemdest, const void *src, size_t len, unsigned flags);
 void *pmem_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags);
 void *pmem_memset(void *pmemdest, int c, size_t len, unsigned flags);
 
+
+void * pmdk_malloc(size_t size);
+void pmem_register_file(const char *path, void * addr);
 }
 
 

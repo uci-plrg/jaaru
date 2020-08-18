@@ -16,43 +16,6 @@
 #define CACHE_LINE_SIZE 64
 FileMap *fileIDMap = NULL;
 mspace mallocSpace = NULL;
-#define	POOL_HDR_UUID_LEN	16 /* uuid byte length */
-typedef unsigned char uuid_t[POOL_HDR_UUID_LEN]; /* 16 byte binary uuid value */
-struct pool_set_part {
-	/* populated by a pool set file parser */
-	const char *path;
-	size_t filesize;	/* aligned to page size */
-	// int fd;
-	int created;		/* indicates newly created (zeroed) file */
-
-	/* util_poolset_open/create */
-	void *hdr;		/* base address of header */
-	size_t hdrsize;		/* size of the header mapping */
-	void *addr;		/* base address of the mapping */
-	size_t size;		/* size of the mapping - page aligned */
-	int rdonly;
-	uuid_t uuid;
-};
-
-struct pool_replica {
-	unsigned nparts;
-	size_t repsize;		/* total size of all the parts (mappings) */
-	int is_pmem;		/* true if all the parts are in PMEM */
-	struct pool_set_part part[];
-};
-
-struct pool_set {
-	unsigned nreplicas;
-	uuid_t uuid;
-	int rdonly;
-	int zeroed;		/* true if all the parts are new files */
-	size_t poolsize;	/* the smallest replica size */
-	struct pool_replica *replica[];
-};
-
-extern int util_header_create(struct pool_set *set, unsigned repidx, unsigned partidx,
-	const char *sig, uint32_t major, uint32_t compat, uint32_t incompat,
-	uint32_t ro_compat);
 
 void createFileIDMap(){
 	if(fileIDMap == NULL) {
@@ -79,7 +42,7 @@ void pmem_init() {
 	}
 }
 
-static void pmem_register_file(const char *path, void * addr) {
+void pmem_register_file(const char *path, void * addr) {
 	createModelIfNotExist();
 	uint64_t id = fileIDMap->get(path);
 	ASSERT( id == 0);
@@ -93,116 +56,6 @@ static void pmem_register_file(const char *path, void * addr) {
 	FILE *fp = fopen(path, "w+");
 	fclose(fp);
 }
-
-int util_poolset_create(struct pool_set **setp, const char *path, size_t poolsize, size_t minsize, int pagesize)
-{
-	struct pool_set *set = (struct pool_set *)pmdk_malloc(sizeof (struct pool_set) + sizeof (struct pool_replica *));
-	struct pool_replica *rep= (struct pool_replica *) pmdk_malloc(sizeof (struct pool_replica) + sizeof (struct pool_set_part));
-	set->replica[0] = rep;
-
-	rep->part[0].filesize = poolsize;
-	size_t pathSize = strlen(path) + 1;
-	char * pathCopy = (char*) pmdk_malloc(sizeof(char)*pathSize);
-	memmove(pathCopy, path, sizeof(char)*pathSize);
-	rep->part[0].path = pathCopy;
-	// rep->part[0].fd = fd;
-	rep->part[0].created = 1;
-	rep->part[0].hdr = NULL;
-	rep->part[0].addr = NULL;
-	rep->nparts = 1;
-	/* round down to the nearest page boundary */
-	rep->repsize = rep->part[0].filesize & ~(pagesize - 1);
-	set->poolsize = rep->repsize;
-	set->nreplicas = 1;
-	//REGISTER PATH...
-	pmem_register_file(path, set);
-	*setp = set;
-	return 0;
-}
-
-int util_replica_create(struct pool_set *set, unsigned repidx, int flags,
-	const char *sig, uint32_t major, uint32_t compat, uint32_t incompat, uint32_t ro_compat, int Pool_hdr_size, int pagesize)
-{
-	struct pool_replica *rep = set->replica[repidx];
-	{
-		struct pool_set_part *part = &rep->part[0];
-		part->addr = pmdk_malloc(rep->repsize);
-		part->size = rep->repsize;
-		//Header allocation
-		for (unsigned p = 0; p < rep->nparts; p++){
-			struct pool_set_part * part = &rep->part[p];
-			part->hdrsize = Pool_hdr_size;
-			part->hdr = pmdk_malloc(sizeof(Pool_hdr_size));
-		}
-	}
-	/* create headers, set UUID's */
-	for (unsigned p = 0; p < rep->nparts; p++) {
-		if (util_header_create(set, repidx, p, sig, major,
-				compat, incompat, ro_compat) != 0) {
-			return -1;
-		}
-	}
-	set->zeroed &= rep->part[0].created;
-	{
-		size_t mapsize = rep->part[0].filesize & ~(pagesize - 1);
-		void *addr = (char *)rep->part[0].addr + mapsize;
-		for (unsigned p = 1; p < rep->nparts; p++) {
-			struct pool_set_part *part = &rep->part[p];
-			size_t size = (part->filesize & ~(pagesize - 1)) - Pool_hdr_size;
-			part->addr = addr;
-			part->size = size;
-			mapsize += rep->part[p].size;
-			set->zeroed &= rep->part[p].created;
-			addr = (char *)addr + rep->part[p].size;
-		}
-		rep->is_pmem = pmem_is_pmem(rep->part[0].addr, rep->part[0].size);
-		ASSERT(mapsize == rep->repsize);
-	}
-	return 0;
-}
-
-
-int util_poolset_open(struct pool_set **setp, const char *path, size_t minsize) {
-	*setp = (struct pool_set *)pmem_map_file(path, minsize, 0, 0, NULL, NULL);
-	return 0;
-}
-
-// int util_map_hdr(struct pool_set_part *part, int flags, int POOL_HDR_SIZE)
-// {
-// 	char * headerpath = (char*) calloc( strlen(part->path) + 10 , sizeof(char*));
-// 	strcat(headerpath, part->path);
-// 	strcat(headerpath, "-header");
-// 	model_print("Log: header path: %s", headerpath);
-// 	void *hdrp = pmem_map_file(headerpath, POOL_HDR_SIZE, flags, 0, 0, NULL);
-// 	part->hdrsize = POOL_HDR_SIZE;
-// 	part->hdr = hdrp;
-// 	free(headerpath);
-// 	return 0;
-// }
-
-
-// int util_map_part(struct pool_set_part *part, void *addr, size_t size, size_t offset, int flags, unsigned long Pagesize)
-// {
-// 	model_print("Log: part path: %s", part->path);
-// 	ASSERT((uintptr_t)addr % Pagesize == 0);
-// 	ASSERT(offset % Pagesize == 0);
-// 	ASSERT(size % Pagesize == 0);
-// 	ASSERT(((off_t)offset) >= 0);
-// 	void *addrp = pmem_map_file(part->path, size, flags, 0, 0, NULL);
-// 	ASSERT( ((char*)addrp + offset) != addr);
-// 	if(!size) { //Address already allocated for the entire replica	
-// 		size = (part->filesize & ~(Pagesize - 1)) - offset;
-// 		addrp = addr;
-// 	}
-// 	addrp = (char *)addrp + offset;
-// 	part->addr = addrp;
-// 	part->size = size;
-// 	if(!pmem_is_pmem(addrp, size)) {
-// 		return -1;
-// 	}
-// 	return 0;
-// }
-
 
 void pmem_drain(void)
 {
