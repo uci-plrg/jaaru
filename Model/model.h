@@ -118,5 +118,6 @@ extern int inside_model;
 extern int FILLBYTE;
 void createModelIfNotExist();
 void parse_options(struct model_params *params);
+void createModelIfNotExist();
 
 #endif	/* __MODEL_H__ */

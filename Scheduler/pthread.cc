@@ -13,19 +13,9 @@
 #include "execution.h"
 #include <errno.h>
 
-static void ensureModel() {
-	if (!model) {
-		inside_model = 1;
-		snapshot_system_init(10000, 1024, 1024, 40000);
-		model = new ModelChecker();
-		model->startChecker();
-		inside_model = 0;
-	}
-}
-
 int pthread_create(pthread_t *t, const pthread_attr_t * attr,
 									 pthread_start_t start_routine, void * arg) {
-	ensureModel();
+	createModelIfNotExist();
 
 	struct pthread_params params = { start_routine, arg };
 
@@ -72,7 +62,7 @@ void pthread_exit(void *value_ptr) {
 }
 
 int pthread_mutex_init(pthread_mutex_t *p_mutex, const pthread_mutexattr_t * attr) {
-	ensureModel();
+	createModelIfNotExist();
 
 	int mutex_type = PTHREAD_MUTEX_DEFAULT;
 	if (attr != NULL)
@@ -87,7 +77,7 @@ int pthread_mutex_init(pthread_mutex_t *p_mutex, const pthread_mutexattr_t * att
 }
 
 int pthread_mutex_lock(pthread_mutex_t *p_mutex) {
-	ensureModel();
+	createModelIfNotExist();
 
 	ModelExecution *execution = model->get_execution();
 
@@ -110,7 +100,7 @@ int pthread_mutex_lock(pthread_mutex_t *p_mutex) {
 }
 
 int pthread_mutex_trylock(pthread_mutex_t *p_mutex) {
-	ensureModel();
+	createModelIfNotExist();
 
 	ModelExecution *execution = model->get_execution();
 	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
@@ -133,7 +123,7 @@ int pthread_mutex_unlock(pthread_mutex_t *p_mutex) {
 int pthread_mutex_timedlock (pthread_mutex_t *__restrict p_mutex,
 														 const struct timespec *__restrict abstime) {
 // timedlock just gives the option of giving up the lock, so return and let the scheduler decide which thread goes next
-	ensureModel();
+	createModelIfNotExist();
 
 	ModelExecution *execution = model->get_execution();
 
@@ -155,7 +145,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *__restrict p_mutex,
 }
 
 pthread_t pthread_self() {
-	ensureModel();
+	createModelIfNotExist();
 
 	Thread* th = model->get_current_thread();
 	return (pthread_t)th->get_id();

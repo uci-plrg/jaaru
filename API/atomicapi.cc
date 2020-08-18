@@ -14,18 +14,6 @@ memory_order orders[7] = {
 };
 
 
-void createModelIfNotExist() {
-	if (!model) {
-		model = (ModelChecker *) 0xdeadbeef;
-		inside_model = 1;
-		snapshot_system_init(10000, 1024, 1024, 40000);
-		model = new ModelChecker();
-		model->startChecker();
-		inside_model = 0;
-	}
-}
-
-
 // pmc volatile loads
 #define VOLATILELOAD(size) \
 	uint ## size ## _t pmc_volatile_load ## size(void * obj, const char * position) {                                               \

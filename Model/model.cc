@@ -58,14 +58,19 @@ void install_handler() {
 
 }
 
-void * getRegionFromID(uint ID) {
+void createModelIfNotExist() {
 	if (!model) {
 		inside_model = 1;
-		snapshot_system_init(10000, 1024, 1024, 40000);
+		snapshot_system_init(100000);
 		model = new ModelChecker();
 		model->startChecker();
 		inside_model = 0;
 	}
+}
+
+
+void * getRegionFromID(uint ID) {
+	createModelIfNotExist();
 
 	return model->getRegion(ID);
 }
@@ -77,13 +82,7 @@ uint getNextRegionID() {
 
 
 void setRegionFromID(uint ID, void *ptr) {
-	if (!model) {
-		inside_model = 1;
-		snapshot_system_init(10000, 1024, 1024, 40000);
-		model = new ModelChecker();
-		model->startChecker();
-		inside_model = 0;
-	}
+	createModelIfNotExist();
 
 	model->setRegion(ID, ptr);
 }
