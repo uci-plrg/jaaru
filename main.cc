@@ -24,6 +24,7 @@ void param_defaults(struct model_params *params)
 	params->printSpace = false;
 	params->numcrashes = 1;
 	params->file = NULL;
+	params->enableCrash = true;
 }
 
 static void print_usage(struct model_params *params)
@@ -52,13 +53,14 @@ static void print_usage(struct model_params *params)
 		"-s                          Print size of exploration space\n"
 		"-c                          Number of nested crashes\n"
 		"                            Default: %u\n"
-		"-d [file]					 Deleting the persistent file after each execution.\n",
+		"-d [file]					 Deleting the persistent file after each execution.\n"
+		"-e							 Enable manual crash point.\n",
 		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsnv::p::d::c:f:";
+	const char *shortopts = "hsenv::p::d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -100,6 +102,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'n':
 			params->nofork = true;
+			break;
+		case 'e':
+			params->enableCrash = false;
 			break;
 		case 'v':
 			params->verbose = optarg ? atoi(optarg) : 1;
