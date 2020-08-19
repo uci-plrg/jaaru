@@ -324,6 +324,10 @@ bool ModelChecker::next_execution() {
 		print_execution(complete);
 	else
 		clear_program_output();
+	// Removing the persistent file for the next execution.
+	if(params.file != NULL) {
+		remove(params.file);
+	}
 
 	execution_number ++;
 

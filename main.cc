@@ -23,6 +23,7 @@ void param_defaults(struct model_params *params)
 	params->pmdebug = 0;
 	params->printSpace = false;
 	params->numcrashes = 1;
+	params->file = NULL;
 }
 
 static void print_usage(struct model_params *params)
@@ -50,13 +51,14 @@ static void print_usage(struct model_params *params)
 		"-n                          No fork\n"
 		"-s                          Print size of exploration space\n"
 		"-c                          Number of nested crashes\n"
-		"                            Default: %u\n",
-		params->verbose);
+		"                            Default: %u\n"
+		"-d [file]					 Deleting the persistent file after each execution.\n",
+		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsnv::p::c:f:";
+	const char *shortopts = "hsnv::p::d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -111,7 +113,12 @@ void parse_options(struct model_params *params) {
 		case 'c':
 			params->numcrashes = atoi(optarg);
 			break;
-		default:	/* '?' */
+		case 'd':{
+			size_t len = strlen (optarg) + 1;
+      		params->file = (char *) model_calloc(len, sizeof(char));
+      		memcpy (params->file, optarg, len);
+			break;
+		}default:	/* '?' */
 			error = true;
 			break;
 		}

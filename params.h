@@ -13,6 +13,7 @@ struct model_params {
 	uint pmdebug;
 	bool printSpace;
 	uint numcrashes;
+	char *file;
 };
 
 void param_defaults(struct model_params *params);
