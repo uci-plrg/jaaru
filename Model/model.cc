@@ -530,6 +530,8 @@ nextExecution:
 			model_print("*******************************************************************\n\n");
 		}
 
+		execution->setEnableCrash(params.enableCrash);
+
 		do {
 			/*
 			 * Stash next pending action(s) for thread(s). There

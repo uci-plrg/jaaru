@@ -77,7 +77,7 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	isfinished(false),
 	hasCrashed(false),
 	noWriteSinceCrashCheck(false),
-	enableCrash(params->enableCrash)
+	enableCrash(true)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
 	model_thread = new Thread(get_next_id());
@@ -721,7 +721,7 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 
 
 bool ModelExecution::shouldInsertCrash() {
-	if ((model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck) && enableCrash)
+	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash)
 		return false;
 
 	//Create node decision of whether we should crash

@@ -91,7 +91,7 @@ public:
 	bool hasNoWriteSinceCrashCheck() {return noWriteSinceCrashCheck;}
 	double computeCombinations();
 	bool getEnableCrash() { return enableCrash; }
-	void setEnableCrash() { enableCrash = true; }
+	void setEnableCrash(bool ec) { enableCrash = ec; }
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
