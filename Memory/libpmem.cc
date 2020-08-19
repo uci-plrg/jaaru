@@ -293,3 +293,7 @@ void *pmem_memset(void *dst, int c, size_t n, unsigned flags) {
 	return dst;
 }
 
+void jaaru_enable_simulating_crash(void) {
+	createModelIfNotExist();
+	model->getParams()->enableCrash = true;
+}

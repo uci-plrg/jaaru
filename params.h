@@ -14,6 +14,7 @@ struct model_params {
 	bool printSpace;
 	uint numcrashes;
 	char *file;
+	bool enableCrash;
 };
 
 void param_defaults(struct model_params *params);
