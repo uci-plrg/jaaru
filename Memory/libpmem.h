@@ -56,6 +56,7 @@ void * pmdk_malloc(size_t size);
 void *pmdk_pagealigned_calloc(size_t size);
 void pmem_register_file(const char *path, void * addr);
 void jaaru_enable_simulating_crash(void);
+void jaaru_inject_crash(void);
 }
 
 

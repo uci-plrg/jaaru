@@ -298,3 +298,8 @@ void jaaru_enable_simulating_crash(void) {
 	createModelIfNotExist();
 	model->get_execution()->setEnableCrash(true);
 }
+
+void jaaru_inject_crash(void) {
+	createModelIfNotExist();
+	model->get_execution()->injectCrash();
+}
