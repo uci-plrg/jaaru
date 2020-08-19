@@ -12,6 +12,7 @@
 #include "persistentmemory.h"
 #include "pminterface.h"
 #include "model.h"
+#include "execution.h"
 
 #define CACHE_LINE_SIZE 64
 FileMap *fileIDMap = NULL;
@@ -295,5 +296,5 @@ void *pmem_memset(void *dst, int c, size_t n, unsigned flags) {
 
 void jaaru_enable_simulating_crash(void) {
 	createModelIfNotExist();
-	model->getParams()->enableCrash = true;
+	model->get_execution()->setEnableCrash();
 }

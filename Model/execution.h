@@ -90,6 +90,8 @@ public:
 	bool shouldInsertCrash();
 	bool hasNoWriteSinceCrashCheck() {return noWriteSinceCrashCheck;}
 	double computeCombinations();
+	bool getEnableCrash() { return enableCrash; }
+	void setEnableCrash() { enableCrash = true; }
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
@@ -175,6 +177,7 @@ private:
 	bool isfinished;
 	bool hasCrashed;
 	bool noWriteSinceCrashCheck;
+	bool enableCrash;
 };
 
 inline void * alignAddress(void * addr) {
