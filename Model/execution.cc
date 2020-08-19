@@ -719,6 +719,11 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 	get_thread(curr)->getMemory()->addOp(curr);
 }
 
+void ModelExecution::injectCrash() {
+	if (model->getNumCrashes() >= params->numcrashes || get_curr_seq_num() < params->firstCrash)
+		return;
+	hasCrashed = true;
+}
 
 bool ModelExecution::shouldInsertCrash() {
 	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash || get_curr_seq_num() < params->firstCrash)

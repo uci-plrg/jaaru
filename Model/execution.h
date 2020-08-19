@@ -88,6 +88,7 @@ public:
 	void ensureInitialValue(ModelAction *curr);
 	bool getCrashed() {return hasCrashed;}
 	bool shouldInsertCrash();
+	void injectCrash();
 	bool hasNoWriteSinceCrashCheck() {return noWriteSinceCrashCheck;}
 	double computeCombinations();
 	bool getEnableCrash() { return enableCrash; }
