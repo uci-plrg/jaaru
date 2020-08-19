@@ -721,7 +721,7 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 
 
 bool ModelExecution::shouldInsertCrash() {
-	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash)
+	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash || get_curr_seq_num() < params->firstCrash)
 		return false;
 
 	//Create node decision of whether we should crash

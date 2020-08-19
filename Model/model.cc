@@ -616,7 +616,7 @@ nextExecution:
 			}
 		} while (!should_terminate_execution());
 		//one last crash
-		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck()) {
+		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash) {
 			doCrash();
 			goto nextExecution;
 		}

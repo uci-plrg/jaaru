@@ -16,6 +16,7 @@
 
 void param_defaults(struct model_params *params)
 {
+	params->firstCrash = 0;
 	params->verbose = !!DBG_ENABLED();
 	params->nofork = false;
 	params->evictmax = 30;
@@ -49,6 +50,7 @@ static void print_usage(struct model_params *params)
 		"                              Default: %d\n"
 		"-p                          PMDebug level\n"
 		"-f                          Memory initialization byte\n"
+		"-r                          model clock for first possible crash\n"
 		"-n                          No fork\n"
 		"-s                          Print size of exploration space\n"
 		"-c                          Number of nested crashes\n"
@@ -60,7 +62,7 @@ static void print_usage(struct model_params *params)
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsenv::p::d::c:f:";
+	const char *shortopts = "hsenv::p::r::d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -114,6 +116,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'f':
 			FILLBYTE = atoi(optarg);
+			break;
+		case 'r':
+			params->firstCrash = (modelclock_t) atoi(optarg);
 			break;
 		case 'c':
 			params->numcrashes = atoi(optarg);

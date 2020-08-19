@@ -6,6 +6,7 @@
  * the model checker.
  */
 struct model_params {
+	modelclock_t firstCrash;
 	bool nofork;
 	uint storebufferthreshold;
 	uint evictmax;
