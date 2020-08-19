@@ -62,7 +62,7 @@ static void print_usage(struct model_params *params)
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsenv::p::r::d::c:f:";
+	const char *shortopts = "hsenv::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
