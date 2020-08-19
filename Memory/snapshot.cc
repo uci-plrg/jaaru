@@ -15,7 +15,7 @@
 #include "model.h"
 #include "persistentmemory.h"
 
-#define SHARED_MEMORY_DEFAULT  (800 * ((size_t)1 << 20))	// 400mb for the shared memory
+#define SHARED_MEMORY_DEFAULT  (1600 * ((size_t)1 << 20))	// 1600mb for the shared memory
 #define STACK_SIZE_DEFAULT      (((size_t)1 << 20) * 20)	// 20 mb out of the above 100 mb for my stack
 
 

@@ -610,7 +610,7 @@ nextExecution:
 			}
 		} while (!should_terminate_execution());
 		//one last crash
-		if (getNumCrashes() == 0 && !execution->hasNoWriteSinceCrashCheck()) {
+		if (getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck()) {
 			doCrash();
 			goto nextExecution;
 		}
