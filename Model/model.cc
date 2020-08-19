@@ -551,7 +551,7 @@ nextExecution:
 				}
 			}
 
-			if (params.enableCrash && execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads()) {
+			if (execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads()) {
 				uint targetthread = random() % execution->get_num_threads();
 				uint numberEvict = random() % params.evictmax;
 				ThreadMemory * mem = get_thread(int_to_id(targetthread))->getMemory();
@@ -608,7 +608,7 @@ nextExecution:
 
 			t->set_pending(NULL);
 			t = execution->take_step(curr);
-			if (params.enableCrash && execution->getCrashed()) {
+			if (execution->getCrashed()) {
 				doCrash();
 				goto nextExecution;
 			}

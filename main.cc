@@ -118,12 +118,12 @@ void parse_options(struct model_params *params) {
 		case 'c':
 			params->numcrashes = atoi(optarg);
 			break;
-		case 'd':{
+		case 'd': {
 			size_t len = strlen (optarg) + 1;
-      		params->file = (char *) model_calloc(len, sizeof(char));
-      		memcpy (params->file, optarg, len);
+			params->file = (char *) model_calloc(len, sizeof(char));
+			memcpy (params->file, optarg, len);
 			break;
-		}default:	/* '?' */
+		} default:	/* '?' */
 			error = true;
 			break;
 		}
