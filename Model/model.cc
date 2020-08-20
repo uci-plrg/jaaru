@@ -60,6 +60,7 @@ void install_handler() {
 
 void createModelIfNotExist() {
 	if (!model) {
+		model = (ModelChecker *) 0xdeadbeef;	//keep from going recursive
 		inside_model = 1;
 		snapshot_system_init(100000);
 		model = new ModelChecker();
