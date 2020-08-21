@@ -2,13 +2,12 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <mymemory.h>
-#include <atomicapi.h>
 #include <stdio.h>
 #include <string.h>
-#include <snapshot.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 int pmem_unmap(void *addr, size_t len);
 int pmem_is_pmem(const void *addr, size_t len);
@@ -21,6 +20,10 @@ int pmem_deep_drain(const void *addr, size_t len);
 int pmem_deep_persist(const void *addr, size_t len);
 void pmem_drain(void);
 int pmem_has_hw_drain(void);
+
+//bogus PMEM_FILE definitions to keep programs happy
+#define PMEM_FILE_EXCL 1
+#define PMEM_FILE_CREATE 2
 
 #define PMEM_F_MEM_NODRAIN      (1U << 0)
 
@@ -57,6 +60,7 @@ void *pmdk_pagealigned_calloc(size_t size);
 void pmem_register_file(const char *path, void * addr);
 void jaaru_enable_simulating_crash(void);
 void jaaru_inject_crash(void);
+#ifdef __cplusplus
 }
-
+#endif
 

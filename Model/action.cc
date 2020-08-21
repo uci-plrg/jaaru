@@ -141,6 +141,30 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	this->tid = t->get_id();
 }
 
+/**
+ * @brief Construct a new ModelAction for sleep actions
+ *
+ * @param type The type of action: THREAD_SLEEP
+ * @param order The memory order of this action. A "don't care" for non-ATOMIC
+ * actions (e.g., THREAD_* or MODEL_* actions).
+ * @param loc The location that this action acts upon
+ * @param value The time duration a thread is scheduled to sleep.
+ * @param _time The this sleep action is constructed
+ */
+ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value, uint64_t _time) :
+	location(NULL),
+	position(NULL),
+	time(_time),
+	cv(NULL),
+	action_ref(NULL),
+	value(value),
+	type(type),
+	order(order),
+	seq_number(ACTION_INITIAL_CLOCK)
+{
+	Thread *t = thread_current();
+	this->tid = t!= NULL ? t->get_id() : -1;
+}
 
 /** @brief ModelAction destructor */
 ModelAction::~ModelAction() {
