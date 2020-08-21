@@ -146,7 +146,7 @@ void real_pthread_exit (void * value_ptr) {
 void real_init_all() {
 	char * error;
 	if (!real_epoll_wait_p) {
-		real_epoll_wait_p = (int (*)(int epfd, struct epoll_event *events, int maxevents, int timeout))dlsym(RTLD_NEXT, "epool_wait");
+		real_epoll_wait_p = (int (*)(int epfd, struct epoll_event *events, int maxevents, int timeout))dlsym(RTLD_NEXT, "epoll_wait");
 		if ((error = dlerror()) != NULL) {
 			fputs(error, stderr);
 			exit(EXIT_FAILURE);

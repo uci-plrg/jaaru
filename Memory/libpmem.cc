@@ -303,3 +303,8 @@ void jaaru_inject_crash(void) {
 	createModelIfNotExist();
 	model->get_execution()->injectCrash();
 }
+
+int jaaru_num_crashes() {
+	createModelIfNotExist();
+	return model->getNumCrashes();
+}
