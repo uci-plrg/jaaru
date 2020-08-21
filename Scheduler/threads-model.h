@@ -151,8 +151,6 @@ private:
 	 */
 	ModelAction *pending;
 
-	/** @brief True if this thread was just woken up */
-	bool wakeup_state;
 
 	void (*start_routine)(void *);
 	void *(*pstart_routine)(void *);
@@ -184,9 +182,12 @@ private:
 	/** the value return from pthread functions */
 	void * pthread_return;
 
+	ThreadMemory* memory;
+
 	/** @brief Is this Thread a special model-checker thread? */
 	const bool model_thread;
-	ThreadMemory* memory;
+	/** @brief True if this thread was just woken up */
+	bool wakeup_state;
 };
 
 #ifdef TLS

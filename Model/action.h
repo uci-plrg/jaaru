@@ -39,6 +39,7 @@ typedef enum action_type {
 	THREAD_FINISH,	// < A thread completion action
 	THREADONLY_FINISH,	// < A thread completion action
 	THREAD_SLEEP,	// < A sleep operation
+	ACTION_EXIT,
 
 	PTHREAD_CREATE,	// < A pthread creation action
 	PTHREAD_JOIN,	// < A pthread join action
@@ -119,6 +120,7 @@ public:
 	bool is_trylock() const;
 	bool is_unlock() const;
 	bool is_wait() const;
+	bool is_exit() const;
 	bool is_create() const;
 	bool is_notify() const;
 	bool is_notify_one() const;

@@ -22,7 +22,7 @@ ClockVector::ClockVector(ClockVector *parent, const ModelAction *act)
 	if (parent && parent->num_threads > num_threads)
 		num_threads = parent->num_threads;
 
-	clock = (modelclock_t *)model_calloc(num_threads, sizeof(int));
+	clock = (modelclock_t *)model_calloc(num_threads, sizeof(modelclock_t));
 	if (parent)
 		std::memcpy(clock, parent->clock, parent->num_threads * sizeof(modelclock_t));
 

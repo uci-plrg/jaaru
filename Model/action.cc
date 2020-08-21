@@ -220,6 +220,10 @@ bool ModelAction::is_wait() const {
 	return type == ATOMIC_WAIT || type == ATOMIC_TIMEDWAIT;
 }
 
+bool ModelAction::is_exit() const {
+	return type == ACTION_EXIT;
+}
+
 bool ModelAction::is_notify() const {
 	return type == ATOMIC_NOTIFY_ONE || type == ATOMIC_NOTIFY_ALL;
 }
@@ -602,7 +606,7 @@ const char * ModelAction::get_type_str() const
 	case THREAD_FINISH: return "thread finish";
 	case THREAD_SLEEP: return "thread sleep";
 	case THREADONLY_FINISH: return "pthread_exit finish";
-
+	case ACTION_EXIT: return "action_exit";
 	case PTHREAD_CREATE: return "pthread create";
 	case PTHREAD_JOIN: return "pthread join";
 

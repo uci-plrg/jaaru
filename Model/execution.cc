@@ -257,8 +257,9 @@ void ModelExecution::wake_up_sleeping_actions(ModelAction *curr)
 			if (should_wake_up(curr, thr)) {
 				/* Remove this thread from sleep set */
 				scheduler->remove_sleep(thr);
-				if (thr->get_pending()->is_sleep())
+				if (thr->get_pending()->is_sleep()) {
 					thr->set_wakeup_state(true);
+				}
 			}
 		}
 	}
@@ -944,13 +945,14 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		initialize_curr_action(curr);
 	} else if (curr->is_sfence()) {
 		process_store_fence(curr);
-	} else if(!curr->is_write() && !curr->is_cache_op()) {
+	} else if(!curr->is_write() && !curr->is_cache_op() && !curr->is_sleep()) {
 		initialize_curr_action(curr);
 	}
 
 	// All operation except write and cache operation will update the thread local data.
 	if(!curr->is_write() && !curr->is_sfence() && !curr->is_cache_op() && !second_part_of_rmw) {
-		update_thread_local_data(curr);
+		if (!curr->is_sleep())
+			update_thread_local_data(curr);
 		wake_up_sleeping_actions(curr);
 	}
 	process_thread_action(curr);
@@ -968,6 +970,8 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		process_cache_op(curr);
 	} else if (curr->is_mutex_op()) {
 		process_mutex(curr);
+	} else if (curr->is_exit()) {
+		setFinished();
 	}
 	return curr;
 }
@@ -1050,7 +1054,6 @@ void ModelExecution::remove_action_from_store_buffer(ModelAction *act){
 	initialize_curr_action(act);
 	update_thread_local_data(act);
 	wake_up_sleeping_actions(act);
-	get_thread(act)->set_return_value(VALUE_NONE);
 }
 
 /**

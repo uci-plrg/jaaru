@@ -100,9 +100,11 @@ bool ThreadMemory::emptyStoreBuffer() {
 	uint count =0;
 	while(storeBuffer.size() > 0) {
 		ModelAction *curr = storeBuffer.pop_front();
-		if (evictOpFromStoreBuffer(curr))
-			return true;
 		count++;
+		if (evictOpFromStoreBuffer(curr)) {
+			model->get_execution()->updateStoreBuffer(-count);
+			return true;
+		}
 	}
 	model->get_execution()->updateStoreBuffer(-count);
 	return false;
@@ -151,9 +153,10 @@ bool ThreadMemory::emptyWrites(void * address) {
 		for(it = storeBuffer.begin();it!= NULL;) {
 			sllnode<ModelAction *> *next = it->getNext();
 			ModelAction *curr = it->getVal();
+			storeBuffer.erase(it);
+
 			if (evictOpFromStoreBuffer(curr))
 				return false;
-			storeBuffer.erase(it);
 			model->get_execution()->updateStoreBuffer(-1);
 			if (it == rit)
 				return true;
@@ -178,6 +181,5 @@ void ThreadMemory::evictWrite(ModelAction *writeop)
 	//Initializing the sequence number
 	ModelExecution *execution = model->get_execution();
 	execution->remove_action_from_store_buffer(writeop);
-
 	execution->add_write_to_lists(writeop);
 }

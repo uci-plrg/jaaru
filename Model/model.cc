@@ -463,7 +463,6 @@ uint64_t ModelChecker::switch_to_master(ModelAction *act) {
 
 static void runChecker() {
 	model->run();
-	delete model;
 }
 
 void ModelChecker::startChecker() {
@@ -601,6 +600,8 @@ nextExecution:
 				break;
 			if (t->just_woken_up()) {
 				t->set_wakeup_state(false);
+				ASSERT(t->get_pending()->is_sleep());
+				delete t->get_pending();
 				t->set_pending(NULL);
 				t = NULL;
 				continue;	// Allow this thread to stash the next pending action

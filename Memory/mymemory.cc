@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <dlfcn.h>
@@ -19,22 +18,34 @@ int nextRequest = 0;
 int howManyFreed = 0;
 mspace sStaticSpace = NULL;
 
+uint alloccount = 0;
+
+//#define DEBUGPRINT(x, ...) model_print(x, ## __VA_ARGS__)
+#define DEBUGPRINT(x, ...)
+
 /** Non-snapshotting calloc for our use. */
 void *model_calloc(size_t count, size_t size)
 {
-	return mspace_calloc(sStaticSpace, count, size);
+	void *tmp = mspace_calloc(sStaticSpace, count, size);
+	DEBUGPRINT("ZZC: %p %u %u\n", tmp, count*size, alloccount++);
+	return tmp;
 }
 
 /** Non-snapshotting malloc for our use. */
 void *model_malloc(size_t size)
 {
-	return mspace_malloc(sStaticSpace, size);
+	void * tmp = mspace_malloc(sStaticSpace, size);
+	DEBUGPRINT("ZZM: %p %u %u\n", tmp, size, alloccount++);
+	return tmp;
 }
 
 /** Non-snapshotting malloc for our use. */
 void *model_realloc(void *ptr, size_t size)
 {
-	return mspace_realloc(sStaticSpace, ptr, size);
+	void * tmp = mspace_realloc(sStaticSpace, ptr, size);
+	DEBUGPRINT("ZZF: %p\n", ptr);
+	DEBUGPRINT("ZZR: %p %u %u\n", tmp, size, alloccount++);
+	return tmp;
 }
 
 /** @brief Snapshotting malloc, for use by model-checker (not user progs) */
@@ -70,6 +81,7 @@ void snapshot_free(void *ptr)
 /** Non-snapshotting free for our use. */
 void model_free(void *ptr)
 {
+	DEBUGPRINT("ZZF: %p\n", ptr);
 	mspace_free(sStaticSpace, ptr);
 }
 

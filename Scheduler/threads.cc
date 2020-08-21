@@ -391,8 +391,9 @@ Thread::Thread(thread_id_t tid) :
 	id(tid),
 	state(THREAD_READY),	/* Thread is always ready? */
 	last_action_val(0),
+	memory(new ThreadMemory()),
 	model_thread(true),
-	memory(new ThreadMemory())
+	wakeup_state(false)
 {
 	memset(&context, 0, sizeof(context));
 }
@@ -417,9 +418,9 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
 	id(tid),
 	state(THREAD_CREATED),
 	last_action_val(VALUE_NONE),
+	memory(new ThreadMemory()),
 	model_thread(false),
-	memory(new ThreadMemory())
-{
+	wakeup_state(false) {
 	int ret;
 
 	/* Initialize state */
@@ -450,9 +451,9 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void *(*func)(void *), void *a, Threa
 	id(tid),
 	state(THREAD_CREATED),
 	last_action_val(VALUE_NONE),
+	memory(new ThreadMemory()),
 	model_thread(false),
-	memory(new ThreadMemory())
-{
+	wakeup_state(false) {
 	int ret;
 
 	/* Initialize state */
