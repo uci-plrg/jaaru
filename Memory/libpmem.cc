@@ -50,10 +50,12 @@ void * pmdk_malloc(size_t size) {
 	return addr;
 }
 
-void pmem_register_file(const char *path, void * addr) {
+int pmem_register_file(const char *path, void * addr) {
 	createModelIfNotExist();
 	uint64_t id = fileIDMap->get(path);
-	ASSERT( id == 0);
+	if( id != 0) {
+		return -1;
+	}
 	id = getNextRegionID();
 	size_t pathSize = strlen(path) + 1;
 	char * pathCopy = (char*) pmdk_malloc(sizeof(char)*pathSize);
@@ -63,6 +65,7 @@ void pmem_register_file(const char *path, void * addr) {
 	// Create a dummpy file so no change is required in the client
 	FILE *fp = fopen(path, "w+");
 	fclose(fp);
+	return 0;
 }
 
 void pmem_drain(void)
