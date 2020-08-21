@@ -184,16 +184,6 @@ static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple
 	return tmp;
 }
 
-static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple_action_list_t *, uintptr_t, 3, model_malloc, model_calloc, model_free> * hash, void * ptr)
-{
-	simple_action_list_t *tmp = hash->get(ptr);
-	if (tmp == NULL) {
-		tmp = new simple_action_list_t();
-		hash->put(ptr, tmp);
-	}
-	return tmp;
-}
-
 /** @return a thread ID for a new Thread */
 thread_id_t ModelExecution::get_next_id()
 {
@@ -1133,7 +1123,50 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 
 void ModelExecution::add_write_to_lists(ModelAction *write) {
-	simple_action_list_t *list= get_safe_ptr_action(&obj_wr_map, alignAddress(write->get_location()));
+	void *address = write->get_location();
+	void * alignaddress = alignAddress(address);
+	simple_action_list_t * list =obj_wr_map.get(alignaddress);
+	if (list == NULL) {
+		obj_wr_map.put(alignaddress, list = new simple_action_list_t());
+	} else {
+		uint wsize = write->getOpSize();
+		uint numslotsleft = wsize;
+		uintptr_t wbot = (uintptr_t) address;
+		uintptr_t wtop = wbot + wsize;
+
+		mllnode<ModelAction *> *rit;
+		for(rit=list->end();rit!=NULL;rit=rit->getPrev()) {
+			ModelAction *oldwrite = rit->getVal();
+			if (oldwrite->is_write()) {
+				uintptr_t owbot = (uintptr_t) oldwrite->get_location();
+				uint owsize = oldwrite->getOpSize();
+				uintptr_t owtop = owbot + owsize;
+
+				//continue on if there is no overlap
+				if ((wbot >= owtop) || (owbot >= wtop))
+					continue;
+
+				//check if new write is inside of oldwrite
+				if ((owbot <= wbot) && (owtop >=wtop)) {
+					uint64_t oldval = oldwrite->get_value();
+					oldval = oldval >> ((wbot - owbot) * 8);	//shift out old bits that we can't read
+					//drop bits we don't care about
+					if (wsize == 1)
+						oldval &= 0xff;
+					else if (wsize == 2)
+						oldval &= 0xffff;
+					else if (wsize == 4)
+						oldval &= 0xffffffff;
+					//compare them
+					if (oldval == write->get_value()) {
+						return;	//old store subsumes new store...drop new store
+					}
+				}
+				//we have overlap...give up and insert new write
+				break;
+			}
+		}
+	}
 
 	write->setActionRef(list->add_back(write));
 	noWriteSinceCrashCheck = false;

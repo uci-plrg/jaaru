@@ -39,6 +39,8 @@ void *pmdk_pagealigned_calloc(size_t size){
 	return addr;
 }
 
+void * realmemset(void *dst, int c, size_t n);
+
 void * pmdk_malloc(size_t size) {
 	if(!mallocSpace) {
 		pmem_init();
@@ -104,6 +106,8 @@ int pmem_msync(const void *addr, size_t len)
 	return 0;
 }
 
+void * realmemset(void *dst, int c, size_t n);
+
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp)
 {
 	createModelIfNotExist();
@@ -117,6 +121,8 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
 	memmove(pathCopy, path, sizeof(char)*pathSize);
 	fileIDMap->put(pathCopy, id);
 	void * addr = pmdk_malloc(len);
+	//zero the memory
+	realmemset(addr, 0, len);
 	setRegionFromID(id, addr);
 	if(is_pmemp)
 		*is_pmemp = true;
