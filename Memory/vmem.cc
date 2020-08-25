@@ -40,8 +40,9 @@ void *malloc(size_t size) {
 void *calloc(size_t count, size_t size) {
 	createModelIfNotExist();
 	if (mallocSpace) {
-		void * tmp = mspace_calloc(mallocSpace, count, size);
+		void * tmp = mspace_malloc(mallocSpace, count * size);
 		ASSERT(tmp);
+		realmemset(tmp, 0, count * size);
 		return tmp;
 	} else {
 		return __libc_calloc(count, size);

@@ -463,6 +463,7 @@ uint64_t ModelChecker::switch_to_master(ModelAction *act) {
 
 static void runChecker() {
 	model->run();
+	_exit(0);
 }
 
 void ModelChecker::startChecker() {
