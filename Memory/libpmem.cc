@@ -114,7 +114,7 @@ void * realmemset(void *dst, int c, size_t n);
 int pmem_file_exists(const char *path) {
 	createModelIfNotExist();
 	uint64_t id = fileIDMap->get(path);
-	return id!= 0; 
+	return id!= 0;
 }
 
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp)

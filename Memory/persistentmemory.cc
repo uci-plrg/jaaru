@@ -20,6 +20,9 @@ void * (*volatile memset_real)(void * dst, int c, size_t len) = NULL;
 char * (*volatile strcpy_real)(char * dst, const char *src) = NULL;
 
 
+const void * altRegion = NULL;
+uint64_t altSize = 0;
+
 void init_memory_ops() {
 	if (!memcpy_real) {
 		memcpy_real = (void * (*)(void * dst, const void *src, size_t n)) 1;
@@ -45,11 +48,24 @@ void init_memory_ops() {
 	}
 }
 
+void jaaru_set_region(const void *address, size_t size) {
+	if (altRegion == NULL) {
+		altRegion = address;
+		altSize = size;
+	} else {
+		ASSERT(altRegion == address);
+		if (size < altSize)
+			altSize = size;
+	}
+}
 
 int pmem_is_pmem(const void *address, size_t size) {
 	return ((persistentMemoryRegion != NULL) &&
 					(((uintptr_t)address) >= ((uintptr_t)persistentMemoryRegion)) &&
-					(((uintptr_t)address) < (((uintptr_t)persistentMemoryRegion) + PERSISTENT_MEMORY_DEFAULT)));
+					(((uintptr_t)address) < (((uintptr_t)persistentMemoryRegion) + PERSISTENT_MEMORY_DEFAULT))) ||
+				 ((altRegion != NULL) &&
+					(((uintptr_t)address) >= ((uintptr_t)altRegion)) &&
+					(((uintptr_t)address) < (((uintptr_t)altRegion) + altSize)));
 }
 
 
