@@ -54,7 +54,7 @@ void jaaru_set_region(const void *address, size_t size) {
 		altSize = size;
 	} else {
 		ASSERT(altRegion == address);
-		if (size < altSize)
+		if (size > altSize)
 			altSize = size;
 	}
 }
