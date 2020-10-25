@@ -41,14 +41,10 @@ public:
 	ModelChecker();
 	~ModelChecker();
 	model_params * getParams();
-	void run();
 	void doCrash();
 
 	/** Exit the model checker, intended for pluggins. */
 	void exit_model_checker();
-
-	/** @returns the context for the main model-checking system thread */
-	ucontext_t * get_system_context() { return &system_context; }
 
 	ModelExecution * get_execution() const { return execution; }
 	ModelExecution * getOrigExecution() const { return origExecution; }
@@ -60,8 +56,7 @@ public:
 
 	Thread * get_current_thread() const;
 
-	void switch_from_master(Thread *thread);
-	uint64_t switch_to_master(ModelAction *act);
+	uint64_t switch_thread(ModelAction *act);
 
 	void assert_bug(const char *msg, ...);
 
@@ -92,6 +87,21 @@ private:
 
 	Execution_Context * prevContext;
 	uint execution_number;
+	unsigned int curr_thread_num;
+	Thread * chosen_thread;
+	bool thread_chosen;
+	bool break_execution;
+
+	void startRunExecution(Thread *old);
+	void finishRunExecution(Thread *old);
+	void finish_execution();
+	void consumeAction();
+	void chooseThread(ModelAction *act, Thread *thr);
+	Thread * getNextThread(Thread *old);
+	bool handleChosenThread(Thread *old);
+
+
+
 	uint numcrashes;
 	ModelVector<void *> regionID;
 	ModelList<NodeStack *> replaystack;
@@ -103,7 +113,6 @@ private:
 	Thread * get_next_thread();
 	void reset_to_initial_state();
 
-	ucontext_t system_context;
 	double totalstates;
 	int totalexplorepoints;
 	/** @brief The cumulative execution stats */

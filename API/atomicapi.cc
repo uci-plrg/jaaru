@@ -20,7 +20,7 @@ memory_order orders[7] = {
 		DEBUG("pmc_volatile_load%u:addr = %p\n", size, obj); \
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, memory_order_volatile_load, obj, VALUE_NONE, size>>3); \
-		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                                             \
+		uint ## size ## _t val = (uint ## size ## _t)model->switch_thread(action);                                                             \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size >> 3;i++) {                        \
 			atomraceCheckRead(tid, (void *)(((char *)obj)+i));    \
@@ -39,7 +39,7 @@ VOLATILELOAD(64)
 		DEBUG("pmc_volatile_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_WRITE, position, memory_order_volatile_store, obj, (uint64_t) val, size>>3); \
-		model->switch_to_master(action);                        \
+		model->switch_thread(action);                        \
 		*((volatile uint ## size ## _t *)obj) = val;            \
 		*((volatile uint ## size ## _t *)lookupShadowEntry(obj)) = val; \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -59,7 +59,7 @@ VOLATILESTORE(64)
 		DEBUG("pmc_atomic_init%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                      \
 		ModelAction *action = new ModelAction(ATOMIC_INIT, position, memory_order_relaxed, obj, (uint64_t) val, size>>3); \
-		model->switch_to_master(action);                                                                                        \
+		model->switch_thread(action);                                                                                        \
 		*((uint ## size ## _t *)obj) = val;                     \
 		*((uint ## size ## _t *)lookupShadowEntry(obj)) = val;  \
 		thread_id_t tid = thread_current()->get_id();                           \
@@ -80,7 +80,7 @@ PMCATOMICINT(64)
 		DEBUG("pmc_atomic_load%u:addr = %p\n", size, obj); \
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action = new ModelAction(ATOMIC_READ, position, orders[atomic_index], obj, VALUE_NONE, size>>3); \
-		uint ## size ## _t val = (uint ## size ## _t)model->switch_to_master(action);                                           \
+		uint ## size ## _t val = (uint ## size ## _t)model->switch_thread(action);                                           \
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0;i < size >> 3;i++) {                        \
 			atomraceCheckRead(tid, (void *)(((char *)obj)+i));    \
@@ -100,7 +100,7 @@ PMCATOMICLOAD(64)
 		DEBUG("pmc_atomic_store%u:addr = %p, value= %" PRIu ## size "\n", size, obj, val); \
 		createModelIfNotExist();                                                                                                \
 		ModelAction *action =  new ModelAction(ATOMIC_WRITE, position, orders[atomic_index], obj, (uint64_t) val, size >> 3); \
-		model->switch_to_master(action);                                                                                        \
+		model->switch_thread(action);                                                                                        \
 		*((volatile uint ## size ## _t *)obj) = val;                    \
 		*((volatile uint ## size ## _t *)lookupShadowEntry(obj)) = val; \
 		thread_id_t tid = thread_current()->get_id();           \
@@ -117,13 +117,13 @@ PMCATOMICSTORE(64)
 
 uint64_t model_rmw_read_action(void *obj, int atomic_index, const char *position, int size) {
 	createModelIfNotExist();
-	return model->switch_to_master(new ModelAction(ATOMIC_RMWR, position, orders[atomic_index], obj, VALUE_NONE, size));
+	return model->switch_thread(new ModelAction(ATOMIC_RMWR, position, orders[atomic_index], obj, VALUE_NONE, size));
 }
 
 ModelAction* model_rmw_action(void *obj, uint64_t val, int atomic_index, const char * position, int size) {
 	createModelIfNotExist();
 	ModelAction* action = new ModelAction(ATOMIC_RMW, position, orders[atomic_index], obj, val, size);
-	model->switch_to_master(action);
+	model->switch_thread(action);
 	return action;
 }
 
@@ -214,7 +214,7 @@ PMCATOMICXOR(64)
 
 void model_rmw_cas_fail_action(void *obj, int atomic_index, const char *position, int size) {
 	createModelIfNotExist();
-	model->switch_to_master(new ModelAction(ATOMIC_CAS_FAILED, position, orders[atomic_index], obj, size));
+	model->switch_thread(new ModelAction(ATOMIC_CAS_FAILED, position, orders[atomic_index], obj, size));
 }
 
 // pmc atomic compare and exchange
@@ -279,28 +279,28 @@ void pmc_clwb(void * addrs){
 	DEBUG("pmc_clwb:addr = %p\n",addrs);
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs);
-	model->switch_to_master(action);
+	model->switch_thread(action);
 }
 
 void pmc_clflushopt(void * addrs){
 	DEBUG("pmc_clflushopt:addr = %p\n",addrs);
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(ACTION_CLFLUSHOPT, memory_order_seq_cst, addrs);
-	model->switch_to_master(action);
+	model->switch_thread(action);
 }
 
 void pmc_clflush(void * addrs){
 	DEBUG("pmc_clflush:addr = %p\n",addrs);
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(ACTION_CLFLUSH, memory_order_seq_cst, addrs);
-	model->switch_to_master(action);
+	model->switch_thread(action);
 }
 
 void pmc_mfence(){
 	DEBUG("pmc_mfence\n");
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(CACHE_MFENCE) ;
-	model->switch_to_master(action);
+	model->switch_thread(action);
 }
 
 void pmc_lfence(){
@@ -312,6 +312,6 @@ void pmc_sfence(){
 	DEBUG("pmc_sfence\n");
 	createModelIfNotExist();
 	ModelAction *action = new ModelAction(CACHE_SFENCE) ;
-	model->switch_to_master(action);
+	model->switch_thread(action);
 }
 

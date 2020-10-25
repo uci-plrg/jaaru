@@ -221,7 +221,7 @@ void ModelChecker::assert_user_bug(const char *msg)
 {
 	/* If feasible bug, bail out now */
 	assert_bug(msg);
-	switch_to_master(NULL);
+	switch_thread(NULL);
 }
 
 /** @brief Print bug report listing for this execution (if any bugs exist) */
@@ -307,7 +307,7 @@ void ModelChecker::print_execution(bool printbugs) const
  * @return If there are more executions to explore, return true. Otherwise,
  * return false.
  */
-bool ModelChecker::next_execution() {
+void ModelChecker::finish_execution() {
 	DBG();
 	/* Is this execution a feasible execution that's worth bug-checking? */
 	bool complete = (execution->is_complete_execution() ||
@@ -337,7 +337,7 @@ bool ModelChecker::next_execution() {
 		//last execution on this stack...need to reset
 		if (prevContext == NULL) {
 			//really done
-			return false;
+			return;
 		}
 		execution->clearPreRollback();
 
@@ -375,22 +375,11 @@ bool ModelChecker::next_execution() {
 	//Delete old execution
 	delete execution;
 
+	//Set execution to null to flag that we need to generate a new one
+	execution = NULL;
+
 	//Reset program state
 	reset_to_initial_state();
-
-	//Build new execution
-	execution = new ModelExecution(this, scheduler);
-	execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
-	execution->add_thread(init_thread);
-	execution->setParams(&params);
-
-	//We need to reset the original execution also and reset the persistent memory
-	origExecution = execution;
-	pmem_init();
-	regionID.clear();
-	numcrashes = 0;
-
-	return true;
 }
 
 /**
@@ -411,18 +400,111 @@ Thread * ModelChecker::get_thread(const ModelAction *act) const {
 	return execution->get_thread(act);
 }
 
-/**
- * Switch from a model-checker context to a user-thread context. This is the
- * complement of ModelChecker::switch_to_master and must be called from the
- * model-checker context
- *
- * @param thread The user-thread to switch to
- */
-void ModelChecker::switch_from_master(Thread *thread) {
-	scheduler->set_current_thread(thread);
-	inside_model = 0;
-	Thread::swap(&system_context, thread);
+void ModelChecker::startRunExecution(Thread *old) {
+	while (true) {
+		thread_chosen = false;
+		curr_thread_num = 1;
+
+		Thread *thr = getNextThread(old);
+		if (thr != nullptr) {
+			scheduler->set_current_thread(thr);
+
+			if (Thread::swap(old, thr) < 0) {
+				perror("swap threads");
+				exit(EXIT_FAILURE);
+			}
+			return;
+		}
+
+		if (!handleChosenThread(old)) {
+			return;
+		}
+	}
 }
+
+Thread* ModelChecker::getNextThread(Thread *old) {
+	for (unsigned int i = curr_thread_num;i < get_num_threads();i++) {
+		thread_id_t tid = int_to_id(i);
+		Thread *thr = get_thread(tid);
+
+		if (!thr->is_complete()) {
+			if (!thr->get_pending()) {
+				curr_thread_num = i;
+				return thr;
+			}
+		} else if (thr != old && !thr->is_freed()) {
+			thr->freeResources();
+		}
+
+		/* Don't schedule threads which should be disabled */
+		ModelAction *act = thr->get_pending();
+		if (act && execution->is_enabled(thr) && !execution->check_action_enabled(act)) {
+			scheduler->sleep(thr);
+		}
+		chooseThread(act, thr);
+	}
+
+	if (execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads()) {
+		uint targetthread = random() % execution->get_num_threads();
+		uint numberEvict = random() % params.evictmax;
+		ThreadMemory * mem = get_thread(int_to_id(targetthread))->getMemory();
+		for(uint i=0;i<numberEvict;i++) {
+			if (mem->popFromStoreBuffer()) {
+				//won't return from this call
+				doCrash();
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+/* Swap back to system_context and terminate this execution */
+void ModelChecker::finishRunExecution(Thread *old) {
+	scheduler->set_current_thread(NULL);
+
+	/** Reset curr_thread_num to initial value for next execution. */
+	curr_thread_num = 1;
+
+	/** If we have more executions, we won't make it past this call. */
+	finish_execution();
+
+
+	/** We finished the final execution.  Print stuff and exit. */
+	model_print("******* Model-checking complete: *******\n");
+	print_stats();
+
+	/* unlink tmp file created by last child process */
+	char filename[256];
+	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
+	unlink(filename);
+
+	/* Exit. */
+	_Exit(0);
+}
+
+
+void ModelChecker::consumeAction() {
+	ModelAction *curr = chosen_thread->get_pending();
+	chosen_thread->set_pending(NULL);
+	chosen_thread = execution->take_step(curr);
+}
+
+/* Allow pending relaxed/release stores or thread actions to perform first */
+void ModelChecker::chooseThread(ModelAction *act, Thread *thr) {
+	if (!thread_chosen && act && execution->is_enabled(thr) && (thr->get_state() != THREAD_BLOCKED) ) {
+		if (act->get_type() == THREAD_CREATE ||                       \
+				act->get_type() == PTHREAD_CREATE ||                      \
+				act->get_type() == THREAD_START ||                        \
+				act->get_type() == THREAD_FINISH) {
+			chosen_thread = thr;
+			thread_chosen = true;
+		}
+	}
+}
+
+
+
 
 /**
  * Switch from a user-context to the "master thread" context (a.k.a. system
@@ -435,7 +517,7 @@ void ModelChecker::switch_from_master(Thread *thread) {
  * ModelExecution::has_asserted).
  * @return Return the value returned by the current action
  */
-uint64_t ModelChecker::switch_to_master(ModelAction *act) {
+uint64_t ModelChecker::switch_thread(ModelAction *act) {
 	if (modellock) {
 		static bool fork_message_printed = false;
 
@@ -449,26 +531,129 @@ uint64_t ModelChecker::switch_to_master(ModelAction *act) {
 	}
 	DBG();
 	Thread *old = thread_current();
-	scheduler->set_current_thread(NULL);
+	old->set_state(THREAD_READY);
+
 	ASSERT(!old->get_pending());
 
 	inside_model = 1;
 	old->set_pending(act);
-	if (Thread::swap(old, &system_context) < 0) {
-		perror("swap threads");
-		exit(EXIT_FAILURE);
+
+	if (act->is_write() || act->is_read()) {
+		execution->ensureInitialValue(act);
+	}
+
+	if (old->is_waiting_on(old))
+		assert_bug("Deadlock detected (thread %u)", curr_thread_num);
+
+	if (act && execution->is_enabled(old) && !execution->check_action_enabled(act)) {
+		scheduler->sleep(old);
+	}
+
+	Thread* next = getNextThread(old);
+	if (next != nullptr) {
+		scheduler->set_current_thread(next);
+		if (Thread::swap(old, next) < 0) {
+			perror("swap threads");
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		if (handleChosenThread(old)) {
+			startRunExecution(old);
+		}
 	}
 	return old->get_return_value();
 }
 
-static void runChecker() {
-	model->run();
-	_exit(0);
+bool ModelChecker::handleChosenThread(Thread *old) {
+	if (execution->has_asserted()) {
+		finishRunExecution(old);
+		return false;
+	}
+	if (!chosen_thread) {
+		chosen_thread = get_next_thread();
+	}
+	if (!chosen_thread || chosen_thread->is_model_thread()) {
+		finishRunExecution(old);
+		return false;
+	}
+	if (chosen_thread->just_woken_up()) {
+		chosen_thread->set_wakeup_state(false);
+		chosen_thread->set_pending(NULL);
+		chosen_thread = NULL;
+		// Allow this thread to stash the next pending action
+		return true;
+	}
+
+	// Consume the next action for a Thread
+	consumeAction();
+
+	if (execution->getCrashed()) {
+		//won't return from this call
+		doCrash();
+		return false;
+	}
+
+	if (should_terminate_execution()) {
+		//one last crash
+		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash)
+			doCrash();
+		else
+			finishRunExecution(old);
+		//won't make it here because we don't return from previous calls
+		return false;
+	} else {
+		return true;
+	}
 }
 
 void ModelChecker::startChecker() {
-	startExecution(get_system_context(), runChecker);
+	startExecution();
 	snapshot = take_snapshot();
+
+	if (execution == NULL) {
+		//Not first execution, so need to build new execution
+		execution = new ModelExecution(this, scheduler);
+		execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
+		execution->add_thread(init_thread);
+		execution->setParams(&params);
+		curr_thread_num = 1;
+
+		if (prevContext == NULL) {
+			//We need to reset the original execution also and reset the persistent memory
+			origExecution = execution;
+			pmem_init();
+			regionID.clear();
+			numcrashes = 0;
+		} else {
+			if (replaystack.empty()) {
+				if (params.printSpace) {
+					double combos = prevContext->execution->computeCombinations();
+					totalstates += combos;
+					totalexplorepoints++;
+					model_print("Num naive execution = %.10E\n", combos);
+					model_print("Total naive execution = %.10E\n", totalstates);
+					model_print("Total number of stop points = %d\n", totalexplorepoints);
+				}
+				nodestack = new NodeStack();
+			} else {
+				nodestack = replaystack.pop_front();
+				if (!replaystack.empty())
+					nodestack->repeat_prev_execution();
+			}
+			numcrashes++;
+		}
+	}
+	if (params.pmdebug && prevContext != NULL) {
+		model_print("\n\n*******************************************************************\n");
+		model_print("Post-Crash Execution %u\n", get_execution_number());
+		model_print("*******************************************************************\n\n");
+	} else if (params.pmdebug) {
+		model_print("\n\n*******************************************************************\n");
+		model_print("Pre-Crash Execution %u\n", get_execution_number());
+		model_print("*******************************************************************\n\n");
+	}
+	execution->setEnableCrash(params.enableCrash);
+
 	redirect_output();
 	initMainThread();
 }
@@ -493,149 +678,5 @@ void ModelChecker::doCrash() {
 	prevContext = ec;
 	execution->clearPreRollback();
 	reset_to_initial_state();
-	execution = new ModelExecution(this, scheduler);
-	if (replaystack.empty()) {
-		if (params.printSpace) {
-			double combos = prevContext->execution->computeCombinations();
-			totalstates += combos;
-			totalexplorepoints++;
-			model_print("Num naive execution = %.10E\n", combos);
-			model_print("Total naive execution = %.10E\n", totalstates);
-			model_print("Total number of stop points = %d\n", totalexplorepoints);
-		}
-		nodestack = new NodeStack();
-	} else {
-		nodestack = replaystack.pop_front();
-		if (!replaystack.empty())
-			nodestack->repeat_prev_execution();
-	}
-	execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
-	execution->add_thread(init_thread);
-	execution->setParams(&params);
-	numcrashes++;
 }
-
-/** @brief Run ModelChecker for the user program */
-void ModelChecker::run()
-{
-	do {
-		Thread * t = init_thread;
-nextExecution:
-		if (params.pmdebug && prevContext != NULL) {
-			model_print("\n\n*******************************************************************\n");
-			model_print("Post-Crash Execution %u\n", get_execution_number());
-			model_print("*******************************************************************\n\n");
-		} else if (params.pmdebug) {
-			model_print("\n\n*******************************************************************\n");
-			model_print("Pre-Crash Execution %u\n", get_execution_number());
-			model_print("*******************************************************************\n\n");
-		}
-
-		execution->setEnableCrash(params.enableCrash);
-
-		do {
-			/*
-			 * Stash next pending action(s) for thread(s). There
-			 * should only need to stash one thread's action--the
-			 * thread which just took a step--plus the first step
-			 * for any newly-created thread
-			 */
-			for (unsigned int i = 0;i < get_num_threads();i++) {
-				thread_id_t tid = int_to_id(i);
-				Thread *thr = get_thread(tid);
-				if (!thr->is_model_thread() && !thr->is_complete() && !thr->get_pending()) {
-					switch_from_master(thr);
-					ModelAction *pendact = thr->get_pending();
-					if (pendact!= NULL && (pendact->is_write() || pendact->is_read())) {
-						execution->ensureInitialValue(pendact);
-					}
-					if (thr->is_waiting_on(thr))
-						assert_bug("Deadlock detected (thread %u)", i);
-				}
-			}
-
-			if (execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads()) {
-				uint targetthread = random() % execution->get_num_threads();
-				uint numberEvict = random() % params.evictmax;
-				ThreadMemory * mem = get_thread(int_to_id(targetthread))->getMemory();
-				for(uint i=0;i<numberEvict;i++) {
-					if (mem->popFromStoreBuffer()) {
-						doCrash();
-						goto nextExecution;
-					}
-				}
-			}
-
-
-			/* Don't schedule threads which should be disabled */
-			for (unsigned int i = 0;i < get_num_threads();i++) {
-				Thread *th = get_thread(int_to_id(i));
-				ModelAction *act = th->get_pending();
-				if (act && execution->is_enabled(th) && !execution->check_action_enabled(act)) {
-					scheduler->sleep(th);
-				}
-			}
-
-			for (unsigned int i = 1;i < get_num_threads();i++) {
-				Thread *th = get_thread(int_to_id(i));
-				ModelAction *act = th->get_pending();
-				if (act && execution->is_enabled(th) && (th->get_state() != THREAD_BLOCKED) ) {
-					if (act->get_type() == THREAD_CREATE || \
-							act->get_type() == PTHREAD_CREATE || \
-							act->get_type() == THREAD_START || \
-							act->get_type() == THREAD_FINISH) {
-						t = th;
-						break;
-					}
-				}
-			}
-
-			/* Catch assertions from prior take_step or from
-			* between-ModelAction bugs (e.g., data races) */
-
-			if (execution->has_asserted())
-				break;
-			if (!t)
-				t = get_next_thread();
-			if (!t || t->is_model_thread())
-				break;
-			if (t->just_woken_up()) {
-				t->set_wakeup_state(false);
-				ASSERT(t->get_pending()->is_sleep());
-				delete t->get_pending();
-				t->set_pending(NULL);
-				t = NULL;
-				continue;	// Allow this thread to stash the next pending action
-			}
-
-			/* Consume the next action for a Thread */
-			ModelAction *curr = t->get_pending();
-
-			t->set_pending(NULL);
-			t = execution->take_step(curr);
-			if (execution->getCrashed()) {
-				doCrash();
-				goto nextExecution;
-			}
-		} while (!should_terminate_execution());
-		//one last crash
-		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash) {
-			doCrash();
-			goto nextExecution;
-		}
-	} while(next_execution());
-	model_print("******* Model-checking complete: *******\n");
-	print_stats();
-
-	delete nodestack;
-	nodestack = NULL;
-	delete execution;
-	execution = NULL;
-
-	/* unlink tmp file created by last child process */
-	char filename[256];
-	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
-	unlink(filename);
-}
-
 

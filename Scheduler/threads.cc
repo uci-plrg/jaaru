@@ -64,13 +64,13 @@ Thread * thread_current(void)
 }
 
 void modelexit() {
-	model->switch_to_master(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, thread_current()));
+	model->switch_thread(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, thread_current()));
 }
 
 void initMainThread() {
 	atexit(modelexit);
 	Thread * curr_thread = thread_current();
-	model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
+	model->switch_thread(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
 }
 
 /**
@@ -83,7 +83,7 @@ void thread_startup()
 	Thread * curr_thread = thread_current();
 #ifndef TLS
 	/* Add dummy "start" action, just to create a first clock vector */
-	model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
+	model->switch_thread(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
 #endif
 
 	/* Call the actual thread function */
@@ -96,7 +96,7 @@ void thread_startup()
 	}
 #ifndef TLS
 	/* Finish thread properly */
-	model->switch_to_master(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, curr_thread));
+	model->switch_thread(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, curr_thread));
 #endif
 }
 
@@ -230,7 +230,7 @@ void * helper_thread(void * ptr) {
 	curr_thread->helpercontext.uc_stack.ss_sp = curr_thread->helper_stack;
 	curr_thread->helpercontext.uc_stack.ss_size = STACK_SIZE;
 	curr_thread->helpercontext.uc_stack.ss_flags = 0;
-	curr_thread->helpercontext.uc_link = model->get_system_context();
+	curr_thread->helpercontext.uc_link = NULL;
 	makecontext(&curr_thread->helpercontext, finalize_helper_thread, 0);
 
 	model_swapcontext(&curr_thread->context, &curr_thread->helpercontext);
@@ -253,7 +253,7 @@ void tlsdestructor(void *v) {
 		return;
 	}
 	/* Finish thread properly */
-	model->switch_to_master(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, thread_current()));
+	model->switch_thread(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, thread_current()));
 }
 #endif
 
@@ -263,7 +263,7 @@ void setup_context() {
 	ASSERT(curr_thread->tls == NULL);	//We rely on this for locking...
 
 	/* Add dummy "start" action, just to create a first clock vector */
-	model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
+	model->switch_thread(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
 
 	real_init_all();
 
@@ -306,7 +306,7 @@ int Thread::create_context()
 	context.uc_stack.ss_sp = stack;
 	context.uc_stack.ss_size = STACK_SIZE;
 	context.uc_stack.ss_flags = 0;
-	context.uc_link = model->get_system_context();
+	context.uc_link = NULL;
 #ifdef TLS
 	makecontext(&context, setup_context, 0);
 #else
@@ -349,6 +349,18 @@ int Thread::swap(ucontext_t *ctxt, Thread *t)
 	return model_swapcontext(ctxt, &t->context);
 }
 
+int Thread::swap(Thread *t, Thread *t2) {
+	t2->set_state(THREAD_RUNNING);
+	if (t == t2)
+		return 0;
+
+#ifdef TLS
+	if (t2->tls != NULL)
+		set_tls_addr((uintptr_t)t2->tls);
+#endif
+	return model_swapcontext(&t->context, &t2->context);
+}
+
 
 /** Terminate a thread and free its stack. */
 void Thread::complete()
@@ -356,6 +368,9 @@ void Thread::complete()
 	ASSERT(!is_complete());
 	DEBUG("completed thread %d\n", id_to_int(get_id()));
 	state = THREAD_COMPLETED;
+}
+
+void Thread::freeResources() {
 	if (stack)
 		stack_free(stack);
 #ifdef TLS
@@ -367,6 +382,7 @@ void Thread::complete()
 		stack_free(helper_stack);
 	}
 #endif
+	state = THREAD_FREED;
 }
 
 /**
