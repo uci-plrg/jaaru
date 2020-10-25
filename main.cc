@@ -19,8 +19,8 @@ void param_defaults(struct model_params *params)
 	params->firstCrash = 0;
 	params->verbose = !!DBG_ENABLED();
 	params->nofork = false;
-	params->evictmax = 30;
-	params->storebufferthreshold = 40;
+	params->evictmax = 10;
+	params->storebufferthreshold = 15;
 	params->pmdebug = 0;
 	params->printSpace = false;
 	params->numcrashes = 1;

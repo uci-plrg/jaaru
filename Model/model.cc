@@ -109,6 +109,7 @@ ModelChecker::ModelChecker() :
 	nodestack(new NodeStack()),
 	prevContext(NULL),
 	execution_number(1),
+	curr_thread_num(1),
 	numcrashes(0),
 	replaystack(),
 	totalstates(0),
@@ -677,6 +678,7 @@ void ModelChecker::doCrash() {
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
 	execution->clearPreRollback();
+	execution = NULL;
 	reset_to_initial_state();
 }
 
