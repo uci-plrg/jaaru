@@ -678,11 +678,11 @@ void ModelChecker::doCrash() {
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;
 	execution->clearPreRollback();
-	execution = NULL;
 	if (params.dumpStack) {
 		print_trace();
 		model->get_execution()->print_summary(true, true);
 	}
+	execution = NULL;
 	reset_to_initial_state();
 }
 

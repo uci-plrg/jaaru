@@ -45,6 +45,8 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc, uint
 	size(_size)
 {
 	/* References to NULL atomic variables can end up here */
+	if (loc == NULL && type != ATOMIC_NOP)
+		model_print("Trying to access NULL pointer!\n");
 	ASSERT(loc || type == ATOMIC_NOP);
 
 	Thread *t = thread ? thread : thread_current();
@@ -102,6 +104,8 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	size(_size)
 {
 	/* References to NULL atomic variables can end up here */
+	if (loc == NULL)
+		model_print("Trying to access NULL pointer!\n");
 	ASSERT(loc);
 	Thread *t = thread_current();
 	this->tid = t->get_id();
@@ -135,6 +139,8 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	size(0)
 {
 	/* References to NULL atomic variables can end up here */
+	if (loc == NULL)
+		model_print("Trying to access NULL pointer!\n");
 	ASSERT(loc);
 
 	Thread *t = thread ? thread : thread_current();
