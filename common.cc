@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "model.h"
+#include "execution.h"
 #include "stacktrace.h"
 #include "output.h"
 
@@ -40,6 +41,7 @@ void print_trace(void)
 
 void assert_hook(void)
 {
+	model->get_execution()->print_summary(true, true);
 	model_print("Add breakpoint to line %u in file %s.\n", __LINE__, __FILE__);
 }
 

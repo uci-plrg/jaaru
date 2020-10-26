@@ -23,6 +23,7 @@ void param_defaults(struct model_params *params)
 	params->storebufferthreshold = 15;
 	params->pmdebug = 0;
 	params->printSpace = false;
+	params->dumpStack = false;
 	params->numcrashes = 1;
 	params->file = NULL;
 	params->enableCrash = true;
@@ -49,6 +50,7 @@ static void print_usage(struct model_params *params)
 		"                              3 is noisier.\n"
 		"                              Default: %d\n"
 		"-p                          PMDebug level\n"
+		"-t                          Dump Stack at Crash Injection\n"
 		"-f                          Memory initialization byte\n"
 		"-r                          model clock for first possible crash\n"
 		"-n                          No fork\n"
@@ -62,7 +64,7 @@ static void print_usage(struct model_params *params)
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsenv::p::r:d::c:f:";
+	const char *shortopts = "hsetnv::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -107,6 +109,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'e':
 			params->enableCrash = false;
+			break;
+		case 't':
+			params->dumpStack = true;
 			break;
 		case 'v':
 			params->verbose = optarg ? atoi(optarg) : 1;

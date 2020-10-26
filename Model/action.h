@@ -91,6 +91,7 @@ public:
 
 	~ModelAction();
 	void print() const;
+	void printWithLocation() const;
 
 	thread_id_t get_tid() const { return tid; }
 	action_type get_type() const { return type; }

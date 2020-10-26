@@ -41,8 +41,8 @@ void assert_hook(void);
 	do { \
 		if (!(expr)) { \
 			fprintf(stderr, "Error: assertion failed in %s at line %d\n", __FILE__, __LINE__); \
-			/* print_trace(); // Trace printing may cause dynamic memory allocation */ \
-			assert_hook();                           \
+			print_trace(); \
+			assert_hook();                                  \
 			model_print("Or attach gdb to process with id # %u\n", getpid());               \
 			while(1) ;                       \
 			_Exit(EXIT_FAILURE); \

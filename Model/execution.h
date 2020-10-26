@@ -33,7 +33,7 @@ public:
 
 	void clearPreRollback();
 	void print_summary();
-	void print_tail();
+	void print_summary(bool shortOutput, bool printLines);
 	void add_thread(Thread *t);
 	Thread * get_thread(thread_id_t tid) const;
 	Thread * get_thread(const ModelAction *act) const;

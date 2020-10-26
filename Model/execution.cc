@@ -1479,7 +1479,7 @@ done:
 	return isDone;
 }
 
-static void print_list(action_list_t *list)
+static void print_list(action_list_t *list, bool shortOutput, bool printLines)
 {
 	mllnode<ModelAction*> *it;
 
@@ -1489,18 +1489,40 @@ static void print_list(action_list_t *list)
 
 	unsigned int hash = 0;
 
-	for (it = list->begin();it != NULL;it=it->getNext()) {
+	int counter = 0;
+	int length = 25;
+	if (shortOutput) {
+		for (it = list->end();it != NULL;it = it->getPrev()) {
+			if (counter > length)
+				break;
+
+			counter++;
+		}
+		if (it == NULL)
+			it = list->begin();
+	} else
+		it = list->begin();
+
+	for (;it != NULL;it=it->getNext()) {
 		const ModelAction *act = it->getVal();
-		if (act->get_seq_number() > 0)
-			act->print();
+		if (act->get_seq_number() > 0) {
+			if (printLines)
+				act->printWithLocation();
+			else
+				act->print();
+		}
 		hash = hash^(hash<<3)^(it->getVal()->hash());
 	}
 	model_print("HASH %u\n", hash);
 	model_print("------------------------------------------------------------------------------------\n");
 }
 
+void ModelExecution::print_summary() {
+	print_summary(false, false);
+}
+
 /** @brief Prints an execution trace summary. */
-void ModelExecution::print_summary()
+void ModelExecution::print_summary(bool shortOutput, bool printLines)
 {
 	model_print("Execution trace %d:", get_execution_number());
 	if (scheduler->all_threads_sleeping())
@@ -1510,43 +1532,9 @@ void ModelExecution::print_summary()
 
 	model_print("\n");
 
-	print_list(&action_trace);
+	print_list(&action_trace, shortOutput, printLines);
 	model_print("\n");
 
-}
-
-void ModelExecution::print_tail()
-{
-	model_print("Execution trace %d:\n", get_execution_number());
-
-	mllnode<ModelAction*> *it;
-
-	model_print("------------------------------------------------------------------------------------\n");
-	model_print("#    t    Action type     MO       Location         Value               Rf  CV\n");
-	model_print("------------------------------------------------------------------------------------\n");
-
-	unsigned int hash = 0;
-
-	int length = 25;
-	int counter = 0;
-	ModelList<ModelAction *> list;
-	for (it = action_trace.end();it != NULL;it = it->getPrev()) {
-		if (counter > length)
-			break;
-
-		ModelAction * act = it->getVal();
-		list.push_front(act);
-		counter++;
-	}
-
-	for (it = list.begin();it != NULL;it=it->getNext()) {
-		const ModelAction *act = it->getVal();
-		if (act->get_seq_number() > 0)
-			act->print();
-		hash = hash^(hash<<3)^(it->getVal()->hash());
-	}
-	model_print("HASH %u\n", hash);
-	model_print("------------------------------------------------------------------------------------\n");
 }
 
 /**

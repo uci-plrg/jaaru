@@ -679,6 +679,10 @@ void ModelChecker::doCrash() {
 	prevContext = ec;
 	execution->clearPreRollback();
 	execution = NULL;
+	if (params.dumpStack) {
+		print_trace();
+		model->get_execution()->print_summary(true, true);
+	}
 	reset_to_initial_state();
 }
 

@@ -665,6 +665,29 @@ void ModelAction::print() const
 		model_print("\n");
 }
 
+/** @brief Print nicely-formatted info about this ModelAction */
+void ModelAction::printWithLocation() const
+{
+	const char *type_str = get_type_str(), *mo_str = get_mo_str();
+
+	model_print("%-4d %-2d   %-14s  %7s  %14p   %-#18" PRIx64 " %-2d",
+							seq_number, id_to_int(tid), type_str, mo_str, location, get_value(), getOpSize());
+	if (is_read()) {
+		model_print(" %" PRIx64 " ", get_read_value());
+	}
+	if (position) {
+		model_print("%s", position);
+	}
+	if (cv) {
+		if (is_read())
+			model_print(" ");
+		else
+			model_print("      ");
+		cv->print();
+	} else
+		model_print("\n");
+}
+
 /** @brief Get a (likely) unique hash for this ModelAction */
 unsigned int ModelAction::hash() const
 {

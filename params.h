@@ -13,6 +13,7 @@ struct model_params {
 	int verbose;
 	uint pmdebug;
 	bool printSpace;
+	bool dumpStack;
 	uint numcrashes;
 	char *file;
 	bool enableCrash;

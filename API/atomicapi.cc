@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include "atomicapi.h"
 #include "model.h"
