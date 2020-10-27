@@ -388,8 +388,6 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 	uint64_t value = 0;
 	// Check to read from non-atomic stores if there is one
 	void * address = curr->get_location();
-	ModelExecution *lexec = NULL;
-	ModelAction *lrf = NULL;
 	for(uint i=curr->getOpSize();i != 0; ) {
 		i--;
 		ModelExecution * exec = (*rfarray)[i].p1;
@@ -402,12 +400,6 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 		uint64_t writevalue = rf->get_value();
 		writevalue = writevalue >> (8*writeoffset);
 		value |= writevalue & 0xff;
-
-		if (exec == lexec && lrf == rf)
-			continue;
-
-		lexec = exec;
-		lrf = rf;
 
 		if (exec == this) {
 			ClockVector * cv = rf->get_cv();

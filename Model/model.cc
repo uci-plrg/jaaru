@@ -682,6 +682,11 @@ void ModelChecker::doCrash() {
 		print_trace();
 		model->get_execution()->print_summary(true, true);
 	}
+	/* unlink tmp file created by last child process */
+	char filename[256];
+	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
+	unlink(filename);
+  
 	execution = NULL;
 	reset_to_initial_state();
 }
