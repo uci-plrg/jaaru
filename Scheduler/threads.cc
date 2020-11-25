@@ -376,7 +376,6 @@ void Thread::freeResources() {
 #ifdef TLS
 	//Don't free tls for init_thread or model_thread (id = 0)
 	if (this != model->getInitThread() && id != 0) {
-		ASSERT(thread_current()==NULL);
 		real_pthread_mutex_unlock(&mutex2);
 		real_pthread_join(thread, NULL);
 		stack_free(helper_stack);
