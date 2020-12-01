@@ -1,4 +1,7 @@
 #/bin/bash
-
+LLVMDIR=/scratch/nvm/llvm-project/
+CC=${LLVMDIR}/build/bin/clang++
+LLVMPASS=${LLVMDIR}/build/lib/libPMCPass.so
+JAARUDIR=/scratch/nvm/pmcheck/bin/
 #/scratch/nvm/llvm-project/build/bin/clang++ -Xclang -load -Xclang /scratch/nvm/llvm-project/build/lib/libPMCPass.so -Wno-unused-command-line-argument -Wno-address-of-packed-member -Wno-mismatched-tags -Wno-unused-private-field -Wno-constant-conversion -Wno-null-dereference $@
-/scratch/nvm/llvm-project/build/bin/clang++ -Xclang -load -Xclang /scratch/nvm/llvm-project/build/lib/libPMCPass.so -L/scratch/nvm/pmcheck/bin -lpmcheck -Wno-unused-command-line-argument -Wno-address-of-packed-member -Wno-mismatched-tags -Wno-unused-private-field -Wno-constant-conversion -Wno-null-dereference $@
+$CC -Xclang -load -Xclang $LLVMPASS -L${JAARUDIR} -lpmcheck -Wno-unused-command-line-argument -Wno-address-of-packed-member -Wno-mismatched-tags -Wno-unused-private-field -Wno-constant-conversion -Wno-null-dereference $@

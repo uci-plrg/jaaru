@@ -1,3 +1,6 @@
 #/bin/bash
-
-/scratch/nvm/llvm-project/build/bin/clang -Xclang -load -Xclang /scratch/nvm/llvm-project/build/lib/libPMCPass.so -Wno-unused-command-line-argument -L/scratch/nvm/pmcheck/bin -lpmcheck $@
+LLVMDIR=/scratch/nvm/llvm-project/
+CC=${LLVMDIR}/build/bin/clang
+LLVMPASS=${LLVMDIR}/build/lib/libPMCPass.so
+JAARUDIR=/scratch/nvm/pmcheck/bin/
+$CC -Xclang -load -Xclang ${LLVMPASS} -Wno-unused-command-line-argument -L${JAARUDIR} -lpmcheck $@
