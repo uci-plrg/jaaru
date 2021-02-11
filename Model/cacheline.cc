@@ -6,19 +6,17 @@
 
 
 CacheLine::CacheLine(void *address) :
+	Range(),
 	id(getCacheID(address)),
 	lastWrite(NULL),
-	lastCacheOp(NULL),
-	beginR(0),
-	endR(0)
+	lastCacheOp(NULL)
 {
 }
 
 CacheLine::CacheLine(uintptr_t _id) :
+	Range(),
 	id(_id),
 	lastWrite(NULL),
-	lastCacheOp(NULL),
-	beginR(0),
-	endR(0)
+	lastCacheOp(NULL)
 {
 }

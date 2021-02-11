@@ -22,7 +22,7 @@ class ModelChecker;
 class actionlist;
 class Node;
 class NodeStack;
-
+class PMVerifier;
 struct bug_message;
 
 typedef ModelList<ModelAction *> simple_action_list_t;
