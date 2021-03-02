@@ -4,13 +4,13 @@ PHONY += directories
 MKDIR_P = mkdir -p
 OBJ_DIR = bin
 
-CPP_SOURCES := $(wildcard *.cc) $(wildcard API/*.cc) $(wildcard Memory/*.cc) $(wildcard Scheduler/*.cc) $(wildcard Collection/*.cc) $(wildcard Model/*.cc) $(wildcard Utils/*.cc)
+CPP_SOURCES := $(wildcard *.cc) $(wildcard API/*.cc) $(wildcard Memory/*.cc) $(wildcard Scheduler/*.cc) $(wildcard Collection/*.cc) $(wildcard Model/*.cc) $(wildcard Utils/*.cc) $(wildcard Plugins/*.cc)
 
-C_SOURCES := $(wildcard *.c) $(wildcard API/*.c) $(wildcard Memory/*.c) $(wildcard Scheduler/*.c) $(wildcard Collection/*.c) $(wildcard Model/*.c) $(wildcard Utils/*.c)
+C_SOURCES := $(wildcard *.c) $(wildcard API/*.c) $(wildcard Memory/*.c) $(wildcard Scheduler/*.c) $(wildcard Collection/*.c) $(wildcard Model/*.c) $(wildcard Utils/*.c) $(wildcard Plugins/*.c)
 
 J_SOURCES := $(wildcard *.java)
 
-HEADERS := $(wildcard *.h) $(wildcard API/*.h) $(wildcard Memory/*.h) $(wildcard Scheduler/*.h) $(wildcard Collection/*.h) $(wildcard Model/*.h) $(wildcard Utils/*.h)
+HEADERS := $(wildcard *.h) $(wildcard API/*.h) $(wildcard Memory/*.h) $(wildcard Scheduler/*.h) $(wildcard Collection/*.h) $(wildcard Model/*.h) $(wildcard Utils/*.h) $(wildcard Plugins/*.h)
 
 
 OBJECTS := $(CPP_SOURCES:%.cc=$(OBJ_DIR)/%.o) $(C_SOURCES:%.c=$(OBJ_DIR)/%.o)
@@ -18,7 +18,7 @@ OBJECTS := $(CPP_SOURCES:%.cc=$(OBJ_DIR)/%.o) $(C_SOURCES:%.c=$(OBJ_DIR)/%.o)
 J_OBJECTS := $(J_SOURCES:%.java=$(OBJ_DIR)/%.class)
 
 CXXFLAGS := -std=c++1y -pthread
-CFLAGS += -I. -IAPI -IMemory -IScheduler -ICollection -IModel -IUtils
+CFLAGS += -I. -IAPI -IMemory -IScheduler -ICollection -IModel -IUtils -IPlugins
 LDFLAGS := -ldl -lrt -rdynamic -lpthread -g
 SHARED := -shared
 
@@ -42,6 +42,7 @@ ${OBJ_DIR}:
 	${MKDIR_P} ${OBJ_DIR}/Scheduler
 	${MKDIR_P} ${OBJ_DIR}/Collection
 	${MKDIR_P} ${OBJ_DIR}/Model
+	${MKDIR_P} ${OBJ_DIR}/Plugins
 
 debug: CFLAGS += -DCONFIG_DEBUG
 debug: all

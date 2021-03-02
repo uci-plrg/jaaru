@@ -3,7 +3,7 @@
 /**
  * This simple analysis updates the endRange for all threads when an execution crashes. 
  */ 
-void PMVerifier::crash(ModelExecution * execution) {
+void PMVerifier::crashAnalysis(ModelExecution * execution) {
     
 }
 
@@ -12,7 +12,7 @@ void PMVerifier::crash(ModelExecution * execution) {
  * @return true if the analysis cannot find any conflicts.
  */
 bool PMVerifier::mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set) {
-
+    return false;
 }
 
 /**
@@ -23,6 +23,5 @@ bool PMVerifier::mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *
  * @return true if the analysis cannot find any conflicts.
  */
 bool PMVerifier::readFromWriteAnalysis(ModelExecution *execution, ModelAction *write) {
-
-
+    return false;
 }

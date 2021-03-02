@@ -2,7 +2,8 @@
 #define PLUGIN_H
 #include "classlist.h"
 
-void registerVerifier();
-PMVerifier *getPMVerifier();
+void registerAnalyses();
+void enableAnalysis(const char *name);
+ModelVector<Analysis*> *getInstalledAnalyses();
 
 #endif
