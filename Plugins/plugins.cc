@@ -1,5 +1,6 @@
 #include "plugins.h"
 #include "pmverifier.h"
+#include "persistrace.h"
 
 PMVerifier * pmverifier = NULL;
 ModelVector<Analysis *>* registeredAnalyses = NULL;
@@ -9,6 +10,7 @@ inline void registerAnalyses() {
     registeredAnalyses = new ModelVector<Analysis *>();
     installedAnalyses = new ModelVector<Analysis *>();
     registeredAnalyses->push_back( new PMVerifier());
+    registeredAnalyses->push_back( new PersistRace());
 }
 
 inline void enableAnalysis(const char *name) {
