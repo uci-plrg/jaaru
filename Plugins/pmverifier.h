@@ -13,6 +13,9 @@ public:
     void mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set);
     void readFromWriteAnalysis(ModelExecution *execution, ModelAction *write);
     const char * getName() {return PMVERIFIERNAME;}
+    void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush){}
+    void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action){}
+    void executeLoadAnalysis(ModelExecution *execution, ModelAction *write){}
 private:
     HashTable<ModelExecution*, ModelVector<Range *>, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
 };
