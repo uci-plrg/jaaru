@@ -104,13 +104,14 @@ void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelActio
 }
 
 /**
- * 
+ * If wrt is executed by the current execution, update the BeginRange clock vector for that execution.
  * 
  */
 void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *wrt) {
     ASSERT(wrt->is_write());
     CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, wrt);
-    if(execution != model->get_execution()) {
+    ModelExecution *currExecution = model->get_execution();
+    if(execution != currExecution) {
         // Reading from pre-crash
         if(wrt->is_rmw()){
             if(clmetadata->getLastFlush() < wrt->get_seq_number()) {
@@ -126,14 +127,15 @@ void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *
                 exit(-1);
             }
         }
+    } else {
+        // Reading from current execution: Updating beginRange to record the progress of threads
+        ClockVector* beginRange = beginRangeCV.get(currExecution);
+        if(beginRange == NULL){
+            beginRange = new ClockVector(NULL, wrt);
+            beginRangeCV.put(currExecution, beginRange);
+        }
+        beginRange->merge(wrt->get_cv());
     }
-    // Updating beginRange to record the progress of threads
-    ClockVector* beginRange = beginRangeCV.get(execution);
-    if(beginRange == NULL){
-        beginRange = new ClockVector(NULL, wrt);
-        beginRangeCV.put(execution, beginRange);
-    }
-    beginRange->merge(wrt->get_cv());
 }
 
 CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execution, ModelAction *action) {

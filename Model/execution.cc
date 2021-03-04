@@ -387,6 +387,10 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
  */
 void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
 	ASSERT(curr->is_read());
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0; i<analyses->size(); i++) {
+		(*analyses)[i]->readFromWriteAnalysis((*rfarray)[i].p1, (*rfarray)[i].p2);
+	}
 	uint64_t value = 0;
 	// Check to read from non-atomic stores if there is one
 	void * address = curr->get_location();
