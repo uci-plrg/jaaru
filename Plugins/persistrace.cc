@@ -11,6 +11,16 @@ lastFlush(0)
 {
 }
 
+bool CacheLineMetaData::flushExistsBeforeCV(ClockVector *cv) {
+    for(uint j=0; j< flushvector.size(); j++) {
+        ModelAction *existingFlush = flushvector[j];
+        if(existingFlush && cv->synchronized_since(existingFlush)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool CacheLineMetaData::flushExistsBeforeFence(modelclock_t flush_seq) {
     for(uint j=0; j< flushvector.size(); j++) {
         ModelAction *existingFlush = flushvector[j];
@@ -97,26 +107,33 @@ void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelActio
  * 
  * 
  */
-void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *write) {
-    CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, write);
+void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *wrt) {
+    ASSERT(wrt->is_write());
+    CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, wrt);
     if(execution != model->get_execution()) {
         // Reading from pre-crash
-        if(write->is_rmw()){
-            if(clmetadata->getLastFlush() < write->get_seq_number()) {
-                clmetadata->setLastFlush(write->get_seq_number());
+        if(wrt->is_rmw()){
+            if(clmetadata->getLastFlush() < wrt->get_seq_number()) {
+                clmetadata->setLastFlush(wrt->get_seq_number());
             }
         } else {
             // Check for persistency race
-
+            ClockVector* brCV = beginRangeCV.get(execution);
+            bool flushExist = clmetadata->flushExistsBeforeCV(brCV);
+            if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
+                ERROR("There is a persistency race for the following write:");
+                wrt->print();
+                exit(-1);
+            }
         }
     }
     // Updating beginRange to record the progress of threads
     ClockVector* beginRange = beginRangeCV.get(execution);
     if(beginRange == NULL){
-        beginRange = new ClockVector(NULL, write);
+        beginRange = new ClockVector(NULL, wrt);
         beginRangeCV.put(execution, beginRange);
     }
-    beginRange->merge(write->get_cv());
+    beginRange->merge(wrt->get_cv());
 }
 
 CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execution, ModelAction *action) {
@@ -124,7 +141,7 @@ CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execu
 }
 
 CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execution, uintptr_t cacheid) {
-    MetaDataKey meta {execution, cacheid};
+    MetaDataKey meta (execution, cacheid);
     CacheLineMetaData *clmetadata = (CacheLineMetaData *)cachelineMetaSet.get(&meta);
     if(clmetadata == NULL) {
         clmetadata = new CacheLineMetaData(execution, cacheid);

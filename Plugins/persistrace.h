@@ -23,6 +23,7 @@ public:
     ModelAction **getLastWrites() {return lastWrites;}
     bool flushExistsAfterWrite(ModelAction *write);
     bool flushExistsBeforeFence(modelclock_t flush_seq);
+    bool flushExistsBeforeCV(ClockVector *cv);
     void updateFlushVector(ModelAction *flush);
 private:
     modelclock_t lastFlush;

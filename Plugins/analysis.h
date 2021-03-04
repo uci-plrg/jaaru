@@ -13,6 +13,9 @@ public:
     virtual void readFromWriteAnalysis(ModelExecution *execution, ModelAction *write) = 0;
     virtual void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) = 0;
     virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
+    void ERROR(const char * message) {
+        model_print("%s reports:\n%s", getName(), message);
+    }
 };
 
 #endif
