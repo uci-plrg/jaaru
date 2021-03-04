@@ -49,6 +49,12 @@ void CacheLineMetaData::updateFlushVector(ModelAction *flush){
     flushvector[flush->get_tid()] = flush;
 }
 
+void CacheLineMetaData::mergeLastFlush(modelclock_t lf){
+    if(lf > lastFlush) {
+        lastFlush = lf;
+    }
+}
+
 PersistRace::~PersistRace(){
     auto iter = cachelineMetaSet.iterator();
     while(iter->hasNext()){
@@ -105,7 +111,7 @@ void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelActio
 
 /**
  * If wrt is executed by the current execution, update the BeginRange clock vector for that execution.
- * 
+ * If wrt is atomic and happended in pre-crash update lastFlush metadata
  */
 void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *wrt) {
     ASSERT(wrt->is_write());
@@ -115,7 +121,7 @@ void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *
         // Reading from pre-crash
         if(wrt->is_rmw()){
             if(clmetadata->getLastFlush() < wrt->get_seq_number()) {
-                clmetadata->setLastFlush(wrt->get_seq_number());
+                clmetadata->mergeLastFlush(wrt->get_seq_number());
             }
         } else {
             // Check for persistency race

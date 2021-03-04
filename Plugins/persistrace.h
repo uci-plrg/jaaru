@@ -19,7 +19,7 @@ public:
     CacheLineMetaData(ModelExecution *exec, uintptr_t id);
     ModelVector<ModelAction*> * getFlushVector() { return &flushvector;}
     modelclock_t getLastFlush() {return lastFlush;}
-    void setLastFlush(modelclock_t lf) {lastFlush = lf;}
+    void mergeLastFlush(modelclock_t lf);
     ModelAction **getLastWrites() {return lastWrites;}
     bool flushExistsAfterWrite(ModelAction *write);
     bool flushExistsBeforeFence(modelclock_t flush_seq);
