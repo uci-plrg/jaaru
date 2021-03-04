@@ -89,8 +89,8 @@ void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelActio
 }
 
 /**
- * 
- * 
+ * This analysis tracks the most recent write to each address within the cacheline.
+ * Note: write operation can write in two cache lines.
  */
 void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) {
     if(action->is_write()) {

@@ -4,6 +4,8 @@
 #include "model.h"
 #include "execution.h"
 #include "datarace.h"
+#include "analysis.h"
+#include "plugins.h"
 
 ThreadMemory::ThreadMemory() :
 	storeBuffer(),
@@ -75,6 +77,10 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	} else {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
 		ASSERT(0);
+	}
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0; i<analyses->size(); i++) {
+		(*analyses)[i]->evictStoreBufferAnalysis(model->get_execution(), act);
 	}
 	return false;
 }
