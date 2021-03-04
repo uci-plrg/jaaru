@@ -110,8 +110,12 @@ void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelActio
 }
 
 /**
- * If wrt is executed by the current execution, update the BeginRange clock vector for that execution.
- * If wrt is atomic and happended in pre-crash update lastFlush metadata
+ * This analysis performs 3 following tasks:
+ * (1) If wrt is executed by the current execution, update the BeginRange clock vector for that execution.
+ * (2) If wrt is atomic and happended in pre-crash, merge it lastFlush metadata.
+ * (3) If wrt is non-atomic and happened in pre-crash, there is a persistency race if:
+ *      1) write's seq_number > cacheline's last flush
+ *      2) there is no flush in flushmap that happened before BeginRange clock vector of pre-crash execution.
  */
 void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *wrt) {
     ASSERT(wrt->is_write());
@@ -128,7 +132,7 @@ void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *
             ClockVector* brCV = beginRangeCV.get(execution);
             bool flushExist = clmetadata->flushExistsBeforeCV(brCV);
             if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
-                ERROR("There is a persistency race for the following write:");
+                ERROR("There is a persistency race in reading from the following write:");
                 wrt->print();
                 exit(-1);
             }
@@ -149,8 +153,8 @@ CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execu
 }
 
 CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execution, uintptr_t cacheid) {
-    MetaDataKey meta (execution, cacheid);
-    CacheLineMetaData *clmetadata = (CacheLineMetaData *)cachelineMetaSet.get(&meta);
+    MetaDataKey key (execution, cacheid);
+    CacheLineMetaData *clmetadata = (CacheLineMetaData *)cachelineMetaSet.get(&key);
     if(clmetadata == NULL) {
         clmetadata = new CacheLineMetaData(execution, cacheid);
         cachelineMetaSet.add(clmetadata);
