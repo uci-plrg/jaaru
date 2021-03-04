@@ -5,18 +5,47 @@
 #include "action.h"
 #include "execution.h"
 
-CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, ModelAction *action):
-execution(exec),
-cacheID(getCacheID(action->get_location())),
+CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, uintptr_t id): 
+MetaDataKey(exec, id),
 lastFlush(0)
 {
 }
 
-CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, uintptr_t cid):
-execution(exec),
-cacheID(cid),
-lastFlush(0)
-{
+bool CacheLineMetaData::flushExistsBeforeFence(modelclock_t flush_seq) {
+    for(uint j=0; j< flushvector.size(); j++) {
+        ModelAction *existingFlush = flushvector[j];
+        //TODO: Need to change it to happen-before not TSO-before
+        if(existingFlush && existingFlush->get_seq_number() < flush_seq) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CacheLineMetaData::flushExistsAfterWrite(ModelAction *write){
+    for(uint j=0; j< flushvector.size(); j++) {
+        ModelAction *existingFlush = flushvector[j];
+        if(existingFlush && write->happens_before(existingFlush)){
+            return true;
+        }
+    }
+    return false;
+}
+
+void CacheLineMetaData::updateFlushVector(ModelAction *flush){
+    unsigned int i = flush->get_tid();
+	if (i >= flushvector.size())
+		flushvector.resize(i + 1);
+    flushvector[flush->get_tid()] = flush;
+}
+
+PersistRace::~PersistRace(){
+    auto iter = cachelineMetaSet.iterator();
+    while(iter->hasNext()){
+        delete (CacheLineMetaData*)iter->next();
+    }
+    delete iter;
+    beginRangeCV.resetanddelete();
 }
 
 /**
@@ -27,30 +56,15 @@ void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelActio
     modelclock_t flush_seq = flush->get_cv()? flush->get_seq_number(): execution->get_curr_seq_num() + 1;
     CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, flush);
     for(uint i=0; i< CACHELINESIZE; i++) {
-        ModelAction *write = clmetadata->lastWrites[i];
+        ModelAction *write = clmetadata->getLastWrites()[i];
         if(write && write->get_seq_number() <= flush_seq) {
-            bool flushExist = false;
-            for(uint j=0; j< clmetadata->flushvector.size(); j++) {
-                ModelAction *existingFlush = clmetadata->flushvector[j];
-                if(existingFlush && write->happens_before(existingFlush)){
-                    flushExist = true;
-                    break;
-                }
-            }
+            bool flushExist = clmetadata->flushExistsAfterWrite(write);
             if(!flushExist && write->happens_before(flush) ) {
-                clmetadata->flushvector[flush->get_tid()] = flush;
+                clmetadata->updateFlushVector(flush);
             } else if(flushExist) {
-                bool happenBefore = false;
-                for(uint j=0; j< clmetadata->flushvector.size(); j++) {
-                    ModelAction *existingFlush = clmetadata->flushvector[j];
-                    //TODO: Need to change it to happen-before not TSO-before
-                    if(existingFlush && existingFlush->get_seq_number() < flush_seq) {
-                        happenBefore = true;
-                        break;
-                    }
-                }
-                if(!happenBefore) {
-                    clmetadata->flushvector[flush->get_tid()] = flush;
+                bool hbfence = clmetadata->flushExistsBeforeFence(flush_seq);
+                if(!hbfence) {
+                    clmetadata->updateFlushVector(flush);
                 }
             }
         }
@@ -66,14 +80,15 @@ void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelActio
     if(action->is_write()) {
         CacheLineMetaData * clmetadata = getOrCreateCacheLineMeta(execution, action);
         uintptr_t addr = (uintptr_t)action->get_location();
+        uintptr_t currCacheID = getCacheID(action->get_location());
         uint wsize = action->getOpSize();
         for(uintptr_t currAddr = addr; currAddr < addr + wsize; currAddr++) {
-            if(getCacheID((void*)currAddr) != clmetadata->cacheID){
+            if(getCacheID((void*)currAddr) != currCacheID){
                 // Modifying the next cache line
                 clmetadata = getOrCreateCacheLineMeta(execution, getCacheID((void*)currAddr));
             }
             uint32_t index = currAddr & (CACHELINESIZE -1);
-            clmetadata->lastWrites[index] = action;
+            clmetadata->getLastWrites()[index] = action;
         }
     }
 }
@@ -87,36 +102,42 @@ void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *
     if(execution != model->get_execution()) {
         // Reading from pre-crash
         if(write->is_rmw()){
-            if(clmetadata->lastFlush < write->get_seq_number()) {
-                clmetadata->lastFlush = write->get_seq_number();
+            if(clmetadata->getLastFlush() < write->get_seq_number()) {
+                clmetadata->setLastFlush(write->get_seq_number());
             }
         } else {
             // Check for persistency race
+
         }
     }
     // Updating beginRange to record the progress of threads
     ClockVector* beginRange = beginRangeCV.get(execution);
     if(beginRange == NULL){
         beginRange = new ClockVector(NULL, write);
+        beginRangeCV.put(execution, beginRange);
     }
     beginRange->merge(write->get_cv());
 }
 
 CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execution, ModelAction *action) {
-    CacheLineMetaData meta(execution, action);
-    CacheLineMetaData *clmetadata = cachelineMetaSet.get(&meta);
+    return getOrCreateCacheLineMeta(execution, getCacheID(action->get_location()));
+}
+
+CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execution, uintptr_t cacheid) {
+    MetaDataKey meta {execution, cacheid};
+    CacheLineMetaData *clmetadata = (CacheLineMetaData *)cachelineMetaSet.get(&meta);
     if(clmetadata == NULL) {
-        clmetadata = new CacheLineMetaData(execution, action);
+        clmetadata = new CacheLineMetaData(execution, cacheid);
         cachelineMetaSet.add(clmetadata);
     }
     return clmetadata;
 }
 
 
-unsigned int hashCacheLineKey(CacheLineMetaData *clm) {
-    return ((uintptr_t)clm->execution >> 4) ^ ((uintptr_t)clm->cacheID >> 6);
+unsigned int hashCacheLineKey(MetaDataKey *clm) {
+    return ((uintptr_t)clm->getExecution() >> 4) ^ ((uintptr_t)clm->getCacheID() >> 6);
 }
 
-bool equalCacheLineKey(CacheLineMetaData *clm1, CacheLineMetaData *clm2) {
-    return (clm1 && clm2 && clm1->execution == clm2->execution && clm1->cacheID == clm2->cacheID) || (clm1 == clm2 && clm1 == NULL);
+bool equalCacheLineKey(MetaDataKey *clm1, MetaDataKey *clm2) {
+    return (clm1 && clm2 && clm1->getExecution() == clm2->getExecution() && clm1->getCacheID() == clm2->getCacheID()) || (clm1 == clm2 && clm1 == NULL);
 }

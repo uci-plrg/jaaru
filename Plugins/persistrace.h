@@ -4,23 +4,39 @@
 #include "analysis.h"
 #include "cacheline.h"
 
-class CacheLineMetaData {
+class MetaDataKey {
 public:
-    CacheLineMetaData(ModelExecution* , ModelAction *);
-    CacheLineMetaData(ModelExecution* , uintptr_t);
+    MetaDataKey(ModelExecution *exec, uintptr_t id): execution(exec), cacheID(id) {}
+    ModelExecution *getExecution() {return execution;}
+    uintptr_t getCacheID() {return cacheID;}
+protected:
     ModelExecution *execution;
     uintptr_t cacheID;
+};
+
+class CacheLineMetaData: public MetaDataKey {
+public:
+    CacheLineMetaData(ModelExecution *exec, uintptr_t id);
+    ModelVector<ModelAction*> * getFlushVector() { return &flushvector;}
+    modelclock_t getLastFlush() {return lastFlush;}
+    void setLastFlush(modelclock_t lf) {lastFlush = lf;}
+    ModelAction **getLastWrites() {return lastWrites;}
+    bool flushExistsAfterWrite(ModelAction *write);
+    bool flushExistsBeforeFence(modelclock_t flush_seq);
+    void updateFlushVector(ModelAction *flush);
+private:
     modelclock_t lastFlush;
     ModelVector<ModelAction*> flushvector;
     ModelAction *lastWrites [CACHELINESIZE]= {NULL};
 };
 
-unsigned int hashCacheLineMeta(CacheLineMetaData *);
-bool equalCacheLineMeta(CacheLineMetaData *, CacheLineMetaData *);
+unsigned int hashCacheLineMeta(MetaDataKey *);
+bool equalCacheLineMeta(MetaDataKey *, MetaDataKey *);
 
 class PersistRace: public Analysis {
 public:
     PersistRace() {}
+    ~PersistRace();
     void crashAnalysis(ModelExecution * execution){}
     void mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set){}
     const char * getName() {return PERSISTRACENAME;}
@@ -28,10 +44,10 @@ public:
     void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action);
     void readFromWriteAnalysis(ModelExecution *execution, ModelAction *write);
 private:
-    CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
+    CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
 
-    HashSet<CacheLineMetaData *, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineMeta, equalCacheLineMeta> cachelineMetaSet;
+    HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineMeta, equalCacheLineMeta> cachelineMetaSet;
     HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
 
 };
