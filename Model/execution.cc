@@ -680,14 +680,14 @@ void ModelExecution::persistCacheLine(CacheLine *cacheline, ModelAction *clflush
 bool ModelExecution::evictCacheOp(ModelAction *cacheop) {
 	if (shouldInsertCrash())
 		return true;
-	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->evictFlushBufferAnalysis(this, cacheop);
-	}
 	remove_action_from_store_buffer(cacheop);
 	void * loc = cacheop->get_location();
 	CacheLine *cacheline = getCacheLine(loc);
 	persistCacheLine(cacheline, cacheop);
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0; i<analyses->size(); i++) {
+		(*analyses)[i]->evictFlushBufferAnalysis(this, cacheop);
+	}
 	return false;
 }
 

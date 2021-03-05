@@ -21,27 +21,6 @@ bool CacheLineMetaData::flushExistsBeforeCV(ClockVector *cv) {
     return false;
 }
 
-bool CacheLineMetaData::flushExistsBeforeFence(modelclock_t flush_seq) {
-    for(uint j=0; j< flushvector.size(); j++) {
-        ModelAction *existingFlush = flushvector[j];
-        //TODO: Need to change it to happen-before not TSO-before
-        if(existingFlush && existingFlush->get_seq_number() < flush_seq) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CacheLineMetaData::flushExistsAfterWrite(ModelAction *write){
-    for(uint j=0; j< flushvector.size(); j++) {
-        ModelAction *existingFlush = flushvector[j];
-        if(existingFlush && write->happens_before(existingFlush)){
-            return true;
-        }
-    }
-    return false;
-}
-
 void CacheLineMetaData::updateFlushVector(ModelAction *flush){
     unsigned int i = flush->get_tid();
 	if (i >= flushvector.size())
@@ -65,24 +44,20 @@ PersistRace::~PersistRace(){
 }
 
 /**
- * 
- * 
+ * This is called when a clflush evicts from store buffer, or a clflushopt is evicted from flush buffer
+ * because of existence of RMW, sfence, mfence, locked operations, SC writes.
  */
 void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) {
-    modelclock_t flush_seq = flush->get_cv()? flush->get_seq_number(): execution->get_curr_seq_num() + 1;
+    ASSERT(flush->is_cache_op() && flush->get_cv());
     CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, flush);
+    ModelAction *prevWrite = NULL;
     for(uint i=0; i< CACHELINESIZE; i++) {
         ModelAction *write = clmetadata->getLastWrites()[i];
-        if(write && write->get_seq_number() <= flush_seq) {
-            bool flushExist = clmetadata->flushExistsAfterWrite(write);
-            if(!flushExist && write->happens_before(flush) ) {
+        if(write && prevWrite != write && write->get_seq_number() <= flush->get_seq_number()) {
+            if(!clmetadata->flushExistsBeforeCV(flush->get_cv())) {
                 clmetadata->updateFlushVector(flush);
-            } else if(flushExist) {
-                bool hbfence = clmetadata->flushExistsBeforeFence(flush_seq);
-                if(!hbfence) {
-                    clmetadata->updateFlushVector(flush);
-                }
             }
+            prevWrite = write;
         }
     }
 
@@ -143,8 +118,9 @@ void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *
         if(beginRange == NULL){
             beginRange = new ClockVector(NULL, wrt);
             beginRangeCV.put(currExecution, beginRange);
+        } else {
+            beginRange->merge(wrt->get_cv());
         }
-        beginRange->merge(wrt->get_cv());
     }
 }
 
