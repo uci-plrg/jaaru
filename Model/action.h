@@ -132,6 +132,7 @@ public:
 	bool is_nonatomic_write() const;
 	bool is_cache_op() const;
 	bool is_clflush() const;
+	bool is_fence() const;
 	bool is_mfence() const;
 	bool is_sfence() const;
 	bool is_yield() const;

@@ -45,21 +45,27 @@ PersistRace::~PersistRace(){
 
 /**
  * This is called when a clflush evicts from store buffer, or a clflushopt is evicted from flush buffer
- * because of existence of RMW, sfence, mfence, locked operations, SC writes.
+ * because of existence of RMW, sfence, mfence, locked operations, SC writes. For clflushopt, we wait until
+ * the fence operation is executed, then we start processing them.
  */
 void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) {
     ASSERT(flush->is_cache_op() && flush->get_cv());
-    CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, flush);
-    ModelAction *prevWrite = NULL;
-    for(uint i=0; i< CACHELINESIZE; i++) {
-        ModelAction *write = clmetadata->getLastWrites()[i];
-        if(write && prevWrite != write && write->get_seq_number() <= flush->get_seq_number()) {
-            if(!clmetadata->flushExistsBeforeCV(flush->get_cv())) {
-                clmetadata->updateFlushVector(flush);
+    if(flush->is_clflush()) {
+        CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, flush);
+        ModelAction *prevWrite = NULL;
+        for(uint i=0; i< CACHELINESIZE; i++) {
+            ModelAction *write = clmetadata->getLastWrites()[i];
+            if(write && prevWrite != write && write->get_seq_number() <= flush->get_seq_number()) {
+                if(!clmetadata->flushExistsBeforeCV(flush->get_cv())) {
+                    clmetadata->updateFlushVector(flush);
+                }
+                prevWrite = write;
             }
-            prevWrite = write;
         }
+    } else {
+        clwblist.push_back(flush);
     }
+    
 
 }
 
@@ -136,6 +142,24 @@ CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execu
         cachelineMetaSet.add(clmetadata);
     }
     return clmetadata;
+}
+
+void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction *fence) {
+    ASSERT(fence->is_fence() && fence->get_cv() != NULL);
+    while(clwblist.size() > 0) {
+		ModelAction *clwb = clwblist.pop_front();
+        ASSERT(clwb->get_seq_number() < fence->get_seq_number());
+        CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, clwb);
+        for(uint i=0; i< CACHELINESIZE; i++) {
+            ModelAction *write = clmetadata->getLastWrites()[i];
+            modelclock_t lastWriteClk = clwb->getLastWrite()->get_seq_number();
+            if(write && write->get_seq_number() <= lastWriteClk) {
+                if(!clmetadata->flushExistsBeforeCV(fence->get_cv())) {
+                    clmetadata->updateFlushVector(fence);
+                }
+            }
+        }
+	}
 }
 
 

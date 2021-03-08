@@ -42,13 +42,14 @@ public:
     void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush);
     void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action);
     void readFromWriteAnalysis(ModelExecution *execution, ModelAction *write);
+    void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 private:
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
 
     HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineMeta, equalCacheLineMeta> cachelineMetaSet;
     HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
-
+    SnapList<ModelAction *> clwblist;
 };
 
 #endif

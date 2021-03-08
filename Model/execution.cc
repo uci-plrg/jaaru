@@ -964,6 +964,12 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	} else if (curr->is_exit()) {
 		setFinished();
 	}
+	if(curr->is_fence()){
+		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+		for(uint i=0; i<analyses->size(); i++) {
+			(*analyses)[i]->fenceExecutionAnalysis(this, curr);
+		}
+	}
 	return curr;
 }
 

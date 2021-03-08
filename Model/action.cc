@@ -278,6 +278,35 @@ bool ModelAction::is_cache_op() const
 	return type == ACTION_CLFLUSH || type == ACTION_CLFLUSHOPT;
 }
 
+bool ModelAction::is_fence() const
+{
+	if(is_seqcst()) {
+		return true;
+	}
+	switch(type)
+	{
+	case ATOMIC_RMW:
+	case ATOMIC_RMWR:
+	case CACHE_MFENCE:
+	case CACHE_SFENCE:
+	case ATOMIC_CAS_FAILED:
+	case PTHREAD_CREATE:
+	case PTHREAD_JOIN:
+	case THREAD_CREATE:
+	case THREAD_JOIN:
+	case ATOMIC_LOCK:
+	case ATOMIC_TRYLOCK:
+	case ATOMIC_UNLOCK:
+	case ATOMIC_NOTIFY_ONE:
+	case ATOMIC_NOTIFY_ALL:
+	case ATOMIC_WAIT:
+	case ATOMIC_TIMEDWAIT:
+		return true;
+	default:
+		return false;
+	}
+}
+
 bool ModelAction::is_mfence() const
 {
 	return type == CACHE_MFENCE;
