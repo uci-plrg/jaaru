@@ -63,7 +63,7 @@ void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelActio
             }
         }
     } else {
-        clwblist.push_back(flush);
+        pendingclwbs.push_back(flush);
     }
     
 
@@ -146,8 +146,8 @@ CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execu
 
 void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction *fence) {
     ASSERT(fence->is_fence() && fence->get_cv() != NULL);
-    while(clwblist.size() > 0) {
-		ModelAction *clwb = clwblist.pop_front();
+    for(uint i=0; i<pendingclwbs.size(); i++) {
+        ModelAction *clwb = pendingclwbs[i];
         ASSERT(clwb->get_seq_number() < fence->get_seq_number());
         CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, clwb);
         for(uint i=0; i< CACHELINESIZE; i++) {
@@ -159,7 +159,8 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
                 }
             }
         }
-	}
+    }
+    pendingclwbs.clear();
 }
 
 
