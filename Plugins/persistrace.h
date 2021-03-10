@@ -4,6 +4,8 @@
 #include "analysis.h"
 #include "cacheline.h"
 
+#define WRITEINDEX(addr) (addr & (CACHELINESIZE -1))
+
 class MetaDataKey {
 public:
     MetaDataKey(ModelExecution *exec, uintptr_t id): execution(exec), cacheID(id) {}
@@ -17,15 +19,14 @@ protected:
 class CacheLineMetaData: public MetaDataKey {
 public:
     CacheLineMetaData(ModelExecution *exec, uintptr_t id);
-    ModelVector<ModelAction*> * getFlushVector() { return &flushvector;}
     modelclock_t getLastFlush() {return lastFlush;}
     void mergeLastFlush(modelclock_t lf);
     ModelAction **getLastWrites() {return lastWrites;}
-    bool flushExistsBeforeCV(ClockVector *cv);
-    void updateFlushVector(ModelAction *flush);
+    bool flushExistsBeforeCV(uint writeIndex, ClockVector *cv);
+    void updateFlushVector(uint writeIndex, ModelAction *flush);
 private:
     modelclock_t lastFlush;
-    ModelVector<ModelAction*> flushvector;
+    ModelVector<ModelAction*> flushvector [CACHELINESIZE];
     ModelAction *lastWrites [CACHELINESIZE]= {NULL};
 };
 
@@ -37,11 +38,11 @@ public:
     PersistRace() {}
     ~PersistRace();
     void crashAnalysis(ModelExecution * execution){}
-    void mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set){}
+    void mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
     const char * getName() {return PERSISTRACENAME;}
     void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush);
     void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action);
-    void readFromWriteAnalysis(ModelExecution *execution, ModelAction *write);
+    void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
     void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 private:
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);

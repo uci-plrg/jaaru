@@ -10,7 +10,7 @@ void PMVerifier::crashAnalysis(ModelExecution * execution) {
 /**
  * This analysis checks all writes that the execution may possibly read from are in range.
  */
-void PMVerifier::mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set) {
+void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set) {
 }
 
 /**
@@ -19,5 +19,5 @@ void PMVerifier::mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *
  * if the write was a normal write, it updates the threads' endRanges so they don't read from out of range
  * writes.
  */
-void PMVerifier::readFromWriteAnalysis(ModelExecution *execution, ModelAction *write) {
+void PMVerifier::readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
 }

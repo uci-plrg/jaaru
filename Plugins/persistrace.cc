@@ -11,9 +11,9 @@ lastFlush(0)
 {
 }
 
-bool CacheLineMetaData::flushExistsBeforeCV(ClockVector *cv) {
-    for(uint j=0; j< flushvector.size(); j++) {
-        ModelAction *existingFlush = flushvector[j];
+bool CacheLineMetaData::flushExistsBeforeCV(uint writeIndex, ClockVector *cv) {
+    for(uint j=0; j< flushvector[writeIndex].size(); j++) {
+        ModelAction *existingFlush = flushvector[writeIndex][j];
         if(existingFlush && cv->synchronized_since(existingFlush)) {
             return true;
         }
@@ -21,11 +21,11 @@ bool CacheLineMetaData::flushExistsBeforeCV(ClockVector *cv) {
     return false;
 }
 
-void CacheLineMetaData::updateFlushVector(ModelAction *flush){
+void CacheLineMetaData::updateFlushVector(uint writeIndex, ModelAction *flush){
     unsigned int i = flush->get_tid();
-	if (i >= flushvector.size())
-		flushvector.resize(i + 1);
-    flushvector[flush->get_tid()] = flush;
+	if (i >= flushvector[writeIndex].size())
+		flushvector[writeIndex].resize(i + 1);
+    flushvector[writeIndex][flush->get_tid()] = flush;
 }
 
 void CacheLineMetaData::mergeLastFlush(modelclock_t lf){
@@ -56,8 +56,8 @@ void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelActio
         for(uint i=0; i< CACHELINESIZE; i++) {
             ModelAction *write = clmetadata->getLastWrites()[i];
             if(write && prevWrite != write && write->get_seq_number() <= flush->get_seq_number()) {
-                if(!clmetadata->flushExistsBeforeCV(flush->get_cv())) {
-                    clmetadata->updateFlushVector(flush);
+                if(!clmetadata->flushExistsBeforeCV(i,flush->get_cv())) {
+                    clmetadata->updateFlushVector(i,flush);
                 }
                 prevWrite = write;
             }
@@ -84,48 +84,68 @@ void PersistRace::evictStoreBufferAnalysis(ModelExecution *execution, ModelActio
                 // Modifying the next cache line
                 clmetadata = getOrCreateCacheLineMeta(execution, getCacheID((void*)currAddr));
             }
-            uint32_t index = currAddr & (CACHELINESIZE -1);
+            uint32_t index = WRITEINDEX(currAddr);
             clmetadata->getLastWrites()[index] = action;
         }
     }
 }
 
 /**
- * This analysis performs 3 following tasks:
- * (1) If wrt is executed by the current execution, update the BeginRange clock vector for that execution.
- * (2) If wrt is atomic and happended in pre-crash, merge it lastFlush metadata.
- * (3) If wrt is non-atomic and happened in pre-crash, there is a persistency race if:
- *      1) write's seq_number > cacheline's last flush
- *      2) there is no flush in flushmap that happened before BeginRange clock vector of pre-crash execution.
- */
-void PersistRace::readFromWriteAnalysis(ModelExecution *execution, ModelAction *wrt) {
-    ASSERT(wrt->is_write());
-    CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, wrt);
+ * This analysis checks for persistency race for any writes that 'read' variable can read from is non-atomic, there is a persistency race if:
+ *   1) write's seq_number > cacheline's last flush
+ *   2) there is no flush in flushmap that happened before BeginRange clock vector of pre-crash execution.
+ */ 
+void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set){
+    void * address = read->get_location();
     ModelExecution *currExecution = model->get_execution();
-    if(execution != currExecution) {
-        // Reading from pre-crash
-        if(wrt->is_rmw()){
-            if(clmetadata->getLastFlush() < wrt->get_seq_number()) {
-                clmetadata->mergeLastFlush(wrt->get_seq_number());
-            }
-        } else {
-            // Check for persistency race
-            ClockVector* brCV = beginRangeCV.get(execution);
-            bool flushExist = clmetadata->flushExistsBeforeCV(brCV);
-            if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
-                ERROR("There is a persistency race in reading from the following write:");
-                wrt->print();
-                exit(-1);
+    for(uint j=0; j< rf_set->size(); j++) {
+        SnapVector<Pair<ModelExecution *, ModelAction *> > * writeVec = (*rf_set)[j];
+        for(uint i=0; i<read->getOpSize(); i++ ) {
+            ModelExecution * execution = (*writeVec)[i].p1;
+            ModelAction *wrt = (*writeVec)[i].p2;
+            if(currExecution != execution && !wrt->is_rmw()){
+                // Check for persistency race
+                uintptr_t currAddr = ((uintptr_t)address) + i;
+                CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, getCacheID((void*)currAddr));
+                ClockVector* brCV = beginRangeCV.get(execution);
+                bool flushExist = clmetadata->flushExistsBeforeCV(WRITEINDEX(currAddr), brCV);
+                if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
+                    ERROR("There is a persistency race in reading from the following write:");
+                    wrt->print();
+                    exit(-1);
+                }
             }
         }
-    } else {
-        // Reading from current execution: Updating beginRange to record the progress of threads
-        ClockVector* beginRange = beginRangeCV.get(currExecution);
-        if(beginRange == NULL){
-            beginRange = new ClockVector(NULL, wrt);
-            beginRangeCV.put(currExecution, beginRange);
+    }
+}
+
+/**
+ * This analysis performs 2 following tasks:
+ * (1) If wrt is executed by the current execution, update the BeginRange clock vector for that execution.
+ * (2) If wrt is atomic and happended in pre-crash, merge it lastFlush metadata.
+ */
+void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
+	for(uint i=0; i<read->getOpSize(); i++ ) {
+		ModelExecution * execution = (*rfarray)[i].p1;
+		ModelAction *wrt = (*rfarray)[i].p2;
+        CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, wrt);
+        ModelExecution *currExecution = model->get_execution();
+        if(execution != currExecution) {
+            // Reading from pre-crash
+            if(wrt->is_rmw()){
+                if(clmetadata->getLastFlush() < wrt->get_seq_number()) {
+                    clmetadata->mergeLastFlush(wrt->get_seq_number());
+                }
+            }
         } else {
-            beginRange->merge(wrt->get_cv());
+            // Reading from current execution: Updating beginRange to record the progress of threads
+            ClockVector* beginRange = beginRangeCV.get(currExecution);
+            if(beginRange == NULL){
+                beginRange = new ClockVector(NULL, wrt);
+                beginRangeCV.put(currExecution, beginRange);
+            } else {
+                beginRange->merge(wrt->get_cv());
+            }
         }
     }
 }
@@ -154,8 +174,8 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
             ModelAction *write = clmetadata->getLastWrites()[i];
             modelclock_t lastWriteClk = clwb->getLastWrite()->get_seq_number();
             if(write && write->get_seq_number() <= lastWriteClk) {
-                if(!clmetadata->flushExistsBeforeCV(fence->get_cv())) {
-                    clmetadata->updateFlushVector(fence);
+                if(!clmetadata->flushExistsBeforeCV(i, fence->get_cv())) {
+                    clmetadata->updateFlushVector(i, fence);
                 }
             }
         }

@@ -389,7 +389,7 @@ void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecut
 	ASSERT(curr->is_read());
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->readFromWriteAnalysis((*rfarray)[i].p1, (*rfarray)[i].p2);
+		(*analyses)[i]->readFromWriteAnalysis(curr, rfarray);
 	}
 	uint64_t value = 0;
 	// Check to read from non-atomic stores if there is one
@@ -993,6 +993,10 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 void ModelExecution::handle_read(ModelAction *curr) {
 	SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set;
 	build_may_read_from(curr, &rf_set);
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0; i<analyses->size(); i++) {
+		(*analyses)[i]->mayReadFromAnalysis(curr, &rf_set);
+	}
 	int index = 0;
 	if (hasCrashed)
 		return;

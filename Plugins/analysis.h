@@ -9,8 +9,8 @@ class Analysis {
 public:
     virtual const char * getName() = 0;
     virtual void crashAnalysis(ModelExecution * execution) = 0;
-    virtual void mayReadFromAnalysis(SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set) = 0;
-    virtual void readFromWriteAnalysis(ModelExecution *execution, ModelAction *write) = 0;
+    virtual void mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *>* rf_set) = 0;
+    virtual void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) = 0;
     virtual void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) = 0;
     virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
     virtual void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
