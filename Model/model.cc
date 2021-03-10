@@ -203,7 +203,7 @@ Thread * ModelChecker::get_next_thread()
  */
 void ModelChecker::assert_bug(const char *msg, ...)
 {
-	char str[800];
+	char str[1024];
 
 	va_list ap;
 	va_start(ap, msg);

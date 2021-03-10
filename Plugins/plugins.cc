@@ -6,14 +6,14 @@ PMVerifier * pmverifier = NULL;
 ModelVector<Analysis *>* registeredAnalyses = NULL;
 ModelVector<Analysis *>* installedAnalyses = NULL;
 
-inline void registerAnalyses() {
+void registerAnalyses() {
     registeredAnalyses = new ModelVector<Analysis *>();
     installedAnalyses = new ModelVector<Analysis *>();
     registeredAnalyses->push_back( new PMVerifier());
     registeredAnalyses->push_back( new PersistRace());
 }
 
-inline void enableAnalysis(const char *name) {
+void enableAnalysis(const char *name) {
     for(uint i=0; i<registeredAnalyses->size(); i++) {
         Analysis *a = (*registeredAnalyses)[i];
         if(strcmp(a->getName(), name ) == 0) {
@@ -22,6 +22,6 @@ inline void enableAnalysis(const char *name) {
     }
 }
 
-inline ModelVector<Analysis*> *getInstalledAnalyses() {
+ModelVector<Analysis*> *getInstalledAnalyses() {
     return installedAnalyses;
 }

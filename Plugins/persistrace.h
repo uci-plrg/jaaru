@@ -30,8 +30,8 @@ private:
     ModelAction *lastWrites [CACHELINESIZE]= {NULL};
 };
 
-unsigned int hashCacheLineMeta(MetaDataKey *);
-bool equalCacheLineMeta(MetaDataKey *, MetaDataKey *);
+unsigned int hashCacheLineKey(MetaDataKey *);
+bool equalCacheLineKey(MetaDataKey *, MetaDataKey *);
 
 class PersistRace: public Analysis {
 public:
@@ -48,7 +48,7 @@ private:
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
 
-    HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineMeta, equalCacheLineMeta> cachelineMetaSet;
+    HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineKey, equalCacheLineKey> cachelineMetaSet;
     HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
     ModelVector<ModelAction *> pendingclwbs;
 };

@@ -7,8 +7,8 @@
 
 class PMVerifier: public Analysis {
 public:
-    PMVerifier();
-    ~PMVerifier();
+    PMVerifier(){}
+    ~PMVerifier(){}
     void crashAnalysis(ModelExecution * execution);
     void mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
     void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
