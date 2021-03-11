@@ -11,6 +11,8 @@ public:
     MetaDataKey(ModelExecution *exec, uintptr_t id): execution(exec), cacheID(id) {}
     ModelExecution *getExecution() {return execution;}
     uintptr_t getCacheID() {return cacheID;}
+    MEMALLOC
+
 protected:
     ModelExecution *execution;
     uintptr_t cacheID;

@@ -1,12 +1,13 @@
 #ifndef ANALYSIS_H
 #define ANALYSIS_H
 #include "classlist.h"
+#include "mymemory.h"
 
 #define PMVERIFIERNAME "PM-Verfier"
 #define PERSISTRACENAME "PersistRace"
 
-unsigned int hashErrorPosition(ModelAction *a);
-bool equalErrorPosition(ModelAction *a1, ModelAction *a2);
+unsigned int hashErrorPosition(const char *pos);
+bool equalErrorPosition(const char *p1,const char *p2);
 
 class Analysis {
 public:
@@ -17,9 +18,10 @@ public:
     virtual void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) = 0;
     virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
     virtual void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
-    void ERROR(ModelAction * action, const char * message);
+    void ERROR(ModelExecution *exec, ModelAction * action, const char * message);
+    MEMALLOC
 protected:
-    HashSet<ModelAction*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;
+    HashSet<const char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;
 };
 
 #endif

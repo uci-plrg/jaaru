@@ -274,7 +274,7 @@ void ModelExecution::add_bug(const char *msg, ...) {
 	va_start(ap, msg);
 	vsnprintf(str, sizeof(str), msg, ap);
 	va_end(ap);
-	priv->bugs.push_back(new bug_message(msg));
+	priv->bugs.push_back(new bug_message(str));
 }
 
 void ModelExecution::assert_bug(const char *msg)
