@@ -9,10 +9,6 @@ typedef struct Node
 	volatile Node *next;
 } Node;
 
-void restart(){
-	assert(0);
-}
-
 int main()
 {
 	volatile Node* b = (Node *) memalign(CACHE_LINE_SIZE, sizeof(Node));

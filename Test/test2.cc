@@ -17,10 +17,6 @@ struct foo {
 
 struct foo * ptr = NULL;
 
-extern "C" {
-__attribute__ ((visibility ("default"))) void restart();
-}
-
 void func1() {
 	ptr->x.store(1);
 	ptr->x.store(5);
