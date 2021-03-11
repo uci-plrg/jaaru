@@ -8,3 +8,4 @@ Test/clang
 Test/clang++
 Test/g++
 Test/gcc
+PMCheckOutput*

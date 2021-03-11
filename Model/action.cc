@@ -280,7 +280,7 @@ bool ModelAction::is_cache_op() const
 
 bool ModelAction::is_fence() const
 {
-	if(is_seqcst()) {
+	if(is_write() && is_seqcst()) {
 		return true;
 	}
 	switch(type)

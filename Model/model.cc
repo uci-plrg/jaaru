@@ -127,10 +127,10 @@ ModelChecker::ModelChecker() :
 	execution->add_thread(init_thread);
 	scheduler->set_current_thread(init_thread);
 	execution->setParams(&params);
+	registerAnalyses();
 	param_defaults(&params);
 	parse_options(&params);
 	initRaceDetector();
-	registerAnalyses();
 	/* Configure output redirection for the model-checker */
 	install_handler();
 }
