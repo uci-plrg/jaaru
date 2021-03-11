@@ -22,6 +22,7 @@
 #include "config.h"
 #include "pminterface.h"
 #include "persistentmemory.h"
+#include "plugins.h"
 
 ModelChecker *model = NULL;
 int inside_model = 0;
@@ -129,6 +130,7 @@ ModelChecker::ModelChecker() :
 	param_defaults(&params);
 	parse_options(&params);
 	initRaceDetector();
+	registerAnalyses();
 	/* Configure output redirection for the model-checker */
 	install_handler();
 }
