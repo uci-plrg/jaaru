@@ -108,7 +108,7 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
                 uintptr_t currAddr = ((uintptr_t)address) + i;
                 CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, getCacheID((void*)currAddr));
                 ClockVector* brCV = beginRangeCV.get(execution);
-                bool flushExist = clmetadata->flushExistsBeforeCV(WRITEINDEX(currAddr), brCV);
+                bool flushExist = brCV? clmetadata->flushExistsBeforeCV(WRITEINDEX(currAddr), brCV) : false;
                 if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
                     ERROR(execution, wrt, "Persistency Race");
                 }
@@ -135,16 +135,16 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
                     clmetadata->mergeLastFlush(wrt->get_seq_number());
                 }
             }
+        } 
+        // Updating beginRange to record the progress of threads
+        ClockVector* beginRange = beginRangeCV.get(execution);
+        if(beginRange == NULL){
+            beginRange = new ClockVector(NULL, wrt);
+            beginRangeCV.put(currExecution, beginRange);
         } else {
-            // Reading from current execution: Updating beginRange to record the progress of threads
-            ClockVector* beginRange = beginRangeCV.get(currExecution);
-            if(beginRange == NULL){
-                beginRange = new ClockVector(NULL, wrt);
-                beginRangeCV.put(currExecution, beginRange);
-            } else {
-                beginRange->merge(wrt->get_cv());
-            }
+            beginRange->merge(wrt->get_cv());
         }
+        
     }
 }
 
