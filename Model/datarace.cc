@@ -24,46 +24,49 @@ static const ModelExecution * get_execution()
 /** This function initialized the data race detector. */
 void initRaceDetector()
 {
-	root = (struct ShadowTable *)snapshot_calloc(sizeof(struct ShadowTable), 1);
-	memory_base = snapshot_calloc(sizeof(struct ShadowBaseTable) * SHADOWBASETABLES, 1);
+	root = (struct ShadowTable *)model_calloc(sizeof(struct ShadowTable), 1);
+	memory_base = model_calloc(sizeof(struct ShadowBaseTable) * SHADOWBASETABLES, 1);
 	memory_top = ((char *)memory_base) + sizeof(struct ShadowBaseTable) * SHADOWBASETABLES;
 	raceset = new RaceSet();
 }
 
-void resetSBT(struct ShadowBaseTable * ptr) {
+void resetSBT(struct ShadowBaseTable * ptr, bool resetData) {
 	for(int i=0;i <SHADOWTABLESIZE;i++) {
 		uintptr_t shadowval = (uintptr_t) ptr->array[i];
 		if (!ISSHORTRECORD(shadowval)) {
 			struct RaceRecord *record = (struct RaceRecord *)shadowval;
-			snapshot_free(record);
+			model_free(record);
 		}
 		ptr->array[i] = 0;
-	}
-}
-
-
-void resetST2(struct ShadowTable *ptr) {
-	for(int i=0;i <SHADOWTABLESIZE;i++) {
-		if (ptr->array[i] != 0) {
-			resetSBT((struct ShadowBaseTable *)ptr->array[i]);
+		if(resetData) {
+			ptr->data[i] = 0;
 		}
 	}
 }
 
-void resetST(struct ShadowTable *ptr) {
+
+void resetST2(struct ShadowTable *ptr, bool resetData) {
+	for(int i=0;i <SHADOWTABLESIZE;i++) {
+		if (ptr->array[i] != 0) {
+			resetSBT((struct ShadowBaseTable *)ptr->array[i], resetData);
+		}
+	}
+}
+
+void resetST(struct ShadowTable *ptr, bool resetData) {
 	for(int i=0;i <SHADOWTABLESIZE;i++) {
 		if (ptr->array[i] != 0) {
 #ifdef BIT48
-			resetST2((struct ShadowTable *)ptr->array[i]);
+			resetST2((struct ShadowTable *)ptr->array[i], resetData);
 #else
-			resetSBT((struct ShadowBaseTable *)ptr->array[i]);
+			resetSBT((struct ShadowBaseTable *)ptr->array[i], resetData);
 #endif
 		}
 	}
 }
 
-void resetRaceDetector() {
-	resetST(root);
+void resetRaceDetector(bool resetData) {
+	resetST(root, resetData);
 }
 
 
@@ -71,7 +74,7 @@ void resetRaceDetector() {
 void * table_calloc(size_t size)
 {
 	if ((((char *)memory_base) + size) > memory_top) {
-		return snapshot_calloc(size, 1);
+		return model_calloc(size, 1);
 	} else {
 		void *tmp = memory_base;
 		memory_base = ((char *)memory_base) + size;
@@ -187,13 +190,13 @@ static void expandRecord(uint64_t *shadow)
 	modelclock_t writeClock = WRITEVECTOR(shadowval);
 	thread_id_t writeThread = int_to_id(WRTHREADID(shadowval));
 
-	struct RaceRecord *record = (struct RaceRecord *)snapshot_calloc(1, sizeof(struct RaceRecord));
+	struct RaceRecord *record = (struct RaceRecord *)model_calloc(1, sizeof(struct RaceRecord));
 	record->writeThread = writeThread;
 	record->writeClock = writeClock;
 
 	if (readClock != 0) {
-		record->thread = (thread_id_t *)snapshot_malloc(sizeof(thread_id_t) * INITCAPACITY);
-		record->readClock = (modelclock_t *)snapshot_malloc(sizeof(modelclock_t) * INITCAPACITY);
+		record->thread = (thread_id_t *)model_malloc(sizeof(thread_id_t) * INITCAPACITY);
+		record->readClock = (modelclock_t *)model_malloc(sizeof(modelclock_t) * INITCAPACITY);
 		record->numReads = 1;
 		ASSERT(readThread >= 0);
 		record->thread[0] = readThread;
@@ -609,16 +612,16 @@ struct DataRace * fullRaceCheckRead(thread_id_t thread, const void *location, ui
 	if (__builtin_popcount(copytoindex) <= 1) {
 		if (copytoindex == 0) {
 			int newCapacity = INITCAPACITY;
-			record->thread = (thread_id_t *)snapshot_malloc(sizeof(thread_id_t) * newCapacity);
-			record->readClock = (modelclock_t *)snapshot_malloc(sizeof(modelclock_t) * newCapacity);
+			record->thread = (thread_id_t *)model_malloc(sizeof(thread_id_t) * newCapacity);
+			record->readClock = (modelclock_t *)model_malloc(sizeof(modelclock_t) * newCapacity);
 		} else if (copytoindex>=INITCAPACITY) {
 			int newCapacity = copytoindex * 2;
-			thread_id_t *newthread = (thread_id_t *)snapshot_malloc(sizeof(thread_id_t) * newCapacity);
-			modelclock_t *newreadClock = (modelclock_t *)snapshot_malloc(sizeof(modelclock_t) * newCapacity);
+			thread_id_t *newthread = (thread_id_t *)model_malloc(sizeof(thread_id_t) * newCapacity);
+			modelclock_t *newreadClock = (modelclock_t *)model_malloc(sizeof(modelclock_t) * newCapacity);
 			std::memcpy(newthread, record->thread, copytoindex * sizeof(thread_id_t));
 			std::memcpy(newreadClock, record->readClock, copytoindex * sizeof(modelclock_t));
-			snapshot_free(record->readClock);
-			snapshot_free(record->thread);
+			model_free(record->readClock);
+			model_free(record->thread);
 			record->readClock = newreadClock;
 			record->thread = newthread;
 		}

@@ -264,7 +264,7 @@ void ModelExecution::add_warning(const char *msg, ...) {
 	va_start(ap, msg);
 	vsnprintf(str, sizeof(str), msg, ap);
 	va_end(ap);
-	priv->warnings.push_back(new bug_message(msg, false));
+	priv->warnings.push_back(new bug_message(str, false));
 }
 
 void ModelExecution::add_bug(const char *msg, ...) {

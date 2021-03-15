@@ -377,7 +377,8 @@ void ModelChecker::finish_execution() {
 
 	//Delete old execution
 	delete execution;
-
+	// Reset shadow memory including both clock vector and actual memory
+	resetRaceDetector(true);
 	//Set execution to null to flag that we need to generate a new one
 	execution = NULL;
 
@@ -690,6 +691,8 @@ void ModelChecker::doCrash() {
 	unlink(filename);
   
 	execution = NULL;
+	// Resetting clock vector in the shadow memory.
+	resetRaceDetector();
 	reset_to_initial_state();
 }
 

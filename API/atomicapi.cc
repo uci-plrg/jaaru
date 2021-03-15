@@ -44,6 +44,7 @@ VOLATILELOAD(64)
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0 ;i < size >> 3;i++) {                       \
 			atomraceCheckWrite (tid, (void *)(((char *)obj)+i));                                                                                                                   \
+			recordWrite(tid, (void *)(((char *)obj)+i));         \
 		}                                                                                                                                                                                                                               \
 	}
 
@@ -64,6 +65,7 @@ VOLATILESTORE(64)
 		thread_id_t tid = thread_current()->get_id();                           \
 		for(int i=0 ;i < size >> 3;i++) {                       \
 			atomraceCheckWrite (tid, (void *)(((char *)obj)+i));                                                                                                                   \
+			recordWrite(tid, (void *)(((char *)obj)+i));         \
 		}                                                                                                                                                                       \
 	}
 
@@ -105,6 +107,7 @@ PMCATOMICLOAD(64)
 		thread_id_t tid = thread_current()->get_id();           \
 		for(int i=0 ;i < size >> 3;i++) {                       \
 			atomraceCheckWrite (tid, (void *)(((char *)obj)+i));                                                                                                                   \
+			recordWrite(tid, (void *)(((char *)obj)+i));         \
 		}                                                                                                                                               \
 	}
 
