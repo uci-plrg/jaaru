@@ -30,6 +30,10 @@ void param_defaults(struct model_params *params)
 	params->persistraceexec = -1;
 }
 
+bool isPersistRaceEnabled(struct model_params *params) {
+	return params->persistraceexec != -1;
+}
+
 static void print_usage(struct model_params *params)
 {
 	/* Reset defaults before printing */

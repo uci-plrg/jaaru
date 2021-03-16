@@ -21,5 +21,5 @@ struct model_params {
 };
 
 void param_defaults(struct model_params *params);
-
+bool isPersistRaceEnabled(struct model_params *params);
 #endif	/* __PARAMS_H__ */

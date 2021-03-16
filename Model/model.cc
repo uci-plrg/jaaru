@@ -664,7 +664,7 @@ void ModelChecker::startChecker() {
 
 bool ModelChecker::should_terminate_execution()
 {
-	if (execution->have_bug_reports()) {
+	if (execution->have_bug_reports()  && !isPersistRaceEnabled(&params)) {
 		execution->set_assert();
 		return true;
 	} else if (execution->isFinished()) {

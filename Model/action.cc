@@ -268,6 +268,11 @@ bool ModelAction::is_write() const
 	return type == ATOMIC_WRITE || type == ATOMIC_RMW || type == ATOMIC_INIT || type == NONATOMIC_WRITE;
 }
 
+bool ModelAction::is_atomic_write() const
+{
+	return type == ATOMIC_WRITE || type == ATOMIC_RMW || type == ATOMIC_INIT;
+}
+
 bool ModelAction::is_nonatomic_write() const
 {
 	return type == NONATOMIC_WRITE;
@@ -698,6 +703,9 @@ void ModelAction::print() const
 		cv->print();
 	} else
 		model_print("\n");
+	if(position) {
+		model_print("%s\n", position);
+	}
 }
 
 /** @brief Print nicely-formatted info about this ModelAction */

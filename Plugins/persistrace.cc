@@ -103,7 +103,7 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
         for(uint i=0; i<read->getOpSize(); i++ ) {
             ModelExecution * execution = (*writeVec)[i].p1;
             ModelAction *wrt = (*writeVec)[i].p2;
-            if(currExecution != execution && !wrt->is_rmw()){
+            if(currExecution != execution && !wrt->is_atomic_write()){
                 // Check for persistency race
                 uintptr_t currAddr = ((uintptr_t)address) + i;
                 CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, getCacheID((void*)currAddr));

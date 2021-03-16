@@ -129,6 +129,7 @@ public:
 	bool is_failed_trylock() const;
 	bool is_read() const;
 	bool is_write() const;
+	bool is_atomic_write() const;
 	bool is_nonatomic_write() const;
 	bool is_cache_op() const;
 	bool is_clflush() const;

@@ -25,6 +25,7 @@ int main()
         cacheOperation(CLFLUSHOPT, (char *)myobj, sizeof(myobj));        
         myobj->b = 2;
         mfence();
+        free(myobj);
     }
     else
     {
