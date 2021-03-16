@@ -130,7 +130,7 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
         ModelExecution *currExecution = model->get_execution();
         if(execution != currExecution) {
             // Reading from pre-crash
-            if(wrt->is_rmw()){
+            if(wrt->is_atomic_write()){
                 if(clmetadata->getLastFlush() < wrt->get_seq_number()) {
                     clmetadata->mergeLastFlush(wrt->get_seq_number());
                 }
