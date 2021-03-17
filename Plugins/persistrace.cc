@@ -140,7 +140,7 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
         ClockVector* beginRange = beginRangeCV.get(execution);
         if(beginRange == NULL){
             beginRange = new ClockVector(NULL, wrt);
-            beginRangeCV.put(currExecution, beginRange);
+            beginRangeCV.put(execution, beginRange);
         } else {
             beginRange->merge(wrt->get_cv());
         }
