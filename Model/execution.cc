@@ -275,6 +275,7 @@ void ModelExecution::add_bug(const char *msg, ...) {
 	vsnprintf(str, sizeof(str), msg, ap);
 	va_end(ap);
 	priv->bugs.push_back(new bug_message(str));
+	model->record_new_bug();
 }
 
 void ModelExecution::assert_bug(const char *msg)
@@ -994,6 +995,7 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 
 	if (list == NULL) {
 		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), exec->model_thread, 8);
+		act->merge_cv( (ModelAction*) NULL);
 		ValidateAddress64(align_address);
 		exec->action_trace.addAction(act);
 		exec->add_write_to_lists(act);

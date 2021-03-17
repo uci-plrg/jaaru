@@ -23,6 +23,8 @@ struct execution_stats {
 	int num_total;	/**< @brief Total number of executions */
 	int num_buggy_executions;	/** @brief Number of buggy executions */
 	int num_complete;	/**< @brief Number of feasible, non-buggy, complete executions */
+	int num_total_bugs;
+	int num_distinct_bugs;
 };
 
 #endif	/* __BUGMESSAGE_H__ */

@@ -22,10 +22,10 @@ bool CacheLineMetaData::flushExistsBeforeCV(uint writeIndex, ClockVector *cv) {
 }
 
 void CacheLineMetaData::updateFlushVector(uint writeIndex, ModelAction *flush){
-    unsigned int i = flush->get_tid();
-	if (i >= flushvector[writeIndex].size())
-		flushvector[writeIndex].resize(i + 1);
-    flushvector[writeIndex][flush->get_tid()] = flush;
+    unsigned int index = flush->get_tid();
+	if (index >= flushvector[writeIndex].size())
+		flushvector[writeIndex].resize(index + 1);
+    flushvector[writeIndex][index] = flush;
 }
 
 void CacheLineMetaData::mergeLastFlush(modelclock_t lf){
@@ -123,11 +123,11 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
  * (2) If wrt is atomic and happended in pre-crash, merge it lastFlush metadata.
  */
 void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
-	for(uint i=0; i<read->getOpSize(); i++ ) {
+    ModelExecution *currExecution = model->get_execution();
+    for(uint i=0; i<read->getOpSize(); i++ ) {
 		ModelExecution * execution = (*rfarray)[i].p1;
 		ModelAction *wrt = (*rfarray)[i].p2;
         CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, wrt);
-        ModelExecution *currExecution = model->get_execution();
         if(execution != currExecution) {
             // Reading from pre-crash
             if(wrt->is_atomic_write()){
@@ -178,7 +178,9 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
             }
         }
     }
-    pendingclwbs.clear();
+    if(pendingclwbs.size() > 0){
+        pendingclwbs.clear();
+    }
 }
 
 

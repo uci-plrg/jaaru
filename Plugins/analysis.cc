@@ -15,7 +15,9 @@ void Analysis::ERROR(ModelExecution *exec, ModelAction * action, const char * me
             model->get_execution()->add_bug("%s: %s ====> Execution=%p \t Address=%p \t Location=%s\n",getName(), message, 
                             exec, action->get_location(), action->get_position());
             errorSet.add(duplicateString(action->get_position()));
-        }        
+        } else {
+            model->record_bug();
+        }    
     } else {
         model->get_execution()->add_bug("%s: %s ====> address %p\n",getName(), message, action->get_location());
     }

@@ -277,6 +277,8 @@ void ModelChecker::print_stats() const
 	model_print("Number of complete, bug-free executions: %d\n", stats.num_complete);
 	model_print("Number of buggy executions: %d\n", stats.num_buggy_executions);
 	model_print("Total executions: %d\n", stats.num_total);
+	model_print("Total number of bugs: %d\n", stats.num_total_bugs);
+	model_print("Number of distinct bugs: %d\n", stats.num_distinct_bugs);
 }
 
 /**
