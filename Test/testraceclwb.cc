@@ -52,7 +52,7 @@ int main()
         myobj = (testStruct *)getRegionFromID(0);
 		printf("atomic x = %d\n", myobj->x.load());
         printf("a=%u\n", myobj->a);
-#ifndef defined(TEST2) || defined(TEST3)
+#if defined(TEST2) || defined(TEST3)
         printf("b=%u\n", myobj->b);
 #endif
     }
