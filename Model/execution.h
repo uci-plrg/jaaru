@@ -94,6 +94,7 @@ public:
 	double computeCombinations();
 	bool getEnableCrash() { return enableCrash; }
 	void setEnableCrash(bool ec) { enableCrash = ec; }
+	action_list_t *getActionTrace() {return &action_trace;}
 
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
@@ -125,7 +126,6 @@ private:
 	void build_may_read_from(ModelAction *curr, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
 	ModelAction * convertNonAtomicStore(void*, uint size);
 	bool flushBuffers(void *address);
-
 
 #ifdef TLS
 	pthread_key_t pthreadkey;

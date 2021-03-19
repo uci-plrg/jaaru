@@ -94,6 +94,10 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 /** @brief Destructor */
 ModelExecution::~ModelExecution()
 {
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0; i<analyses->size(); i++) {
+		(*analyses)[i]->freeExecution(this);
+	}
 	action_trace.clearAndDeleteActions();
 	obj_wr_map.resetanddelete();
 	obj_to_cacheline.resetanddelete();

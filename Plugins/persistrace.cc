@@ -193,6 +193,25 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
     }
 }
 
+void PersistRace::freeExecution(ModelExecution *exec) {
+    action_list_t *list = exec->getActionTrace();
+    for (mllnode<ModelAction*> *it = list->begin(); it != NULL; it=it->getNext()) {
+		const ModelAction *act = it->getVal();
+        if(act->is_cache_op() || act->is_write()){
+            MetaDataKey key (exec, getCacheID(act->get_location()));
+            CacheLineMetaData *data = (CacheLineMetaData*) cachelineMetaSet.get(&key);
+            if(data){
+                cachelineMetaSet.remove(&key);
+                delete data;
+            }
+        }
+    }
+    ClockVector* cv = beginRangeCV.get(exec);
+    if(cv){
+        beginRangeCV.remove(exec);
+        delete cv;
+    }
+}
 
 unsigned int hashCacheLineKey(MetaDataKey *clm) {
     return ((uintptr_t)clm->getExecution() >> 4) ^ ((uintptr_t)clm->getCacheID() >> 6);

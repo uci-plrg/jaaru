@@ -18,6 +18,7 @@ public:
     virtual void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) = 0;
     virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
     virtual void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
+    virtual void freeExecution(ModelExecution *exec) = 0;
     void ERROR(ModelExecution *exec, ModelAction * action, const char * message);
     MEMALLOC
 protected:
