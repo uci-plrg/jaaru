@@ -11,9 +11,13 @@ lastFlush(0)
 {
 }
 
-bool CacheLineMetaData::flushExistsBeforeCV(uint writeIndex, ClockVector *cv) {
-    for(uint j=0; j< flushvector[writeIndex].size(); j++) {
-        ModelAction *existingFlush = flushvector[writeIndex][j];
+bool PersistRace::flushExistsBeforeCV(ModelAction *write, ClockVector *cv) {
+    ModelVector<ModelAction*> * flushVect = flushmap.get(write);
+    if(!flushVect) {
+        return false;
+    }
+    for(uint j=0; j< flushVect->size(); j++) {
+        ModelAction *existingFlush = (*flushVect)[j];
         if(existingFlush && cv->synchronized_since(existingFlush)) {
             return true;
         }
@@ -21,11 +25,16 @@ bool CacheLineMetaData::flushExistsBeforeCV(uint writeIndex, ClockVector *cv) {
     return false;
 }
 
-void CacheLineMetaData::updateFlushVector(uint writeIndex, ModelAction *flush){
+void PersistRace::updateFlushVector(ModelAction *write, ModelAction *flush){
+    ModelVector<ModelAction*> * flushVect = flushmap.get(write);
+    if(!flushVect) {
+        flushVect = new ModelVector<ModelAction*>();
+        flushmap.put(write, flushVect);
+    }
     unsigned int index = flush->get_tid();
-	if (index >= flushvector[writeIndex].size())
-		flushvector[writeIndex].resize(index + 1);
-    flushvector[writeIndex][index] = flush;
+	if (index >= flushVect->size())
+		flushVect->resize(index + 1);
+    (*flushVect)[index] = flush;
 }
 
 void CacheLineMetaData::mergeLastFlush(modelclock_t lf){
@@ -41,6 +50,7 @@ PersistRace::~PersistRace(){
     }
     delete iter;
     beginRangeCV.resetanddelete();
+    flushmap.resetanddelete();
 }
 
 /**
@@ -56,8 +66,8 @@ void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelActio
         for(uint i=0; i< CACHELINESIZE; i++) {
             ModelAction *write = clmetadata->getLastWrites()[i];
             if(write && prevWrite != write && write->get_seq_number() <= flush->get_seq_number()) {
-                if(!clmetadata->flushExistsBeforeCV(i,flush->get_cv())) {
-                    clmetadata->updateFlushVector(i,flush);
+                if(!flushExistsBeforeCV(write,flush->get_cv())) {
+                    updateFlushVector(write,flush);
                 }
                 prevWrite = write;
             }
@@ -108,7 +118,7 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
                 uintptr_t currAddr = ((uintptr_t)address) + i;
                 CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, getCacheID((void*)currAddr));
                 ClockVector* brCV = beginRangeCV.get(execution);
-                bool flushExist = brCV? clmetadata->flushExistsBeforeCV(WRITEINDEX(currAddr), brCV) : false;
+                bool flushExist = brCV? flushExistsBeforeCV(wrt, brCV) : false;
                 if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
                     ERROR(execution, wrt, "Persistency Race");
                 }
@@ -172,8 +182,8 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
             ModelAction *write = clmetadata->getLastWrites()[i];
             modelclock_t lastWriteClk = clwb->getLastWrite()->get_seq_number();
             if(write && write->get_seq_number() <= lastWriteClk) {
-                if(!clmetadata->flushExistsBeforeCV(i, fence->get_cv())) {
-                    clmetadata->updateFlushVector(i, fence);
+                if(!flushExistsBeforeCV(write, fence->get_cv())) {
+                    updateFlushVector(write, fence);
                 }
             }
         }

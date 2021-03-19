@@ -24,11 +24,8 @@ public:
     modelclock_t getLastFlush() {return lastFlush;}
     void mergeLastFlush(modelclock_t lf);
     ModelAction **getLastWrites() {return lastWrites;}
-    bool flushExistsBeforeCV(uint writeIndex, ClockVector *cv);
-    void updateFlushVector(uint writeIndex, ModelAction *flush);
 private:
     modelclock_t lastFlush;
-    ModelVector<ModelAction*> flushvector [CACHELINESIZE];
     ModelAction *lastWrites [CACHELINESIZE]= {NULL};
 };
 
@@ -49,9 +46,12 @@ public:
 private:
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
     CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
+    bool flushExistsBeforeCV(ModelAction *write, ClockVector *cv);
+    void updateFlushVector(ModelAction *write, ModelAction *flush);
 
     HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineKey, equalCacheLineKey> cachelineMetaSet;
     HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
+    HashTable<ModelAction*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> flushmap;
     ModelVector<ModelAction *> pendingclwbs;
 };
 
