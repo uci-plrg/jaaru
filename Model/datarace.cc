@@ -12,8 +12,6 @@
 #include <execinfo.h>
 
 static struct ShadowTable *root;
-static void *memory_base;
-static void *memory_top;
 static RaceSet * raceset;
 
 static const ModelExecution * get_execution()
@@ -25,8 +23,6 @@ static const ModelExecution * get_execution()
 void initRaceDetector()
 {
 	root = (struct ShadowTable *)model_calloc(sizeof(struct ShadowTable), 1);
-	memory_base = model_calloc(sizeof(struct ShadowBaseTable) * SHADOWBASETABLES, 1);
-	memory_top = ((char *)memory_base) + sizeof(struct ShadowBaseTable) * SHADOWBASETABLES;
 	raceset = new RaceSet();
 }
 
@@ -73,13 +69,7 @@ void resetRaceDetector(bool resetData) {
 
 void * table_calloc(size_t size)
 {
-	if ((((char *)memory_base) + size) > memory_top) {
-		return model_calloc(size, 1);
-	} else {
-		void *tmp = memory_base;
-		memory_base = ((char *)memory_base) + size;
-		return tmp;
-	}
+	return model_calloc(size, 1);
 }
 
 /** This function looks up the entry in the shadow table corresponding to a
