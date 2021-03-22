@@ -182,7 +182,7 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
         CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, clwb);
         for(uint i=0; i< CACHELINESIZE; i++) {
             ModelAction *write = clmetadata->getLastWrites()[i];
-            modelclock_t lastWriteClk = clwb->getLastWrite()->get_seq_number();
+            modelclock_t lastWriteClk = clwb->getLastWrite()? clwb->getLastWrite()->get_seq_number(): clwb->get_seq_number();
             if(write && write->get_seq_number() <= lastWriteClk) {
                 if(!flushExistsBeforeCV(write, fence->get_cv())) {
                     updateFlushVector(write, fence);
