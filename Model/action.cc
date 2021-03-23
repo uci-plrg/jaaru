@@ -291,7 +291,6 @@ bool ModelAction::is_fence() const
 	switch(type)
 	{
 	case ATOMIC_RMW:
-	case ATOMIC_RMWR:
 	case CACHE_MFENCE:
 	case CACHE_SFENCE:
 	case ATOMIC_CAS_FAILED:
