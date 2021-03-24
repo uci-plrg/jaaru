@@ -292,7 +292,6 @@ bool ModelAction::is_fence() const
 	{
 	case ATOMIC_RMW:
 	case CACHE_MFENCE:
-	case CACHE_SFENCE:
 	case ATOMIC_CAS_FAILED:
 	case PTHREAD_CREATE:
 	case PTHREAD_JOIN:

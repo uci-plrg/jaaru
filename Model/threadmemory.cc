@@ -66,6 +66,10 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 			return true;
 		lastsfence = act;
 		model->get_execution()->remove_action_from_store_buffer(act);
+		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+		for(uint i=0; i<analyses->size(); i++) {
+			(*analyses)[i]->fenceExecutionAnalysis(model->get_execution(), act);
+		}
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
 			if (model->get_execution()->evictCacheOp(act))

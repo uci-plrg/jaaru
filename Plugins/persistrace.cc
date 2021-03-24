@@ -120,7 +120,8 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
                 ClockVector* brCV = beginRangeCV.get(execution);
                 bool flushExist = brCV? flushExistsBeforeCV(wrt, brCV) : false;
                 if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()){
-                    ERROR(execution, wrt, "Persistency Race");
+                    ModelAction *tmpact = wrt->get_position()? wrt : read;
+                    ERROR(execution, tmpact, "Persistency Race");
                 }
             }
         }
@@ -175,7 +176,7 @@ CacheLineMetaData * PersistRace::getOrCreateCacheLineMeta(ModelExecution * execu
 }
 
 void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction *fence) {
-    ASSERT(fence->is_fence() && fence->get_cv() != NULL);
+    ASSERT(fence->get_cv() != NULL);
     for(uint i=0; i<pendingclwbs.size(); i++) {
         ModelAction *clwb = pendingclwbs[i];
         ASSERT(clwb->get_seq_number() < fence->get_seq_number());
