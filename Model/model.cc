@@ -608,7 +608,7 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 		if(execution->get_curr_seq_num() != max_execution_seq_num) {
 			max_execution_seq_num = execution->get_curr_seq_num();
 		}
-		srand(time(NULL));
+		srand(execution_number);
 		nextCrashPoint = rand() % max_execution_seq_num;
 		model_print("nextCrashPoint = %u\tmax execution seqeuence number: %u\n", nextCrashPoint, max_execution_seq_num);
 	}
