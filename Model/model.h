@@ -42,6 +42,7 @@ public:
 	~ModelChecker();
 	model_params * getParams();
 	void doCrash();
+	bool isRandomExecutionEnabled() { return params.randomExecution != -1;}
 
 	/** Exit the model checker, intended for pluggins. */
 	void exit_model_checker();
@@ -71,6 +72,7 @@ public:
 	NodeStack * getNodeStack() {return nodestack;}
 	void * getRegion(uint ID);
 	uint getNextRegionID() { return regionID.size() + 1;}
+	modelclock_t getNextCrashPoint() {return nextCrashPoint;}
 	void setRegion(uint ID, void *ptr);
 	uint getNumCrashes() {return numcrashes;}
 
@@ -92,7 +94,8 @@ private:
 	Thread * chosen_thread;
 	bool thread_chosen;
 	bool break_execution;
-
+	modelclock_t max_execution_seq_num;
+	modelclock_t nextCrashPoint;
 	void startRunExecution(Thread *old);
 	void finishRunExecution(Thread *old);
 	void finish_execution();

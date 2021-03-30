@@ -111,6 +111,8 @@ ModelChecker::ModelChecker() :
 	prevContext(NULL),
 	execution_number(1),
 	curr_thread_num(1),
+	max_execution_seq_num(INT32_MAX),
+	nextCrashPoint(1),
 	numcrashes(0),
 	replaystack(),
 	totalstates(0),
@@ -372,7 +374,9 @@ void ModelChecker::finish_execution() {
 
 	//Reset nodestack for next execution
 	nodestack->reset_execution();
-
+	if(params.randomExecution >= 0) {
+		ASSERT(replaystack.empty());
+	}
 	//If not the top of the stack we do a replay
 	if (!replaystack.empty())
 		nodestack->repeat_prev_execution();
@@ -599,6 +603,16 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 		return false;
 	}
 
+	if(execution->isFinished() && isRandomExecutionEnabled() ) {
+		modelclock_t prev = nextCrashPoint;
+		if(execution->get_curr_seq_num() != max_execution_seq_num) {
+			max_execution_seq_num = execution->get_curr_seq_num();
+		}
+		srand(time(NULL));
+		nextCrashPoint = rand() % max_execution_seq_num;
+		model_print("nextCrashPoint = %u\tmax execution seqeuence number: %u\n", nextCrashPoint, max_execution_seq_num);
+	}
+
 	if (should_terminate_execution()) {
 		//one last crash
 		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash)
@@ -666,7 +680,10 @@ void ModelChecker::startChecker() {
 
 bool ModelChecker::should_terminate_execution()
 {
-	if (execution->have_bug_reports()  && !isPersistRaceEnabled(&params)) {
+	if(isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) {
+		return false;
+	}
+	if (execution->have_bug_reports()  && !params.enablePersistrace) {
 		execution->set_assert();
 		return true;
 	} else if (execution->isFinished()) {

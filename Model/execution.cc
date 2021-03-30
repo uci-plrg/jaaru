@@ -733,12 +733,19 @@ void ModelExecution::injectCrash() {
 }
 
 bool ModelExecution::shouldInsertCrash() {
-	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash || get_curr_seq_num() < params->firstCrash)
+	bool notRandomCrash = model->isRandomExecutionEnabled() && 
+		(get_curr_seq_num() <= model->getNextCrashPoint() || model->get_execution_number() >= (uint)params->randomExecution);
+	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash ||
+	 	get_curr_seq_num() < params->firstCrash || notRandomCrash)
 		return false;
 
 	//Create node decision of whether we should crash
 	Node * node = model->getNodeStack()->explore_next(2);
-	if (node->get_choice() == 0) {
+	bool insertRandomCrash = model->isRandomExecutionEnabled() && get_curr_seq_num() > model->getNextCrashPoint();
+	if(insertRandomCrash) {
+		model->getNodeStack()->set_Last_backtrack(node);
+	}
+	if (node->get_choice() == 0 || insertRandomCrash) {
 		hasCrashed = true;
 		return true;
 	}

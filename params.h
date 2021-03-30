@@ -17,9 +17,9 @@ struct model_params {
 	uint numcrashes;
 	char *file;
 	bool enableCrash;
-	int persistraceexec;
+	bool enablePersistrace;
+	int randomExecution;
 };
 
 void param_defaults(struct model_params *params);
-bool isPersistRaceEnabled(struct model_params *params);
 #endif	/* __PARAMS_H__ */

@@ -8,6 +8,7 @@
 #include "threads-model.h"
 #include "modeltypes.h"
 #include "execution.h"
+#include "model.h"
 
 /**
  * @brief Node constructor
@@ -44,6 +45,10 @@ void Node::print_read_from()
  * where this->action is a 'read'.
  */
 int Node::get_choice() const {
+	if(model->isRandomExecutionEnabled()) {
+		srand(time(NULL));
+		return rand() % rf_size;
+	}
 	return read_from_idx;
 }
 
@@ -57,6 +62,9 @@ int Node::get_read_from_size() const
  * @return true if the readsfrom set is empty.
  */
 bool Node::has_more_choices() const {
+	if(model->isRandomExecutionEnabled()) {
+		return false;
+	}
 	return (read_from_idx + 1) < rf_size;
 }
 

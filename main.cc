@@ -27,12 +27,10 @@ void param_defaults(struct model_params *params)
 	params->numcrashes = 1;
 	params->file = NULL;
 	params->enableCrash = true;
-	params->persistraceexec = -1;
+	params->enablePersistrace = false;
+	params->randomExecution = -1;
 }
 
-bool isPersistRaceEnabled(struct model_params *params) {
-	return params->persistraceexec != -1;
-}
 
 static void print_usage(struct model_params *params)
 {
@@ -64,13 +62,14 @@ static void print_usage(struct model_params *params)
 		"                            Default: %u\n"
 		"-d [file]					 Deleting the persistent file after each execution.\n"
 		"-e							 Enable manual crash point.\n"
-		"-x							 Enable Persistency race analysis (default execution number = 30)\n",
+		"-x							 Enable random execution (default execution number = 30)\n"
+		"-y							 Enable Persistency race analysis\n",
 		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnvx::p::r:d::c:f:";
+	const char *shortopts = "hsetnvy::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -126,7 +125,10 @@ void parse_options(struct model_params *params) {
 			params->pmdebug = optarg ? atoi(optarg) : 1;
 			break;
 		case 'x':
-			params->persistraceexec = optarg? atoi(optarg): 30;
+			params->randomExecution = optarg? atoi(optarg): 30;
+			break;
+		case 'y':
+			params->enablePersistrace = true;
 			enableAnalysis(PERSISTRACENAME);
 			break;
 		case 'f':

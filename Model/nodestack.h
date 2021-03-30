@@ -63,6 +63,7 @@ public:
 	Node * get_head() const;
 	Node * get_next();
 	void reset_execution();
+	void set_Last_backtrack(Node * n) { last_backtrack = n;}
 	void repeat_prev_execution() { curr_backtrack = NULL; }
 	void pop_restofstack(int numAhead);
 	void full_reset();
