@@ -9,6 +9,7 @@
 #include "modeltypes.h"
 #include "execution.h"
 #include "model.h"
+#include "utils.h"
 
 /**
  * @brief Node constructor
@@ -46,7 +47,7 @@ void Node::print_read_from()
  */
 int Node::get_choice() const {
 	if(model->isRandomExecutionEnabled()) {
-		srand(model->get_execution_number());
+		srand(model->get_execution_number() + current_timestamp());
 		return rand() % rf_size;
 	}
 	return read_from_idx;

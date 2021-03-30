@@ -23,6 +23,7 @@
 #include "pminterface.h"
 #include "persistentmemory.h"
 #include "plugins.h"
+#include "utils.h"
 
 ModelChecker *model = NULL;
 int inside_model = 0;
@@ -608,7 +609,7 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 		if(execution->get_curr_seq_num() != max_execution_seq_num) {
 			max_execution_seq_num = execution->get_curr_seq_num();
 		}
-		srand(execution_number);
+		srand(execution_number + current_timestamp());
 		nextCrashPoint = rand() % max_execution_seq_num;
 		model_print("nextCrashPoint = %u\tmax execution seqeuence number: %u\n", nextCrashPoint, max_execution_seq_num);
 	}
