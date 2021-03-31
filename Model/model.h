@@ -121,6 +121,7 @@ private:
 	int totalexplorepoints;
 	/** @brief The cumulative execution stats */
 	struct execution_stats stats;
+	char random_state[256];
 	void record_stats();
 	void print_bugs() const;
 	void print_execution(bool printbugs) const;

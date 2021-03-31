@@ -609,8 +609,7 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 		if(execution->get_curr_seq_num() != max_execution_seq_num) {
 			max_execution_seq_num = execution->get_curr_seq_num();
 		}
-		srand(execution_number + current_timestamp());
-		nextCrashPoint = rand() % max_execution_seq_num;
+		nextCrashPoint = random() % max_execution_seq_num;
 		model_print("nextCrashPoint = %u\tmax execution seqeuence number: %u\n", nextCrashPoint, max_execution_seq_num);
 	}
 
@@ -629,8 +628,12 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 
 void ModelChecker::startChecker() {
 	startExecution();
+	//Need to initial random number generator state to avoid resets on rollback
+	initstate(423121, random_state, sizeof(random_state));
+	//reset random number generator state
+	setstate(random_state);
 	snapshot = take_snapshot();
-
+	
 	if (execution == NULL) {
 		//Not first execution, so need to build new execution
 		execution = new ModelExecution(this, scheduler);

@@ -47,8 +47,7 @@ void Node::print_read_from()
  */
 int Node::get_choice() const {
 	if(model->isRandomExecutionEnabled()) {
-		srand(model->get_execution_number() + current_timestamp());
-		return rand() % rf_size;
+		return random() % rf_size;
 	}
 	return read_from_idx;
 }
