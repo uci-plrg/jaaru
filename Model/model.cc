@@ -113,14 +113,14 @@ ModelChecker::ModelChecker() :
 	execution_number(1),
 	curr_thread_num(1),
 	max_execution_seq_num(INT32_MAX),
-	nextCrashPoint(1),
+	nextCrashPoint(random() % INT32_MAX),
 	numcrashes(0),
 	replaystack(),
 	totalstates(0),
 	totalexplorepoints(0)
 {
-	model_print("PMCheck\n"
-							"Copyright (c) 2019 Regents of the University of California. All rights reserved.\n"
+	model_print("Jaaru\n"
+							"Copyright (c) 2021 Regents of the University of California. All rights reserved.\n"
 							"Written by Hamed Gorjiara, Brian Demsky, Peizhao Ou, Brian Norris, and Weiyu Luo\n\n");
 	memset(&stats,0,sizeof(struct execution_stats));
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
@@ -344,6 +344,10 @@ void ModelChecker::finish_execution() {
 	while (!nodestack->has_another_execution()) {
 		//last execution on this stack...need to reset
 		if (prevContext == NULL) {
+			if(isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number){
+				//nextCrashPoint = random() % INT32_MAX;
+				break;
+			}
 			//really done
 			return;
 		}
