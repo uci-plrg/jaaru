@@ -38,8 +38,8 @@ static void print_usage(struct model_params *params)
 	param_defaults(params);
 
 	model_print(
-		"Copyright (c) 2013 Regents of the University of California. All rights reserved.\n"
-		"Written by Hamed Gorjiara and Brian Demsky\n"
+		"Copyright (c) 2021 Regents of the University of California. All rights reserved.\n"
+		"Written by Hamed Gorjiara, Brian Demsky, Peizhao Ou, Brian Norris, and Weiyu Luo\n"
 		"\n"
 		"Usage: PMCheck=[MODEL-CHECKER OPTIONS]\n"
 		"\n"
