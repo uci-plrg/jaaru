@@ -16,7 +16,8 @@ public:
 	bool merge(const ClockVector *cv);
 	bool minmerge(const ClockVector *cv);
 	bool synchronized_since(const ModelAction *act) const;
-
+        void setClock(thread_id_t thread, modelclock_t clock);
+  
 	void print() const;
 	modelclock_t getClock(thread_id_t thread);
 

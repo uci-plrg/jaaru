@@ -849,8 +849,6 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 void ModelExecution::initialize_curr_action(ModelAction *curr)
 {
 	curr->set_seq_number(get_next_seq_num());
-	/* Always compute new clock vector */
-	curr->merge_cv(get_parent_action(curr->get_tid()));
 
 	action_trace.addAction(curr);
 	if (params->pmdebug > 1) {
@@ -932,6 +930,11 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	ASSERT(curr);
 	DBG();
 	bool second_part_of_rmw = curr->is_rmw_cas_fail() || curr->is_rmw();
+	if(!second_part_of_rmw) {
+	  /* Always compute new clock vector */
+	  curr->merge_cv(get_parent_action(curr->get_tid()));
+	}
+
 	if(second_part_of_rmw) {
 		// Swap with previous rmw_read action and delete the second part.
 		curr = swap_rmw_write_part(curr);

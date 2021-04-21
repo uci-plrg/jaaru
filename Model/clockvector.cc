@@ -62,6 +62,20 @@ bool ClockVector::merge(const ClockVector *cv)
 	return changed;
 }
 
+/** Sets the clock corresponding to a given thread id from the clock vector. */
+void ClockVector::setClock(thread_id_t thread, modelclock_t mclock) {
+	int threadid = id_to_int(thread);
+
+	if (threadid >= num_threads) {
+	        clock = (modelclock_t *)model_realloc(clock, (threadid + 1) * sizeof(modelclock_t));
+		for (int i = num_threads;i <= threadid;i++)
+			clock[i] = 0;
+		num_threads = threadid + 1;
+	}
+
+	clock[threadid] = mclock;
+}
+
 /**
  * Merge a clock vector into this vector, using a pairwise comparison. The
  * resulting vector length will be the maximum length of the two being merged.
