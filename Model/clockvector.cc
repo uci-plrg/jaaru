@@ -67,7 +67,7 @@ void ClockVector::setClock(thread_id_t thread, modelclock_t mclock) {
 	int threadid = id_to_int(thread);
 
 	if (threadid >= num_threads) {
-	        clock = (modelclock_t *)model_realloc(clock, (threadid + 1) * sizeof(modelclock_t));
+		clock = (modelclock_t *)model_realloc(clock, (threadid + 1) * sizeof(modelclock_t));
 		for (int i = num_threads;i <= threadid;i++)
 			clock[i] = 0;
 		num_threads = threadid + 1;

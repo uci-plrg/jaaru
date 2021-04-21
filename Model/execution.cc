@@ -95,8 +95,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 ModelExecution::~ModelExecution()
 {
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->freeExecution(this);
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i] -> freeExecution(this);
 	}
 	action_trace.clearAndDeleteActions();
 	obj_wr_map.resetanddelete();
@@ -105,7 +105,7 @@ ModelExecution::~ModelExecution()
 }
 
 void ModelExecution::clearPreRollback() {
-	for (unsigned int i = 0;i < get_num_threads();i++) {
+	for (unsigned int i = 0;i < get_num_threads();i ++) {
 		ModelAction *pending = get_thread(int_to_id(i))->get_pending();
 		if (pending != NULL)
 			delete pending;
@@ -132,7 +132,7 @@ bool CLEquals(CLData *c1, CLData *c2) {
 
 double ModelExecution::computeCombinations() {
 	HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * tmpset = new HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals>();
-	for(uint i=0;i<obj_wr_map.capacity;i++) {
+	for(uint i=0;i<obj_wr_map.capacity;i ++) {
 		struct hashlistnode<const void *, simple_action_list_t *> entry = obj_wr_map.table[i];
 		if (entry.key == NULL || !pmem_is_pmem(entry.key, 1))
 			continue;
@@ -403,14 +403,14 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
 void ModelExecution::process_read(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
 	ASSERT(curr->is_read());
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->readFromWriteAnalysis(curr, rfarray);
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i] -> readFromWriteAnalysis(curr, rfarray);
 	}
 	uint64_t value = 0;
 	// Check to read from non-atomic stores if there is one
 	void * address = curr->get_location();
 	for(uint i=curr->getOpSize();i != 0; ) {
-		i--;
+		i --;
 		ModelExecution * exec = (*rfarray)[i].p1;
 		ModelAction *rf = (*rfarray)[i].p2;
 		uintptr_t curraddress = ((uintptr_t)address) + i;
@@ -700,8 +700,8 @@ bool ModelExecution::evictCacheOp(ModelAction *cacheop) {
 	CacheLine *cacheline = getCacheLine(loc);
 	persistCacheLine(cacheline, cacheop);
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->evictFlushBufferAnalysis(this, cacheop);
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i] -> evictFlushBufferAnalysis(this, cacheop);
 	}
 	return false;
 }
@@ -733,10 +733,10 @@ void ModelExecution::injectCrash() {
 }
 
 bool ModelExecution::shouldInsertCrash() {
-	bool notRandomCrash = model->isRandomExecutionEnabled() && 
-		(get_curr_seq_num() <= model->getNextCrashPoint() || model->get_execution_number() >= (uint)params->randomExecution);
+	bool notRandomCrash = model->isRandomExecutionEnabled() &&
+												(get_curr_seq_num() <= model->getNextCrashPoint() || model->get_execution_number() >= (uint)params->randomExecution);
 	if (model->getNumCrashes() >= params->numcrashes || noWriteSinceCrashCheck || !enableCrash ||
-	 	get_curr_seq_num() < params->firstCrash || notRandomCrash)
+			get_curr_seq_num() < params->firstCrash || notRandomCrash)
 		return false;
 
 	//Create node decision of whether we should crash
@@ -931,8 +931,8 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	DBG();
 	bool second_part_of_rmw = curr->is_rmw_cas_fail() || curr->is_rmw();
 	if(!second_part_of_rmw) {
-	  /* Always compute new clock vector */
-	  curr->merge_cv(get_parent_action(curr->get_tid()));
+		/* Always compute new clock vector */
+		curr->merge_cv(get_parent_action(curr->get_tid()));
 	}
 
 	if(second_part_of_rmw) {
@@ -989,10 +989,10 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	} else if (curr->is_exit()) {
 		setFinished();
 	}
-	if(curr->is_fence()){
+	if(curr->is_fence()) {
 		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-		for(uint i=0; i<analyses->size(); i++) {
-			(*analyses)[i]->fenceExecutionAnalysis(this, curr);
+		for(uint i=0;i<analyses->size();i++) {
+			(*analyses)[i] -> fenceExecutionAnalysis(this, curr);
 		}
 	}
 	return curr;
@@ -1020,8 +1020,8 @@ void ModelExecution::handle_read(ModelAction *curr) {
 	SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> rf_set;
 	build_may_read_from(curr, &rf_set);
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->mayReadFromAnalysis(curr, &rf_set);
+	for(uint i=0;i<analyses->size();i ++) {
+		(*analyses)[i] -> mayReadFromAnalysis(curr, &rf_set);
 	}
 	int index = 0;
 	if (hasCrashed)
@@ -1039,7 +1039,7 @@ void ModelExecution::handle_read(ModelAction *curr) {
 				model_print("at %s\n", curr->get_position());
 			model_print("can read from:\n");
 			model_print("-----------------------------------------------------------------\n");
-			for(uint i=0;i<rf_set.size();i++) {
+			for(uint i=0;i<rf_set.size();i ++) {
 				SnapVector<Pair<ModelExecution *, ModelAction *> > * rfarray = rf_set[i];
 				if (i == (uint)index)
 					model_print("=>");

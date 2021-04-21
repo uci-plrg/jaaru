@@ -31,7 +31,7 @@ private:
 	//beginR: earliest point at which the cache line could have been written
 	//out...  Incluside, so this includes write with beginR sequence
 	//number
-	
+
 	//endR: last point at which the cache line could have been
 	//persisted. Inclusive, so this includes write with endR sequence
 	//number

@@ -9,21 +9,21 @@ using namespace std;
 #define TEST1
 
 extern "C" {
-    void * getRegionFromID(uint ID);
-    void setRegionFromID(uint ID, void *ptr);
+void * getRegionFromID(uint ID);
+void setRegionFromID(uint ID, void *ptr);
 }
 
 typedef struct testStruct
 {
-    testStruct(): a(0), b(0) {}
-    uint32_t a;
-    uint32_t b;
+	testStruct() : a(0), b(0) {}
+	uint32_t a;
+	uint32_t b;
 } testStruct;
 
 void* func1(void * input){
 	testStruct *myobj = (testStruct *) input;
 	myobj->a = 1;
-	cacheOperation(CLWB, (char *)myobj, sizeof(myobj));        
+	cacheOperation(CLWB, (char *)myobj, sizeof(myobj));
 	mfence();
 #ifdef TEST1
 	myobj->a=3;
@@ -38,7 +38,7 @@ void* func2(void * input)
 {
 	testStruct *myobj = (testStruct *) input;
 	myobj->b = 2;
-	cacheOperation(CLWB, (char *)myobj, sizeof(myobj));        
+	cacheOperation(CLWB, (char *)myobj, sizeof(myobj));
 	mfence();
 #ifdef TEST1
 	myobj->a=30;
@@ -52,11 +52,11 @@ void* func2(void * input)
 int main(){
 	testStruct *myobj;
 	if (getRegionFromID(0) == NULL)
-    {
-        myobj = (testStruct *)malloc(sizeof(testStruct) + 64 + 64 + 64);
-        //Make sure a,b,x are in the same cache line
-        myobj = (testStruct *)(((uintptr_t) myobj & ~(64 - 1)) + 64);
-        setRegionFromID(0, myobj);
+	{
+		myobj = (testStruct *)malloc(sizeof(testStruct) + 64 + 64 + 64);
+		//Make sure a,b,x are in the same cache line
+		myobj = (testStruct *)(((uintptr_t) myobj & ~(64 - 1)) + 64);
+		setRegionFromID(0, myobj);
 		pthread_t threads[NUMTHREADS];
 		void *(*funcptr[])(void *) = {func1, func2};
 		for (int i=0;i< NUMTHREADS;i++) {
@@ -70,8 +70,8 @@ int main(){
 		}
 	} else {
 		myobj = (testStruct *)getRegionFromID(0);
-        printf("a=%u\n", myobj->a);
-        printf("b=%u\n", myobj->b);
+		printf("a=%u\n", myobj->a);
+		printf("b=%u\n", myobj->b);
 	}
-	return EXIT_SUCCESS;	
+	return EXIT_SUCCESS;
 }

@@ -191,7 +191,7 @@ void ModelAction::set_seq_number(modelclock_t num) {
 	ASSERT(seq_number == ACTION_INITIAL_CLOCK);
 	seq_number = num;
 	if (cv != NULL)
-	  cv->setClock(tid, num);
+		cv->setClock(tid, num);
 }
 
 void ModelAction::reset_seq_number()

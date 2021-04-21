@@ -125,7 +125,7 @@ void parse_options(struct model_params *params) {
 			params->pmdebug = optarg ? atoi(optarg) : 1;
 			break;
 		case 'x':
-			params->randomExecution = optarg? atoi(optarg): 30;
+			params->randomExecution = optarg ? atoi(optarg) : 30;
 			break;
 		case 'y':
 			params->enablePersistrace = true;

@@ -67,14 +67,14 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		lastsfence = act;
 		model->get_execution()->remove_action_from_store_buffer(act);
 		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-		for(uint i=0; i<analyses->size(); i++) {
-			(*analyses)[i]->fenceExecutionAnalysis(model->get_execution(), act);
+		for(uint i=0;i<analyses->size();i++) {
+			(*analyses)[i] -> fenceExecutionAnalysis(model->get_execution(), act);
 		}
 	} else if (act->is_cache_op()) {
 		if (act->is_clflush()) {
 			if (model->get_execution()->evictCacheOp(act))
 				return true;
-			flushcount--;
+			flushcount --;
 		} else {
 			evictFlushOpt(act);
 		}
@@ -83,8 +83,8 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		ASSERT(0);
 	}
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0; i<analyses->size(); i++) {
-		(*analyses)[i]->evictStoreBufferAnalysis(model->get_execution(), act);
+	for(uint i=0;i<analyses->size();i ++) {
+		(*analyses)[i] -> evictStoreBufferAnalysis(model->get_execution(), act);
 	}
 	return false;
 }
@@ -110,7 +110,7 @@ bool ThreadMemory::emptyStoreBuffer() {
 	uint count =0;
 	while(storeBuffer.size() > 0) {
 		ModelAction *curr = storeBuffer.pop_front();
-		count++;
+		count ++;
 		if (evictOpFromStoreBuffer(curr)) {
 			model->get_execution()->updateStoreBuffer(-count);
 			return true;
@@ -125,7 +125,7 @@ bool ThreadMemory::emptyFlushBuffer() {
 		ModelAction *curr = flushBuffer.pop_front();
 		if (model->get_execution()->evictCacheOp(curr))
 			return true;
-		flushcount--;
+		flushcount --;
 	}
 	return false;
 }

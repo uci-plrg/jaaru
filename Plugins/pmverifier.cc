@@ -1,10 +1,10 @@
 #include "pmverifier.h"
 
 /**
- * This simple analysis updates the endRange for all threads when an execution crashes. 
- */ 
+ * This simple analysis updates the endRange for all threads when an execution crashes.
+ */
 void PMVerifier::crashAnalysis(ModelExecution * execution) {
-    
+
 }
 
 /**
@@ -15,7 +15,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 
 /**
  * This analysis checks for the conflict and if it found none, updates the beginRange for all threads.
- * If the write is RMW, it finds the first next write in each thread and update their endRanges. Otherwise, 
+ * If the write is RMW, it finds the first next write in each thread and update their endRanges. Otherwise,
  * if the write was a normal write, it updates the threads' endRanges so they don't read from out of range
  * writes.
  */

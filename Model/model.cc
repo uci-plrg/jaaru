@@ -344,7 +344,7 @@ void ModelChecker::finish_execution() {
 	while (!nodestack->has_another_execution()) {
 		//last execution on this stack...need to reset
 		if (prevContext == NULL) {
-			if(isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number){
+			if(isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) {
 				//nextCrashPoint = random() % INT32_MAX;
 				break;
 			}
@@ -717,7 +717,7 @@ void ModelChecker::doCrash() {
 	char filename[256];
 	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
 	unlink(filename);
-  
+
 	execution = NULL;
 	// Resetting clock vector in the shadow memory.
 	resetRaceDetector();
