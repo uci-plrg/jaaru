@@ -113,7 +113,7 @@ ModelChecker::ModelChecker() :
 	execution_number(1),
 	curr_thread_num(1),
 	max_execution_seq_num(INT32_MAX),
-	nextCrashPoint(random() % INT32_MAX),
+	nextCrashPoint(1),
 	numcrashes(0),
 	replaystack(),
 	totalstates(0),
