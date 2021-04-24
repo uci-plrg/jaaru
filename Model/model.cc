@@ -633,12 +633,14 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 void ModelChecker::startChecker() {
 	startExecution();
 	//Need to initial random number generator state to avoid resets on rollback
-	initstate(423121, random_state, sizeof(random_state));
-	//reset random number generator state
+	if(isRandomExecutionEnabled()) {
+		initstate(423121, random_state, sizeof(random_state));
+	}
 	snapshot = take_snapshot();
-
-	setstate(random_state);
-
+	if(isRandomExecutionEnabled()) {
+		//reset random number generator state
+		setstate(random_state);
+	}
 	if (execution == NULL) {
 		//Not first execution, so need to build new execution
 		execution = new ModelExecution(this, scheduler);
