@@ -120,8 +120,7 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
 				ClockVector* brCV = beginRangeCV.get(execution);
 				bool flushExist = brCV ? flushExistsBeforeCV(wrt, brCV) : false;
 				if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()) {
-					ModelAction *tmpact = wrt->get_position() ? wrt : read;
-					ERROR(execution, tmpact, "Persistency Race");
+					ERROR(execution, wrt, read, "Persistency Race");
 				}
 			}
 		}

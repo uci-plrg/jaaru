@@ -19,7 +19,7 @@ public:
 	virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
 	virtual void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
 	virtual void freeExecution(ModelExecution *exec) = 0;
-	void ERROR(ModelExecution *exec, ModelAction * action, const char * message);
+	void ERROR(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	MEMALLOC
 protected:
 	HashSet<const char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;

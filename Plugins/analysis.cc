@@ -9,17 +9,30 @@ const char * duplicateString(const char * str) {
 	return (const char *)copy;
 }
 
-void Analysis::ERROR(ModelExecution *exec, ModelAction * action, const char * message) {
-	if(action && action->get_position()) {
-		if(errorSet.get(action->get_position()) == NULL) {
-			model->get_execution()->add_bug("%s: %s ====> Execution=%p \t Address=%p \t Location=%s\n",getName(), message,
-																			exec, action->get_location(), action->get_position());
-			errorSet.add(duplicateString(action->get_position()));
+void Analysis::ERROR(ModelExecution *exec, ModelAction * wrt, ModelAction *read, const char * message) {
+	if(wrt->get_position()) {
+		if(errorSet.get(wrt->get_position()) == NULL) {
+			ASSERT(read && read->get_position());
+			model->get_execution()->add_bug("%s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
+					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+					exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
+			errorSet.add(duplicateString(wrt->get_position()));
 		} else {
 			model->record_bug();
 		}
 	} else {
-		model->get_execution()->add_bug("%s: %s ====> address %p\n",getName(), message, action->get_location());
+		if(read->get_position()) {
+			if(errorSet.get(read->get_position()) == NULL) {
+				model->get_execution()->add_bug("%s: %s ====> write: Execution=%p \t Address=%p\t"
+					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+					exec, wrt->get_location(), read->get_location(), read->get_position());
+				errorSet.add(duplicateString(read->get_position()));
+			} else {
+				model->record_bug();
+			}
+		} else {
+			model->get_execution()->add_bug("%s: %s ====> address %p\n",getName(), message, wrt->get_location());
+		}
 	}
 
 }
