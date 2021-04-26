@@ -323,3 +323,8 @@ int jaaru_num_crashes() {
 	createModelIfNotExist();
 	return model->getNumCrashes();
 }
+
+void jaaru_file_permission_change() {
+	createModelIfNotExist();
+	model->get_execution()->makeExecutionPersistent();
+}

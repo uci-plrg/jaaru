@@ -44,6 +44,7 @@ public:
 	void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 	void freeExecution(ModelExecution *exec);
+	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action);
 private:
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);

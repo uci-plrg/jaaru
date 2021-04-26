@@ -147,16 +147,7 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
 			}
 		}
 		// Updating beginRange to record the progress of threads
-		ClockVector* beginRange = beginRangeCV.get(execution);
-		if(beginRange == NULL) {
-			beginRange = new ClockVector(NULL, wrt);
-			beginRangeCV.put(execution, beginRange);
-		} else {
-			if(wrt->get_cv()) {
-				beginRange->merge(wrt->get_cv());
-			}
-		}
-
+		persistUntilActionAnalysis(execution, wrt);
 	}
 }
 
@@ -217,6 +208,18 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 	if(cv) {
 		beginRangeCV.remove(exec);
 		delete cv;
+	}
+}
+
+void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) {
+	ClockVector* beginRange = beginRangeCV.get(execution);
+	if(beginRange == NULL) {
+		beginRange = new ClockVector(NULL, action);
+		beginRangeCV.put(execution, beginRange);
+	} else {
+		if(action->get_cv()) {
+			beginRange->merge(action->get_cv());
+		}
 	}
 }
 
