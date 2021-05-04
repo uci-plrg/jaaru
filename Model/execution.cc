@@ -279,7 +279,6 @@ void ModelExecution::add_bug(const char *msg, ...) {
 	vsnprintf(str, sizeof(str), msg, ap);
 	va_end(ap);
 	priv->bugs.push_back(new bug_message(str));
-	model->record_new_bug();
 }
 
 void ModelExecution::assert_bug(const char *msg)
@@ -727,7 +726,7 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 }
 
 void ModelExecution::makeExecutionPersistent() {
-	for (unsigned int i = 0;i < get_num_threads();i++) {
+	for (unsigned int i = 0;i < get_num_threads();i ++) {
 		int tid = id_to_int(i);
 		Thread *thread = get_thread(tid);
 		if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
@@ -792,7 +791,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 		break;
 	}
 	case PTHREAD_CREATE: {
-		(*(uint32_t *)curr->get_location()) = pthread_counter++;
+		(*(uint32_t *)curr->get_location()) = pthread_counter ++;
 
 		struct pthread_params *params = (struct pthread_params *)curr->get_value();
 		Thread *th = new Thread(get_next_id(), NULL, params->func, params->arg, get_thread(curr));

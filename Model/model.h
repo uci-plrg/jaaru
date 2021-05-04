@@ -58,8 +58,6 @@ public:
 	Thread * get_current_thread() const;
 
 	uint64_t switch_thread(ModelAction *act);
-	void record_new_bug() {stats.num_total_bugs++; stats.num_distinct_bugs++;}
-	void record_bug() {stats.num_total_bugs++;}
 	void assert_bug(const char *msg, ...);
 
 	void assert_user_bug(const char *msg);

@@ -5,6 +5,8 @@
 #include "action.h"
 #include "execution.h"
 
+int PersistRace::num_crash_injection_points = 0;
+
 CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, uintptr_t id) :
 	MetaDataKey(exec, id),
 	lastFlush(0)
@@ -61,6 +63,7 @@ PersistRace::~PersistRace(){
 void PersistRace::evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) {
 	ASSERT(flush->is_cache_op() && flush->get_cv());
 	if(flush->is_clflush()) {
+		num_crash_injection_points++;
 		CacheLineMetaData *clmetadata = getOrCreateCacheLineMeta(execution, flush);
 		ModelAction *prevWrite = NULL;
 		for(uint i=0;i< CACHELINESIZE;i++) {
@@ -182,6 +185,7 @@ void PersistRace::fenceExecutionAnalysis(ModelExecution *execution, ModelAction 
 		}
 	}
 	if(pendingclwbs.size() > 0) {
+		num_crash_injection_points++;
 		pendingclwbs.clear();
 	}
 }
@@ -221,6 +225,15 @@ void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAct
 			beginRange->merge(action->get_cv());
 		}
 	}
+}
+
+void PersistRace::printStats() {
+	model_print("~~~~~~~~~~~~~~~ %s Stats ~~~~~~~~~~~~~~~", getName());
+	model_print("Total number of prefix-execution bugs: %d\n", num_total_bugs);
+	model_print("Number of distinct prefix-execution bugs: %d\n", errorSet.getSize());
+	model_print("Total number of normal-execution bugs: %d\n", num_total_warnings);
+	model_print("Number of distinct normal-execution bugs: %d\n", warningSet.getSize());
+	model_print("Total number of crash injection points: %d\n", num_crash_injection_points);
 }
 
 unsigned int hashCacheLineKey(MetaDataKey *clm) {

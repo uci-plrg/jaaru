@@ -45,6 +45,7 @@ public:
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 	void freeExecution(ModelExecution *exec);
 	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action);
+	void printStats();
 private:
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
@@ -55,6 +56,7 @@ private:
 	HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
 	HashTable<ModelAction*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> flushmap;
 	ModelVector<ModelAction *> pendingclwbs;
+	static int num_crash_injection_points;
 };
 
 #endif
