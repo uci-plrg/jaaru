@@ -3,9 +3,6 @@
 #include "action.h"
 #include "execution.h"
 
-int Analysis::num_total_bugs = 0;
-int Analysis::num_total_warnings = 0;
-
 const char * duplicateString(const char * str) {
 	char *copy = (char*)model_malloc(strlen(str) + 1);
 	strcpy(copy, str);
@@ -20,8 +17,6 @@ void Analysis::ERROR(ModelExecution *exec, ModelAction * wrt, ModelAction *read,
 																			">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
 																			exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
 			errorSet.add(duplicateString(wrt->get_position()));
-		} else {
-			num_total_bugs++;
 		}
 	} else {
 		if(read->get_position()) {
@@ -30,14 +25,12 @@ void Analysis::ERROR(ModelExecution *exec, ModelAction * wrt, ModelAction *read,
 																				">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
 																				exec, wrt->get_location(), read->get_location(), read->get_position());
 				errorSet.add(duplicateString(read->get_position()));
-			} else {
-				num_total_bugs++;
 			}
 		} else {
 			model->get_execution()->add_bug("%s: %s ====> address %p\n",getName(), message, wrt->get_location());
 		}
 	}
-
+	num_total_bugs++;
 }
 
 void Analysis::WARNING(ModelExecution *exec, ModelAction * wrt, ModelAction *read, const char * message) {
@@ -48,8 +41,6 @@ void Analysis::WARNING(ModelExecution *exec, ModelAction * wrt, ModelAction *rea
 																					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
 																					exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
 			warningSet.add(duplicateString(wrt->get_position()));
-		} else {
-			num_total_warnings++;
 		}
 	} else {
 		if(read->get_position()) {
@@ -58,14 +49,12 @@ void Analysis::WARNING(ModelExecution *exec, ModelAction * wrt, ModelAction *rea
 																						">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
 																						exec, wrt->get_location(), read->get_location(), read->get_position());
 				warningSet.add(duplicateString(read->get_position()));
-			} else {
-				num_total_warnings++;
 			}
 		} else {
 			model->get_execution()->add_warning("%s: %s ====> address %p\n",getName(), message, wrt->get_location());
 		}
 	}
-
+	num_total_warnings++;
 }
 
 unsigned int hashErrorPosition(const char *position) {

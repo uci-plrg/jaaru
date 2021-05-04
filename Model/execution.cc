@@ -290,7 +290,7 @@ void ModelExecution::assert_bug(const char *msg)
 /** @return True, if any bugs have been reported for this execution */
 bool ModelExecution::have_bug_reports() const
 {
-	return priv->bugs.size() != 0;
+	return priv->bugs.size() != 0 || priv->warnings.size() != 0;
 }
 
 ModelVector<bug_message *> * ModelExecution::get_warnings() const
@@ -725,17 +725,19 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 	get_thread(curr)->getMemory()->addOp(curr);
 }
 
-void ModelExecution::makeExecutionPersistent() {
+void ModelExecution::makeExecutionPersistent(bool prefix) {
 	for (unsigned int i = 0;i < get_num_threads();i ++) {
 		int tid = id_to_int(i);
 		Thread *thread = get_thread(tid);
-		if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
-			return;
+		if(prefix) {
+			if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
+				return;
+			}
 		}
 		ModelAction * lastact = thrd_last_action[tid];
 		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 		for(uint i=0;i<analyses->size();i++) {
-			(*analyses)[i] -> persistUntilActionAnalysis(this, lastact);
+			(*analyses)[i] -> persistUntilActionAnalysis(this, lastact, prefix);
 		}
 	}
 }
@@ -1706,8 +1708,10 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 
 	ASSERT(check_action_enabled(curr));	/* May have side effects? */
 	curr = check_current_action(curr);
-	if (hasCrashed)
+	if (hasCrashed) {
+		model->get_execution()->makeExecutionPersistent(false);
 		return NULL;
+	}
 	ASSERT(curr);
 
 	/* Process this action in ModelHistory for records */

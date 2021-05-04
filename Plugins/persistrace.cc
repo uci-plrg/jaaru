@@ -5,8 +5,6 @@
 #include "action.h"
 #include "execution.h"
 
-int PersistRace::num_crash_injection_points = 0;
-
 CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, uintptr_t id) :
 	MetaDataKey(exec, id),
 	lastFlush(0)
@@ -52,6 +50,7 @@ PersistRace::~PersistRace(){
 	}
 	delete iter;
 	beginRangeCV.resetanddelete();
+	fullBeginRangeCV.resetanddelete();
 	flushmap.resetanddelete();
 }
 
@@ -124,6 +123,11 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
 				bool flushExist = brCV ? flushExistsBeforeCV(wrt, brCV) : false;
 				if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()) {
 					ERROR(execution, wrt, read, "Persistency Race");
+				}
+				brCV = fullBeginRangeCV.get(execution);
+				flushExist = brCV ? flushExistsBeforeCV(wrt, brCV) : false;
+				if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()) {
+					WARNING(execution, wrt, read, "Persistency Race");
 				}
 			}
 		}
@@ -213,13 +217,18 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 		beginRangeCV.remove(exec);
 		delete cv;
 	}
+	cv = fullBeginRangeCV.get(exec);
+	if(cv) {
+		fullBeginRangeCV.remove(exec);
+		delete cv;
+	}
 }
 
-void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) {
-	ClockVector* beginRange = beginRangeCV.get(execution);
+void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action, bool prefix) {
+	ClockVector* beginRange = prefix ? beginRangeCV.get(execution) : fullBeginRangeCV.get(execution);
 	if(beginRange == NULL) {
 		beginRange = new ClockVector(NULL, action);
-		beginRangeCV.put(execution, beginRange);
+		prefix ? beginRangeCV.put(execution, beginRange) : fullBeginRangeCV.put(execution, beginRange);
 	} else {
 		if(action->get_cv()) {
 			beginRange->merge(action->get_cv());
@@ -228,11 +237,11 @@ void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAct
 }
 
 void PersistRace::printStats() {
-	model_print("~~~~~~~~~~~~~~~ %s Stats ~~~~~~~~~~~~~~~", getName());
+	model_print("~~~~~~~~~~~~~~~ %s Stats ~~~~~~~~~~~~~~~\n", getName());
 	model_print("Total number of prefix-execution bugs: %d\n", num_total_bugs);
 	model_print("Number of distinct prefix-execution bugs: %d\n", errorSet.getSize());
-	model_print("Total number of normal-execution bugs: %d\n", num_total_warnings);
-	model_print("Number of distinct normal-execution bugs: %d\n", warningSet.getSize());
+	model_print("Total number of full-execution bugs: %d\n", num_total_warnings);
+	model_print("Number of distinct full-execution bugs: %d\n", warningSet.getSize());
 	model_print("Total number of crash injection points: %d\n", num_crash_injection_points);
 }
 

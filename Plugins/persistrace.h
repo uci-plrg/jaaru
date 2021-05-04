@@ -44,7 +44,7 @@ public:
 	void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 	void freeExecution(ModelExecution *exec);
-	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action);
+	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action, bool prefix = true);
 	void printStats();
 private:
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
@@ -54,9 +54,10 @@ private:
 
 	HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineKey, equalCacheLineKey> cachelineMetaSet;
 	HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
+	HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> fullBeginRangeCV;
 	HashTable<ModelAction*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> flushmap;
 	ModelVector<ModelAction *> pendingclwbs;
-	static int num_crash_injection_points;
+	int num_crash_injection_points = {0};
 };
 
 #endif

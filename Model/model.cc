@@ -280,6 +280,10 @@ void ModelChecker::print_stats() const
 	model_print("Number of complete, bug-free executions: %d\n", stats.num_complete);
 	model_print("Number of buggy executions: %d\n", stats.num_buggy_executions);
 	model_print("Total executions: %d\n", stats.num_total);
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i ++) {
+		(*analyses)[i] -> printStats();
+	}
 }
 
 /**
@@ -304,10 +308,6 @@ void ModelChecker::print_execution(bool printbugs) const
 
 	model_print("\n");
 	execution->print_summary();
-	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0;i<analyses->size();i ++) {
-		(*analyses)[i] -> printStats();
-	}
 }
 
 /**

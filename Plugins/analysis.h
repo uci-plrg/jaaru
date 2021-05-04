@@ -19,7 +19,7 @@ public:
 	virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
 	virtual void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
 	virtual void freeExecution(ModelExecution *exec) = 0;
-	virtual void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
+	virtual void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action, bool prefix = true) = 0;
 	virtual void printStats() = 0;
 	void ERROR(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	void WARNING(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
@@ -27,8 +27,8 @@ public:
 protected:
 	HashSet<const char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;
 	HashSet<const char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> warningSet;
-	static int num_total_bugs;
-	static int num_total_warnings;
+	int num_total_bugs = {0};
+	int num_total_warnings = {0};
 };
 
 #endif
