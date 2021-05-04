@@ -155,6 +155,7 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
 		}
 		// Updating beginRange to record the progress of threads
 		persistUntilActionAnalysis(execution, wrt);
+		persistUntilActionAnalysis(execution, wrt, false);
 	}
 }
 
