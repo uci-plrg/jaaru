@@ -725,20 +725,18 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 	get_thread(curr)->getMemory()->addOp(curr);
 }
 
-void ModelExecution::makeExecutionPersistent(bool prefix) {
+void ModelExecution::makeExecutionPersistent() {
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 	for (unsigned int i = 0;i < get_num_threads();i ++) {
 		int tid = id_to_int(i);
 		Thread *thread = get_thread(tid);
-		if(prefix) {
-			if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
-				return;
-			}
+		if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
+		  return;
 		}
 		ModelAction * lastact = thrd_last_action[tid];
 		if(lastact != NULL) {
 			for(uint i=0;i<analyses->size();i++) {
-				(*analyses)[i] -> persistUntilActionAnalysis(this, lastact, prefix);
+				(*analyses)[i] -> persistUntilActionAnalysis(this, lastact);
 			}
 		}
 	}
@@ -1711,7 +1709,6 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 	ASSERT(check_action_enabled(curr));	/* May have side effects? */
 	curr = check_current_action(curr);
 	if (hasCrashed) {
-		model->get_execution()->makeExecutionPersistent(false);
 		return NULL;
 	}
 	ASSERT(curr);

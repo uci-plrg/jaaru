@@ -95,7 +95,7 @@ public:
 	bool getEnableCrash() { return enableCrash; }
 	void setEnableCrash(bool ec) { enableCrash = ec; }
 	action_list_t *getActionTrace() {return &action_trace;}
-	void makeExecutionPersistent(bool prefix = true);
+	void makeExecutionPersistent();
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif

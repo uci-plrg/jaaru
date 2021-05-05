@@ -18,7 +18,7 @@ bool PersistRace::flushExistsBeforeCV(ModelAction *write, ClockVector *cv) {
 	}
 	for(uint j=0;j< flushVect->size();j++) {
 		ModelAction *existingFlush = (*flushVect)[j];
-		if(existingFlush && cv->synchronized_since(existingFlush)) {
+		if(existingFlush && (cv == NULL || cv->synchronized_since(existingFlush))) {
 			return true;
 		}
 	}
@@ -50,7 +50,6 @@ PersistRace::~PersistRace(){
 	}
 	delete iter;
 	beginRangeCV.resetanddelete();
-	fullBeginRangeCV.resetanddelete();
 	flushmap.resetanddelete();
 }
 
@@ -124,8 +123,8 @@ void PersistRace::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<P
 				if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()) {
 					ERROR(execution, wrt, read, "Persistency Race");
 				}
-				brCV = fullBeginRangeCV.get(execution);
-				flushExist = brCV ? flushExistsBeforeCV(wrt, brCV) : false;
+				flushExist = flushExistsBeforeCV(wrt, NULL);
+
 				if(!flushExist && wrt->get_seq_number() > clmetadata->getLastFlush()) {
 					WARNING(execution, wrt, read, "Persistency Race");
 				}
@@ -154,7 +153,6 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
 			}
 			// Updating beginRange to record the progress of threads
 			persistUntilActionAnalysis(execution, wrt);
-			persistUntilActionAnalysis(execution, wrt, false);
 		}
 	}
 }
@@ -218,18 +216,13 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 		beginRangeCV.remove(exec);
 		delete cv;
 	}
-	cv = fullBeginRangeCV.get(exec);
-	if(cv) {
-		fullBeginRangeCV.remove(exec);
-		delete cv;
-	}
 }
 
-void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action, bool prefix) {
-	ClockVector* beginRange = prefix ? beginRangeCV.get(execution) : fullBeginRangeCV.get(execution);
+void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) {
+  ClockVector* beginRange = beginRangeCV.get(execution);
 	if(beginRange == NULL) {
 		beginRange = new ClockVector(NULL, action);
-		prefix ? beginRangeCV.put(execution, beginRange) : fullBeginRangeCV.put(execution, beginRange);
+		beginRangeCV.put(execution, beginRange);
 	} else {
 		if(action->get_cv()) {
 			beginRange->merge(action->get_cv());

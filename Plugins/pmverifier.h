@@ -17,7 +17,7 @@ public:
 	void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action){}
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action){}
 	void freeExecution(ModelExecution *exec) {}
-	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action, bool prefix = true) {}
+	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) {}
 	void printStats() {}
 private:
 	HashTable<ModelExecution*, ModelVector<Range *>, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
