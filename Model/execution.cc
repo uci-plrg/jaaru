@@ -1709,6 +1709,10 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 	ASSERT(check_action_enabled(curr));	/* May have side effects? */
 	curr = check_current_action(curr);
 	if (hasCrashed) {
+		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+		for(uint i=0;i<analyses->size();i++) {
+			(*analyses)[i] -> crashAnalysis(this);
+		}
 		return NULL;
 	}
 	ASSERT(curr);

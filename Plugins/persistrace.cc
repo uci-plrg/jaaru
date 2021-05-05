@@ -230,6 +230,12 @@ void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAct
 	}
 }
 
+void PersistRace::crashAnalysis(ModelExecution *execution) {
+	if(pendingclwbs.size() > 0) {
+		pendingclwbs.clear();
+	}
+}
+
 void PersistRace::printStats() {
 	model_print("~~~~~~~~~~~~~~~ %s Stats ~~~~~~~~~~~~~~~\n", getName());
 	model_print("Total number of prefix-execution bugs: %d\n", num_total_bugs);

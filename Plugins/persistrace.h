@@ -36,7 +36,7 @@ class PersistRace : public Analysis {
 public:
 	PersistRace() {}
 	~PersistRace();
-	void crashAnalysis(ModelExecution * execution){}
+	void crashAnalysis(ModelExecution * execution);
 	void mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
 	const char * getName() {return PERSISTRACENAME;}
 	void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush);
