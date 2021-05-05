@@ -731,7 +731,7 @@ void ModelExecution::makeExecutionPersistent() {
 		int tid = id_to_int(i);
 		Thread *thread = get_thread(tid);
 		if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
-		  return;
+			return;
 		}
 		ModelAction * lastact = thrd_last_action[tid];
 		if(lastact != NULL) {
@@ -831,7 +831,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 		}
 
 		/* Wake up any joining threads */
-		for (unsigned int i = 0;i < get_num_threads();i++) {
+		for (unsigned int i = 0;i < get_num_threads();i ++) {
 			Thread *waiting = get_thread(int_to_id(i));
 			if (waiting->waiting_on() == th &&
 					waiting->get_pending()->is_thread_join())
@@ -1007,7 +1007,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	}
 	if(curr->is_fence()) {
 		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-		for(uint i=0;i<analyses->size();i++) {
+		for(uint i=0;i<analyses->size();i ++) {
 			(*analyses)[i] -> fenceExecutionAnalysis(this, curr);
 		}
 	}
@@ -1061,7 +1061,7 @@ void ModelExecution::handle_read(ModelAction *curr) {
 					model_print("=>");
 				ModelAction *rffirst = (*rfarray)[0].p2;
 				bool allsame = true;
-				for(uint j=1;j<rfarray->size();j++) {
+				for(uint j=1;j<rfarray->size();j ++) {
 					if ((*rfarray)[j].p2 != rffirst)
 						allsame = false;
 				}

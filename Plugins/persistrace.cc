@@ -219,7 +219,7 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 }
 
 void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) {
-  ClockVector* beginRange = beginRangeCV.get(execution);
+	ClockVector* beginRange = beginRangeCV.get(execution);
 	if(beginRange == NULL) {
 		beginRange = new ClockVector(NULL, action);
 		beginRangeCV.put(execution, beginRange);
