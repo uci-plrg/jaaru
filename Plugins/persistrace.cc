@@ -152,10 +152,10 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
 					clmetadata->mergeLastFlush(wrt->get_seq_number());
 				}
 			}
+			// Updating beginRange to record the progress of threads
+			persistUntilActionAnalysis(execution, wrt);
+			persistUntilActionAnalysis(execution, wrt, false);
 		}
-		// Updating beginRange to record the progress of threads
-		persistUntilActionAnalysis(execution, wrt);
-		persistUntilActionAnalysis(execution, wrt, false);
 	}
 }
 
