@@ -37,6 +37,7 @@ typedef enum action_type {
 	THREAD_YIELD,	// < A thread yield action
 	THREAD_JOIN,	// < A thread join action
 	THREAD_FINISH,	// < A thread completion action
+	THREAD_FINISHALL,	// < A thread completion action
 	THREADONLY_FINISH,	// < A thread completion action
 	THREAD_SLEEP,	// < A sleep operation
 	ACTION_EXIT,

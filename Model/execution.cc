@@ -821,10 +821,11 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 	}
 
 	case THREADONLY_FINISH:
-	case THREAD_FINISH: {
+	case THREAD_FINISH:
+	case THREAD_FINISHALL: {
 		Thread *th = get_thread(curr);
-		if (curr->get_type() == THREAD_FINISH &&
-				th == model->getInitThread()) {
+		if (curr->get_type() == THREAD_FINISHALL || (curr->get_type() == THREAD_FINISH &&
+																								 th == model->getInitThread())) {
 			th->complete();
 			setFinished();
 			break;
