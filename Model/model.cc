@@ -621,7 +621,8 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 
 	if (should_terminate_execution()) {
 		//one last crash
-		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash)
+		if ((isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) ||
+	      (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash))
 			doCrash();
 		else
 			finishRunExecution(old);
@@ -693,9 +694,6 @@ void ModelChecker::startChecker() {
 
 bool ModelChecker::should_terminate_execution()
 {
-	if(isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) {
-		return false;
-	}
 	if (execution->have_bug_reports()  && !params.enablePersistrace) {
 		execution->set_assert();
 		return true;
