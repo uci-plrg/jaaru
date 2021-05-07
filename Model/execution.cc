@@ -296,7 +296,7 @@ bool ModelExecution::have_bug_reports() const
 /** @return True, if any bugs have been reported for this execution */
 bool ModelExecution::have_warning_reports() const
 {
-	return priv->bugs.size() != 0;
+	return priv->warnings.size() != 0;
 }
 
 ModelVector<bug_message *> * ModelExecution::get_warnings() const
