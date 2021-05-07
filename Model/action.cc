@@ -644,6 +644,7 @@ const char * ModelAction::get_type_str() const
 	case THREAD_YIELD: return "thread yield";
 	case THREAD_JOIN: return "thread join";
 	case THREAD_FINISH: return "thread finish";
+	case THREAD_FINISHALL: return "thread finish all";
 	case THREAD_SLEEP: return "thread sleep";
 	case THREADONLY_FINISH: return "pthread_exit finish";
 	case ACTION_EXIT: return "action_exit";

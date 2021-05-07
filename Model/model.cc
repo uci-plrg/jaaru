@@ -513,7 +513,8 @@ void ModelChecker::chooseThread(ModelAction *act, Thread *thr) {
 		if (act->get_type() == THREAD_CREATE ||                       \
 				act->get_type() == PTHREAD_CREATE ||                      \
 				act->get_type() == THREAD_START ||                        \
-				act->get_type() == THREAD_FINISH) {
+				act->get_type() == THREAD_FINISH ||                 \
+				act->get_type() == THREAD_FINISHALL ) {
 			chosen_thread = thr;
 			thread_chosen = true;
 		}
@@ -611,20 +612,20 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 	}
 
 	if (should_terminate_execution()) {
-	  if(isRandomExecutionEnabled() ) {
-	    modelclock_t prev = nextCrashPoint;
-	    if(execution->get_curr_seq_num() != max_execution_seq_num) {
-	      max_execution_seq_num = execution->get_curr_seq_num();
-	    }
-	    nextCrashPoint = random() % max_execution_seq_num;
-	    model_print("nextCrashPoint = %u\tmax execution seqeuence number: %u\n", nextCrashPoint, max_execution_seq_num);
-	  }
+		if(isRandomExecutionEnabled() ) {
+			modelclock_t prev = nextCrashPoint;
+			if(execution->get_curr_seq_num() != max_execution_seq_num) {
+				max_execution_seq_num = execution->get_curr_seq_num();
+			}
+			nextCrashPoint = random() % max_execution_seq_num;
+			model_print("nextCrashPoint = %u\tmax execution seqeuence number: %u\n", nextCrashPoint, max_execution_seq_num);
+		}
 
 
 
-	  //one last crash
+		//one last crash
 		if ((isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) ||
-	      (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash))
+				(execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash))
 			doCrash();
 		else
 			finishRunExecution(old);

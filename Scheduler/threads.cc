@@ -64,7 +64,7 @@ Thread * thread_current(void)
 }
 
 void modelexit() {
-	model->switch_thread(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, thread_current()));
+	model->switch_thread(new ModelAction(THREAD_FINISHALL, std::memory_order_seq_cst, thread_current()));
 }
 
 void initMainThread() {
