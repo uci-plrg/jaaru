@@ -237,6 +237,22 @@ void PersistRace::crashAnalysis(ModelExecution *execution) {
 }
 
 void PersistRace::printStats() {
+	if(model->getParams()->pmdebug > 1) {
+		model_print("~~~~~~~~~~~~Prefix execution bugs:~~~~~~~~~~~~~~~~\n");
+		auto iter = errorSet.iterator();
+		while(iter->hasNext()) {
+			const char * error = iter->next();
+			model_print("%s\n", error);
+		}
+		delete iter;
+		iter = warningSet.iterator();
+		model_print("~~~~~~~~~~~~Normal execution bugs:~~~~~~~~~~~~~~~~\n");
+		while(iter->hasNext()) {
+			const char * error = iter->next();
+			model_print("%s\n", error);
+		}
+	}
+	
 	model_print("~~~~~~~~~~~~~~~ %s Stats ~~~~~~~~~~~~~~~\n", getName());
 	model_print("Total number of prefix-execution bugs: %d\n", num_total_bugs);
 	model_print("Number of distinct prefix-execution bugs: %d\n", errorSet.getSize());
