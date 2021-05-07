@@ -60,6 +60,7 @@ public:
 	void add_warning(const char *msg, ...);
 
 	bool have_bug_reports() const;
+	bool have_warning_reports() const;
 
 	ModelVector<bug_message *> * get_bugs() const;
 	ModelVector<bug_message *> * get_warnings() const;

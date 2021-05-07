@@ -290,7 +290,13 @@ void ModelExecution::assert_bug(const char *msg)
 /** @return True, if any bugs have been reported for this execution */
 bool ModelExecution::have_bug_reports() const
 {
-	return priv->bugs.size() != 0 || priv->warnings.size() != 0;
+	return priv->bugs.size() != 0;
+}
+
+/** @return True, if any bugs have been reported for this execution */
+bool ModelExecution::have_warning_reports() const
+{
+	return priv->bugs.size() != 0;
 }
 
 ModelVector<bug_message *> * ModelExecution::get_warnings() const
@@ -1583,6 +1589,8 @@ void ModelExecution::print_summary(bool shortOutput, bool printLines)
 		model_print(" SLEEP-SET REDUNDANT");
 	if (have_bug_reports())
 		model_print(" DETECTED BUG(S)");
+	if (have_warning_reports())
+		model_print(" DETECTED WARNING(S)");
 
 	model_print("\n");
 
