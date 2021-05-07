@@ -346,7 +346,7 @@ void ModelChecker::finish_execution() {
 	while (!nodestack->has_another_execution()) {
 		//last execution on this stack...need to reset
 		if (prevContext == NULL) {
-			if(isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) {
+			if(isRandomExecutionEnabled() && (uint)params.randomExecution >= execution_number) {
 				//nextCrashPoint = random() % INT32_MAX;
 				break;
 			}
@@ -624,8 +624,7 @@ bool ModelChecker::handleChosenThread(Thread *old) {
 
 
 		//one last crash
-		if ((isRandomExecutionEnabled() && (uint)params.randomExecution > execution_number) ||
-				(execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash))
+		if (execution->getEnableCrash() && getNumCrashes() < params.numcrashes && !execution->hasNoWriteSinceCrashCheck() && execution->get_curr_seq_num() >= params.firstCrash)
 			doCrash();
 		else
 			finishRunExecution(old);
