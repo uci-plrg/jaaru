@@ -301,7 +301,7 @@ void ModelChecker::print_execution(bool printbugs) const
 	}
 
 	/* Don't print invalid bugs */
-	if (printbugs && execution->have_bug_reports()) {
+	if (printbugs && (execution->have_bug_reports() || execution->have_warning_reports())) {
 		model_print("\n");
 		print_bugs();
 	}

@@ -13,21 +13,21 @@ void Analysis::ERROR(ModelExecution *exec, ModelAction * wrt, ModelAction *read,
 	if(wrt->get_position()) {
 		if(errorSet.get(wrt->get_position()) == NULL) {
 			ASSERT(read && read->get_position());
-			model->get_execution()->add_bug("%s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
-																			">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
-																			exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
+			model->get_execution()->add_warning("ERROR: %s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
+																					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+																					exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
 			errorSet.add(duplicateString(wrt->get_position()));
 		}
 	} else {
 		if(read->get_position()) {
 			if(errorSet.get(read->get_position()) == NULL) {
-				model->get_execution()->add_bug("%s: %s ====> write: Execution=%p \t Address=%p\t"
-																				">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
-																				exec, wrt->get_location(), read->get_location(), read->get_position());
+				model->get_execution()->add_warning("ERROR: %s: %s ====> write: Execution=%p \t Address=%p\t"
+																						">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+																						exec, wrt->get_location(), read->get_location(), read->get_position());
 				errorSet.add(duplicateString(read->get_position()));
 			}
 		} else {
-			model->get_execution()->add_bug("%s: %s ====> address %p\n",getName(), message, wrt->get_location());
+			model->get_execution()->add_warning("ERROR: %s: %s ====> address %p\n",getName(), message, wrt->get_location());
 		}
 	}
 	num_total_bugs++;
@@ -37,7 +37,7 @@ void Analysis::WARNING(ModelExecution *exec, ModelAction * wrt, ModelAction *rea
 	if(wrt->get_position()) {
 		if(warningSet.get(wrt->get_position()) == NULL) {
 			ASSERT(read && read->get_position());
-			model->get_execution()->add_warning("%s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
+			model->get_execution()->add_warning("WARNING: %s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
 																					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
 																					exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
 			warningSet.add(duplicateString(wrt->get_position()));
@@ -45,13 +45,13 @@ void Analysis::WARNING(ModelExecution *exec, ModelAction * wrt, ModelAction *rea
 	} else {
 		if(read->get_position()) {
 			if(warningSet.get(read->get_position()) == NULL) {
-				model->get_execution()->add_warning("%s: %s ====> write: Execution=%p \t Address=%p\t"
+				model->get_execution()->add_warning("WARNING: %s: %s ====> write: Execution=%p \t Address=%p\t"
 																						">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
 																						exec, wrt->get_location(), read->get_location(), read->get_position());
 				warningSet.add(duplicateString(read->get_position()));
 			}
 		} else {
-			model->get_execution()->add_warning("%s: %s ====> address %p\n",getName(), message, wrt->get_location());
+			model->get_execution()->add_warning("WARNING %s: %s ====> address %p\n",getName(), message, wrt->get_location());
 		}
 	}
 	num_total_warnings++;
