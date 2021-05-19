@@ -24,6 +24,7 @@
 #include "persistentmemory.h"
 #include "plugins.h"
 #include "utils.h"
+#include "libpmem.h"
 
 ModelChecker *model = NULL;
 int inside_model = 0;
@@ -86,8 +87,8 @@ uint getNextRegionID() {
 
 void setRegionFromID(uint ID, void *ptr) {
 	createModelIfNotExist();
-
 	model->setRegion(ID, ptr);
+	jaaru_file_permission_change();
 }
 
 void * ModelChecker::getRegion(uint ID) {
