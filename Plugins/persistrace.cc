@@ -4,6 +4,7 @@
 #include "clockvector.h"
 #include "action.h"
 #include "execution.h"
+#include "threads-model.h"
 
 CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, uintptr_t id) :
 	MetaDataKey(exec, id),
@@ -152,7 +153,7 @@ void PersistRace::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<Model
 				}
 			}
 			// Updating beginRange to record the progress of threads
-			persistUntilActionAnalysis(execution, wrt);
+			persistUntilAction(execution, wrt);
 		}
 	}
 }
@@ -218,7 +219,17 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 	}
 }
 
-void PersistRace::persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action) {
+void PersistRace::persistExecutionAnalysis(ModelExecution *execution) {
+	for (unsigned int i = 0;i < execution->get_num_threads();i ++) {
+		int tid = id_to_int(i);
+		ModelAction * action = execution->getThreadLastAction(tid);
+		if(action != NULL) {
+			persistUntilAction(execution, action);
+		}
+	}	
+}
+
+void PersistRace::persistUntilAction(ModelExecution *execution, ModelAction *action) {
 	ClockVector* beginRange = beginRangeCV.get(execution);
 	if(beginRange == NULL) {
 		beginRange = new ClockVector(NULL, action);

@@ -732,19 +732,16 @@ void ModelExecution::process_store_fence(ModelAction *curr)
 }
 
 void ModelExecution::makeExecutionPersistent() {
-	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 	for (unsigned int i = 0;i < get_num_threads();i ++) {
 		int tid = id_to_int(i);
 		Thread *thread = get_thread(tid);
 		if (thread->getMemory()->emptyStoreBuffer()|| thread->getMemory()->emptyFlushBuffer()) {
 			return;
 		}
-		ModelAction * lastact = thrd_last_action[tid];
-		if(lastact != NULL) {
-			for(uint i=0;i<analyses->size();i++) {
-				(*analyses)[i] -> persistUntilActionAnalysis(this, lastact);
-			}
-		}
+	}
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i] -> persistExecutionAnalysis(this);
 	}
 }
 

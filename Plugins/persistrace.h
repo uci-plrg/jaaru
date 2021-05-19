@@ -44,13 +44,14 @@ public:
 	void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray);
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 	void freeExecution(ModelExecution *exec);
-	void persistUntilActionAnalysis(ModelExecution *execution, ModelAction *action);
+	void persistExecutionAnalysis(ModelExecution *execution);
 	void printStats();
 private:
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, ModelAction *action);
 	bool flushExistsBeforeCV(ModelAction *write, ClockVector *cv);
 	void updateFlushVector(ModelAction *write, ModelAction *flush);
+	void persistUntilAction(ModelExecution *exec, ModelAction *act);
 
 	HashSet<MetaDataKey*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashCacheLineKey, equalCacheLineKey> cachelineMetaSet;
 	HashTable<ModelExecution*, ClockVector*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeCV;
