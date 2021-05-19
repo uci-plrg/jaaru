@@ -331,7 +331,7 @@ void ModelChecker::finish_execution() {
 
 	record_stats();
 	/* Output */
-	if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports()))
+	if ( (complete && params.verbose) || params.verbose>1 || (complete && (execution->have_bug_reports()|| execution->have_warning_reports())))
 		print_execution(complete);
 	else
 		clear_program_output();
