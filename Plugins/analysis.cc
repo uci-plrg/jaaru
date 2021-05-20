@@ -21,6 +21,24 @@ char * duplicateString(char * str) {
 	return copy;
 }
 
+void Analysis::FATAL(ModelExecution *exec, ModelAction *wrt, ModelAction *read, const char * message) {
+	if(wrt->get_position()) {
+			ASSERT(read && read->get_position());
+			model->get_execution()->assert_bug("ERROR: %s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
+																					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+																					exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
+	} else {
+		if(read->get_position()) {
+				model->get_execution()->assert_bug("ERROR: %s: %s ====> write: Execution=%p \t Address=%p\t"
+																						">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+																						exec, wrt->get_location(), read->get_location(), read->get_position());
+		} else {
+			model->get_execution()->assert_bug("ERROR: %s: %s ====> address %p\n",getName(), message, wrt->get_location());
+		}
+	}
+	num_total_bugs++;
+}
+
 void Analysis::ERROR(ModelExecution *exec, ModelAction * wrt, ModelAction *read, const char * message) {
 	if(wrt->get_position()) {
 		char buffer[1024];

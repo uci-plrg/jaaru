@@ -55,7 +55,7 @@ public:
 
 	bool check_action_enabled(ModelAction *curr);
 
-	void assert_bug(const char *msg);
+	void assert_bug(const char *msg, ...);
 	void add_bug(const char *msg, ...);
 	void add_warning(const char *msg, ...);
 
