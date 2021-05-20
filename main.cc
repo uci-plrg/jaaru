@@ -65,13 +65,14 @@ static void print_usage(struct model_params *params)
 		"-e							 Enable manual crash point.\n"
 		"-x							 Enable random execution (default execution number = 30)\n"
 		"-a							 Initializing random seed (default seed = 423121)\n"
+		"-o							 Enable Verifier analysis\n"
 		"-y							 Enable Persistency race analysis\n",
 		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnyv::a::x::p::r:d::c:f:";
+	const char *shortopts = "hsetnoyv::a::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -135,6 +136,9 @@ void parse_options(struct model_params *params) {
 		case 'y':
 			params->enablePersistrace = true;
 			enableAnalysis(PERSISTRACENAME);
+			break;
+		case 'o':
+			enableAnalysis(PMVERIFIERNAME);
 			break;
 		case 'f':
 			FILLBYTE = atoi(optarg);
