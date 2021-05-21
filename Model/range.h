@@ -12,6 +12,15 @@ public:
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange(modelclock_t end) { endR = end; }
 	bool isInRange(modelclock_t val) {return val >= beginR && val <= endR;}
+	void mergeBeginRange(modelclock_t begin) {
+		if(begin > beginR)
+			beginR = begin;
+	}
+	void minMergeEndgeRange(modelclock_t end) {
+		if(end < endR) {
+			endR = end;
+		}
+	}
 	MEMALLOC;
 protected:
 	modelclock_t beginR;

@@ -9,7 +9,12 @@ const char * duplicateString(const char * str) {
 	return (const char *)copy;
 }
 
-void Analysis::FATAL(ModelExecution *exec, ModelAction *wrt, ModelAction *read, const char * message) {
+void Analysis::FATAL(ModelExecution *exec, ModelAction *wrt, ModelAction *read, const char * msg, ...) {
+	char message[2048];
+	va_list ap;
+	va_start(ap, msg);
+	vsnprintf(message, sizeof(message), msg, ap);
+	va_end(ap);
 	if(wrt->get_position()) {
 			ASSERT(read && read->get_position());
 			model->get_execution()->assert_bug("ERROR: %s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
