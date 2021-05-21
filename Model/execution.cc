@@ -801,7 +801,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 		break;
 	}
 	case PTHREAD_CREATE: {
-		(*(uint32_t *)curr->get_location()) = pthread_counter ++;
+		(*(uint32_t *)curr->get_location()) = pthread_counter++;
 
 		struct pthread_params *params = (struct pthread_params *)curr->get_value();
 		Thread *th = new Thread(get_next_id(), NULL, params->func, params->arg, get_thread(curr));
@@ -840,7 +840,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 		}
 
 		/* Wake up any joining threads */
-		for (unsigned int i = 0;i < get_num_threads();i ++) {
+		for (unsigned int i = 0;i < get_num_threads();i++) {
 			Thread *waiting = get_thread(int_to_id(i));
 			if (waiting->waiting_on() == th &&
 					waiting->get_pending()->is_thread_join())
@@ -1016,7 +1016,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	}
 	if(curr->is_fence()) {
 		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-		for(uint i=0;i<analyses->size();i ++) {
+		for(uint i=0;i<analyses->size();i++) {
 			(*analyses)[i] -> fenceExecutionAnalysis(this, curr);
 		}
 	}
@@ -1070,7 +1070,7 @@ void ModelExecution::handle_read(ModelAction *curr) {
 					model_print("=>");
 				ModelAction *rffirst = (*rfarray)[0].p2;
 				bool allsame = true;
-				for(uint j=1;j<rfarray->size();j ++) {
+				for(uint j=1;j<rfarray->size();j++) {
 					if ((*rfarray)[j].p2 != rffirst)
 						allsame = false;
 				}
@@ -1722,7 +1722,7 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 	if (hasCrashed) {
 		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 		for(uint i=0;i<analyses->size();i++) {
-			(*analyses)[i] -> crashAnalysis(this);
+			(*analyses)[i]->crashAnalysis(this);
 		}
 		return NULL;
 	}

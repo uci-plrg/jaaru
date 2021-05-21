@@ -220,13 +220,13 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 }
 
 void PersistRace::persistExecutionAnalysis(ModelExecution *execution) {
-	for (unsigned int i = 0;i < execution->get_num_threads();i ++) {
+	for (unsigned int i = 0;i < execution->get_num_threads();i++) {
 		int tid = id_to_int(i);
 		ModelAction * action = execution->getThreadLastAction(tid);
 		if(action != NULL) {
 			persistUntilAction(execution, action);
 		}
-	}	
+	}
 }
 
 void PersistRace::persistUntilAction(ModelExecution *execution, ModelAction *action) {

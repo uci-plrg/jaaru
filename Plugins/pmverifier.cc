@@ -6,28 +6,28 @@
 #include "threads-model.h"
 
 PMVerifier::~PMVerifier() {
-    rangeMap.resetanddelete();
+	rangeMap.resetanddelete();
 }
 
 void PMVerifier::freeExecution(ModelExecution *exec) {
-    ModelVector<Range*> *rangeVector = rangeMap.get(exec);
-    if(rangeVector) {
-        for(uint i=0; i< rangeVector->size(); i++){
-            delete (*rangeVector)[i];
-        }
-    }
+	ModelVector<Range*> *rangeVector = rangeMap.get(exec);
+	if(rangeVector) {
+		for(uint i=0;i< rangeVector->size();i++) {
+			delete (*rangeVector)[i];
+		}
+	}
 }
 
 /**
  * This simple analysis updates the endRange for all threads when an execution crashes.
  */
 void PMVerifier::crashAnalysis(ModelExecution * execution) {
-    ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
-    for (unsigned int i = 0;i < execution->get_num_threads();i ++) {
+	ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
+	for (unsigned int i = 0;i < execution->get_num_threads();i++) {
 		thread_id_t tid = int_to_id(i);
 		ModelAction * action = execution->getThreadLastAction(tid);
-        Range *range = getOrCreateRange(ranges, tid);
-        range->setEndRange(action->get_seq_number());
+		Range *range = getOrCreateRange(ranges, tid);
+		range->setEndRange(action->get_seq_number());
 	}
 
 }
@@ -44,36 +44,36 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 			ModelAction *wrt = (*writeVec)[i].p2;
 			if(currExecution != execution ) {
 				// Check for persistency bugs
-                ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
-                Range *range = getOrCreateRange(rangeVector, id_to_int(wrt->get_tid()));
-                if(!range->isInRange(wrt->get_seq_number())) {
-                    FATAL(execution, wrt, read, "Fatal Persistency Bug on Write");
-                }
-                ASSERT(wrt->get_cv());
-                ClockVector *cv = wrt->get_cv();
-                for(uint i=0; i< execution->get_num_threads(); i++) {
-                    range = getOrCreateRange(rangeVector, i);
-                    thread_id_t tid = int_to_id(i);
-                    if(range->getEndRange() < cv->getClock(tid)) {
-                        FATAL(execution, wrt, read, 
-                        "Fatal Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t", tid,
-                        cv->getClock(tid), range->getBeginRange(), range->getEndRange());
-                    }
-                }
+				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
+				Range *range = getOrCreateRange(rangeVector, id_to_int(wrt->get_tid()));
+				if(!range->isInRange(wrt->get_seq_number())) {
+					FATAL(execution, wrt, read, "Fatal Persistency Bug on Write");
+				}
+				ASSERT(wrt->get_cv());
+				ClockVector *cv = wrt->get_cv();
+				for(uint i=0;i< execution->get_num_threads();i++) {
+					range = getOrCreateRange(rangeVector, i);
+					thread_id_t tid = int_to_id(i);
+					if(range->getEndRange() < cv->getClock(tid)) {
+						FATAL(execution, wrt, read,
+									"Fatal Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t", tid,
+									cv->getClock(tid), range->getBeginRange(), range->getEndRange());
+					}
+				}
 			}
 		}
 	}
 }
 
 void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
-    ModelVector<Range*> *rangeVector = rangeMap.get(exec);
-    for(uint i=0; i< exec->get_num_threads(); i++) {
-        Range * range = getOrCreateRange(rangeVector, i);
-        ClockVector * cv = action->get_cv();
-        ASSERT(cv);
-        thread_id_t tid = int_to_id(i);
-        range->mergeBeginRange(cv->getClock(tid));
-    }
+	ModelVector<Range*> *rangeVector = rangeMap.get(exec);
+	for(uint i=0;i< exec->get_num_threads();i++) {
+		Range * range = getOrCreateRange(rangeVector, i);
+		ClockVector * cv = action->get_cv();
+		ASSERT(cv);
+		thread_id_t tid = int_to_id(i);
+		range->mergeBeginRange(cv->getClock(tid));
+	}
 }
 
 /**
@@ -83,99 +83,99 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
  * writes.
  */
 void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
-    ModelExecution *currExecution = model->get_execution();
-    void * address = read->get_location();
+	ModelExecution *currExecution = model->get_execution();
+	void * address = read->get_location();
 	for(uint i=0;i<read->getOpSize();i++ ) {
-        uintptr_t curraddress = ((uintptr_t)address) + i;
+		uintptr_t curraddress = ((uintptr_t)address) + i;
 		ModelExecution * execution = (*rfarray)[i].p1;
-        if(currExecution != execution) {
-            ModelAction *wrt = (*rfarray)[i].p2;
-            recordProgress(execution, wrt);
-            updateThreadsEndRangeafterWrite(execution, wrt, curraddress);
-            crashInnerExecutionsBeforeFirstWrite(execution, curraddress);
-        }
-		
-    }
+		if(currExecution != execution) {
+			ModelAction *wrt = (*rfarray)[i].p2;
+			recordProgress(execution, wrt);
+			updateThreadsEndRangeafterWrite(execution, wrt, curraddress);
+			crashInnerExecutionsBeforeFirstWrite(execution, curraddress);
+		}
+
+	}
 }
 
 void PMVerifier::crashInnerExecutionsBeforeFirstWrite(ModelExecution *execution, uintptr_t curraddress) {
-    for(Execution_Context * pExecution = model->getPrevContext();pExecution != NULL ;pExecution=pExecution->prevContext) {
-        ModelExecution * pexec = pExecution->execution;
-        if(pexec == execution) {
-            break;
-        }
-        updateThreadsEndRangeafterWrite(pexec, NULL, curraddress);
-    }
+	for(Execution_Context * pExecution = model->getPrevContext();pExecution != NULL ;pExecution=pExecution->prevContext) {
+		ModelExecution * pexec = pExecution->execution;
+		if(pexec == execution) {
+			break;
+		}
+		updateThreadsEndRangeafterWrite(pexec, NULL, curraddress);
+	}
 }
 
 void PMVerifier::findFirstWriteInEachThread(ModelVector<ModelAction*> &nextWrites, mllnode<ModelAction *> * node, uintptr_t curraddress, unsigned int numThreads) {
-    uint count = 0;
-    while(node!=NULL) {
-        ModelAction *act = node->getVal();
-        uintptr_t actbot = (uintptr_t) act->get_location();
-        uintptr_t acttop = actbot + act->getOpSize();
-        if ((curraddress>=actbot) && (curraddress <acttop)) {
-            ASSERT(act->is_write());
-            uint tid = id_to_int(act->get_tid());
-            if(tid >= nextWrites.size()) {
-                nextWrites.resize(tid +1);
-            }
-            if(nextWrites[tid] == NULL) {
-                nextWrites[tid] = act;
-                count++;
-            }
-            if(count == numThreads){
-                break;
-            }
-        }
-        node=node->getNext();
-    }
+	uint count = 0;
+	while(node!=NULL) {
+		ModelAction *act = node->getVal();
+		uintptr_t actbot = (uintptr_t) act->get_location();
+		uintptr_t acttop = actbot + act->getOpSize();
+		if ((curraddress>=actbot) && (curraddress <acttop)) {
+			ASSERT(act->is_write());
+			uint tid = id_to_int(act->get_tid());
+			if(tid >= nextWrites.size()) {
+				nextWrites.resize(tid +1);
+			}
+			if(nextWrites[tid] == NULL) {
+				nextWrites[tid] = act;
+				count++;
+			}
+			if(count == numThreads) {
+				break;
+			}
+		}
+		node=node->getNext();
+	}
 }
 
 /**
  * Update the endRange to be before the first write after 'wrt' by each thread.
  * If wrt is null, this function returns the first write for each thread.
- */ 
+ */
 void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, ModelAction *wrt, uintptr_t curraddress) {
-    // Update the endRange for all threads
-    mllnode<ModelAction *> * nextNode = NULL;
-    if(wrt) {
-        nextNode = wrt->getActionRef()->getNext();
-    } else {
-        void *addr = alignAddress( (void*)curraddress );
-        simple_action_list_t * writes = execution->get_obj_write_map()->get(addr);
-        if (writes == NULL)
-            return;
-        nextNode = writes->begin();
-    }
-    ModelVector<ModelAction*> nextWrites;
-    findFirstWriteInEachThread(nextWrites, nextNode, curraddress, execution->get_num_threads());
-    ModelVector<Range*> *ranges = rangeMap.get(execution);
-    for(uint i=0; i < nextWrites.size(); i++) {
-        ModelAction *nextWrite = nextWrites[i];
-        if(nextWrite) {
-            Range *range = getOrCreateRange(ranges, i);
-            range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
-        }
-    }
+	// Update the endRange for all threads
+	mllnode<ModelAction *> * nextNode = NULL;
+	if(wrt) {
+		nextNode = wrt->getActionRef()->getNext();
+	} else {
+		void *addr = alignAddress( (void*)curraddress );
+		simple_action_list_t * writes = execution->get_obj_write_map()->get(addr);
+		if (writes == NULL)
+			return;
+		nextNode = writes->begin();
+	}
+	ModelVector<ModelAction*> nextWrites;
+	findFirstWriteInEachThread(nextWrites, nextNode, curraddress, execution->get_num_threads());
+	ModelVector<Range*> *ranges = rangeMap.get(execution);
+	for(uint i=0;i < nextWrites.size();i++) {
+		ModelAction *nextWrite = nextWrites[i];
+		if(nextWrite) {
+			Range *range = getOrCreateRange(ranges, i);
+			range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
+		}
+	}
 }
 
 ModelVector<Range*> * PMVerifier::getOrCreateRangeVector(ModelExecution * exec) {
-    ModelVector<Range*> *rangeVector = rangeMap.get(exec);
+	ModelVector<Range*> *rangeVector = rangeMap.get(exec);
 	if(rangeVector == NULL) {
 		rangeVector = new ModelVector<Range*>();
 		rangeMap.put(exec, rangeVector);
-	} 
-    if( rangeVector->size() < exec->get_num_threads()){
-        rangeVector->resize(exec->get_num_threads());
-    }
-    return rangeVector;
+	}
+	if( rangeVector->size() < exec->get_num_threads()) {
+		rangeVector->resize(exec->get_num_threads());
+	}
+	return rangeVector;
 }
 
 Range * PMVerifier::getOrCreateRange(ModelVector<Range*> *ranges, int tid) {
-    Range *range = (*ranges)[tid];
-    if(!range) {
-        (*ranges)[tid] = new Range();
-    }
-    return range;
+	Range *range = (*ranges)[tid];
+	if(!range) {
+		(*ranges)[tid] = new Range();
+	}
+	return range;
 }
