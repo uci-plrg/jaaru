@@ -21,8 +21,9 @@ public:
 	void printStats() {}
 private:
 	void recordProgress(ModelExecution *exec, ModelAction *action);
-	void findNextWriteInEachThread(ModelVector<ModelAction*> &nextWrites, ModelAction * wrt, uintptr_t curraddress);
-	void updateNexWritesEndRanges(ModelExecution *exec, ModelAction *action, uintptr_t curraddress);
+	void findFirstWriteInEachThread(ModelVector<ModelAction*> &nextWrites, mllnode<ModelAction *> * node, uintptr_t curraddress, unsigned int numThreads);
+	void updateThreadsEndRangeafterWrite(ModelExecution *exec, ModelAction *action, uintptr_t curraddress);
+	void crashInnerExecutionsBeforeFirstWrite(ModelExecution *execution, uintptr_t curraddress);
 	ModelVector<Range*> *getOrCreateRangeVector(ModelExecution * exec);
 	Range * getOrCreateRange(ModelVector<Range*> *ranges, int tid);
 	HashTable<ModelExecution*, ModelVector<Range*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;

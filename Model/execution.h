@@ -98,6 +98,7 @@ public:
 	action_list_t *getActionTrace() {return &action_trace;}
 	void makeExecutionPersistent();
 	ModelAction *getThreadLastAction(thread_id_t tid) {return thrd_last_action[tid];}
+	auto get_obj_write_map() {return &obj_wr_map;}
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
