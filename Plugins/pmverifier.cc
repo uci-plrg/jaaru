@@ -88,18 +88,30 @@ void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelE
 	for(uint i=0;i<read->getOpSize();i++ ) {
         uintptr_t curraddress = ((uintptr_t)address) + i;
 		ModelExecution * execution = (*rfarray)[i].p1;
-		ModelAction *wrt = (*rfarray)[i].p2;
-        recordProgress(execution, wrt);
-        updateNexWritesEndRanges(execution, wrt, curraddress);
+        if(currExecution != execution) {
+            ModelAction *wrt = (*rfarray)[i].p2;
+            recordProgress(execution, wrt);
+            updateThreadsEndRangeafterWrite(execution, wrt, curraddress);
+            crashInnerExecutionsBeforeFirstWrite(execution, curraddress);
+        }
+		
     }
 }
 
-void PMVerifier::findNextWriteInEachThread(ModelVector<ModelAction*> &nextWrites, ModelAction * wrt, uintptr_t curraddress) {
-    mllnode<ModelAction *> * node = wrt->getActionRef();
-    mllnode<ModelAction *> * nextNode = node->getNext();
+void PMVerifier::crashInnerExecutionsBeforeFirstWrite(ModelExecution *execution, uintptr_t curraddress) {
+    for(Execution_Context * pExecution = model->getPrevContext();pExecution != NULL ;pExecution=pExecution->prevContext) {
+        ModelExecution * pexec = pExecution->execution;
+        if(pexec == execution) {
+            break;
+        }
+        updateThreadsEndRangeafterWrite(pexec, NULL, curraddress);
+    }
+}
 
-    while(nextNode!=NULL) {
-        ModelAction *act = nextNode->getVal();
+void PMVerifier::findFirstWriteInEachThread(ModelVector<ModelAction*> &nextWrites, mllnode<ModelAction *> * node, uintptr_t curraddress, unsigned int numThreads) {
+    uint count = 0;
+    while(node!=NULL) {
+        ModelAction *act = node->getVal();
         uintptr_t actbot = (uintptr_t) act->get_location();
         uintptr_t acttop = actbot + act->getOpSize();
         if ((curraddress>=actbot) && (curraddress <acttop)) {
@@ -110,24 +122,42 @@ void PMVerifier::findNextWriteInEachThread(ModelVector<ModelAction*> &nextWrites
             }
             if(nextWrites[tid] == NULL) {
                 nextWrites[tid] = act;
+                count++;
+            }
+            if(count == numThreads){
+                break;
             }
         }
-        nextNode=nextNode->getNext();
+        node=node->getNext();
     }
 }
 
-void PMVerifier::updateNexWritesEndRanges(ModelExecution *execution, ModelAction *wrt, uintptr_t curraddress) {
+/**
+ * Update the endRange to be before the first write after 'wrt' by each thread.
+ * If wrt is null, this function returns the first write for each thread.
+ */ 
+void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, ModelAction *wrt, uintptr_t curraddress) {
     // Update the endRange for all threads
-        ModelVector<ModelAction*> nextWrites;
-        findNextWriteInEachThread(nextWrites, wrt, curraddress);
-        ModelVector<Range*> *ranges = rangeMap.get(execution);
-        for(uint i=0; i < nextWrites.size(); i++) {
-            ModelAction *nextWrite = nextWrites[i];
-            if(nextWrite) {
-                Range *range = getOrCreateRange(ranges, i);
-                range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
-            }
+    mllnode<ModelAction *> * nextNode = NULL;
+    if(wrt) {
+        nextNode = wrt->getActionRef()->getNext();
+    } else {
+        void *addr = alignAddress( (void*)curraddress );
+        simple_action_list_t * writes = execution->get_obj_write_map()->get(addr);
+        if (writes == NULL)
+            return;
+        nextNode = writes->begin();
+    }
+    ModelVector<ModelAction*> nextWrites;
+    findFirstWriteInEachThread(nextWrites, nextNode, curraddress, execution->get_num_threads());
+    ModelVector<Range*> *ranges = rangeMap.get(execution);
+    for(uint i=0; i < nextWrites.size(); i++) {
+        ModelAction *nextWrite = nextWrites[i];
+        if(nextWrite) {
+            Range *range = getOrCreateRange(ranges, i);
+            range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
         }
+    }
 }
 
 ModelVector<Range*> * PMVerifier::getOrCreateRangeVector(ModelExecution * exec) {
