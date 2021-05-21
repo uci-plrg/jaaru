@@ -97,7 +97,7 @@ public:
 	void setEnableCrash(bool ec) { enableCrash = ec; }
 	action_list_t *getActionTrace() {return &action_trace;}
 	void makeExecutionPersistent();
-	ModelAction *getThreadLastAction(int tid) {return thrd_last_action[tid];}
+	ModelAction *getThreadLastAction(thread_id_t tid) {return thrd_last_action[tid];}
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif

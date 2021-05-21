@@ -20,7 +20,10 @@ public:
 	void persistExecutionAnalysis(ModelExecution *execution) {}
 	void printStats() {}
 private:
-	ModelVector<Range*> *getOrCreateRanges(ModelExecution * exec);
+	void recordProgress(ModelExecution *exec, ModelAction *action);
+	void findNextWriteInEachThread(ModelVector<ModelAction*> &nextWrites, ModelAction * wrt, uintptr_t curraddress);
+	void updateNexWritesEndRanges(ModelExecution *exec, ModelAction *action, uintptr_t curraddress);
+	ModelVector<Range*> *getOrCreateRangeVector(ModelExecution * exec);
 	Range * getOrCreateRange(ModelVector<Range*> *ranges, int tid);
 	HashTable<ModelExecution*, ModelVector<Range*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
 };

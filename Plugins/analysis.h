@@ -23,7 +23,7 @@ public:
 	virtual void printStats() = 0;
 	void ERROR(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	void WARNING(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
-	void FATAL(ModelExecution *exec, ModelAction *write, ModelAction *read, const char * message);
+	void FATAL(ModelExecution *exec, ModelAction *write, ModelAction *read, const char * message, ...);
 	MEMALLOC
 protected:
 	HashSet<char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;
