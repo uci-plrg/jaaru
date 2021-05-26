@@ -173,9 +173,9 @@ ModelVector<Range*> * PMVerifier::getOrCreateRangeVector(ModelExecution * exec) 
 }
 
 Range * PMVerifier::getOrCreateRange(ModelVector<Range*> *ranges, int tid) {
-	Range *range = (*ranges)[tid];
-	if(!range) {
+	ASSERT(ranges->size() > (uint) tid);
+	if(!(*ranges)[tid]) {
 		(*ranges)[tid] = new Range();
 	}
-	return range;
+	return (*ranges)[tid];
 }
