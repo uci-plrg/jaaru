@@ -832,6 +832,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 	case THREAD_FINISH:
 	case THREAD_FINISHALL: {
 		Thread *th = get_thread(curr);
+		th->getMemory()->emptyStoreBuffer();
 		if (curr->get_type() == THREAD_FINISHALL || (curr->get_type() == THREAD_FINISH &&
 																								 th == model->getInitThread())) {
 			th->complete();
