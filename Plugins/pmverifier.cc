@@ -26,9 +26,11 @@ void PMVerifier::crashAnalysis(ModelExecution * execution) {
 	ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
 	for (unsigned int i = 0;i < execution->get_num_threads();i++) {
 		thread_id_t tid = int_to_id(i);
-		ModelAction * action = execution->getThreadLastAction(tid);
-		Range *range = getOrCreateRange(ranges, tid);
-		range->setEndRange(action->get_seq_number());
+		ModelAction * action = execution->get_last_action(tid);
+		if(action) {
+			Range *range = getOrCreateRange(ranges, tid);
+			range->setEndRange(action->get_seq_number());
+		}
 	}
 
 }

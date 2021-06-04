@@ -30,6 +30,9 @@ void* func1(void * input){
 	myobj->x=3;
 	myobj->var=11;
 	myobj->x=4;
+#ifdef TEST1
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(myobj));
+#endif
 	return NULL;
 }
 
@@ -41,6 +44,9 @@ void* func2(void * input)
 	myobj->y=20;
 	myobj->z=10;
 	myobj->x=60;
+#ifdef TEST1
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(myobj));
+#endif
 	return NULL;
 }
 
