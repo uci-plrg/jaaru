@@ -15,6 +15,7 @@ void PMVerifier::freeExecution(ModelExecution *exec) {
 		for(uint i=0;i< rangeVector->size();i++) {
 			delete (*rangeVector)[i];
 		}
+		rangeVector->clear();
 	}
 }
 
@@ -47,7 +48,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
 				Range *range = getOrCreateRange(rangeVector, id_to_int(wrt->get_tid()));
 				if(!range->isInRange(wrt->get_seq_number())) {
-					FATAL(execution, wrt, read, "Fatal Persistency Bug on Write");
+					ERROR(execution, wrt, read, "Fatal Persistency Bug on Write");
 				}
 				ASSERT(wrt->get_cv());
 				ClockVector *cv = wrt->get_cv();
@@ -55,9 +56,8 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 					range = getOrCreateRange(rangeVector, i);
 					thread_id_t tid = int_to_id(i);
 					if(range->getEndRange() < cv->getClock(tid)) {
-						FATAL(execution, wrt, read,
-									"Fatal Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t", tid,
-									cv->getClock(tid), range->getBeginRange(), range->getEndRange());
+						ERROR(execution, wrt, read,
+									"Fatal Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t");
 					}
 				}
 			}
