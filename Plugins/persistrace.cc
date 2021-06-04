@@ -221,8 +221,8 @@ void PersistRace::freeExecution(ModelExecution *exec) {
 
 void PersistRace::persistExecutionAnalysis(ModelExecution *execution) {
 	for (unsigned int i = 0;i < execution->get_num_threads();i++) {
-		int tid = id_to_int(i);
-		ModelAction * action = execution->getThreadLastAction(tid);
+		thread_id_t tid = int_to_id(i);
+		ModelAction * action = execution->get_last_action(tid);
 		if(action != NULL) {
 			persistUntilAction(execution, action);
 		}
