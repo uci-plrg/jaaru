@@ -68,7 +68,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 }
 
 void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
-	ModelVector<Range*> *rangeVector = rangeMap.get(exec);
+	ModelVector<Range*> *rangeVector = getOrCreateRangeVector(exec);
 	for(uint i=0;i< exec->get_num_threads();i++) {
 		Range * range = getOrCreateRange(rangeVector, i);
 		ClockVector * cv = action->get_cv();
@@ -152,7 +152,7 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 	}
 	ModelVector<ModelAction*> nextWrites;
 	findFirstWriteInEachThread(nextWrites, nextNode, curraddress, execution->get_num_threads());
-	ModelVector<Range*> *ranges = rangeMap.get(execution);
+	ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
 	for(uint i=0;i < nextWrites.size();i++) {
 		ModelAction *nextWrite = nextWrites[i];
 		if(nextWrite) {
@@ -160,6 +160,18 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 			range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
 		}
 	}
+}
+
+void PMVerifier::printRangeVector(ModelExecution *execution) {
+	ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
+	model_print("Execution: %p\n", execution);
+	for (unsigned int i = 0;i < execution->get_num_threads();i++) {
+		thread_id_t tid = int_to_id(i);
+		Range *range = getOrCreateRange(ranges, tid);
+		model_print("%u. ", tid);
+		range->print();
+	}
+	model_print("###########################\n");
 }
 
 ModelVector<Range*> * PMVerifier::getOrCreateRangeVector(ModelExecution * exec) {

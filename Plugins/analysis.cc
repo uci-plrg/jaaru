@@ -19,16 +19,16 @@ void Analysis::FATAL(ModelExecution *exec, ModelAction *wrt, ModelAction *read, 
 		if(errorSet.get(wrt->get_position()) == NULL) {
 			ASSERT(read && read->get_position());
 			model->get_execution()->assert_bug("ERROR: %s: %s ====> write: Execution=%p \t Address=%p \t Location=%s\t"
-																				">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
-																				exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
+																				 ">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+																				 exec, wrt->get_location(), wrt->get_position(), read->get_location(), read->get_position());
 			errorSet.add(duplicateString(wrt->get_position()));
 		}
 	} else {
 		if(read->get_position()) {
 			if(errorSet.get(read->get_position()) == NULL) {
 				model->get_execution()->assert_bug("ERROR: %s: %s ====> write: Execution=%p \t Address=%p\t"
-																					">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
-																					exec, wrt->get_location(), read->get_location(), read->get_position());
+																					 ">>>>>>> Read by: Address=%p \t Location=%s\n",getName(), message,
+																					 exec, wrt->get_location(), read->get_location(), read->get_position());
 				errorSet.add(duplicateString(read->get_position()));
 			}
 		} else {

@@ -26,6 +26,7 @@ private:
 	void crashInnerExecutionsBeforeFirstWrite(ModelExecution *execution, uintptr_t curraddress);
 	ModelVector<Range*> *getOrCreateRangeVector(ModelExecution * exec);
 	Range * getOrCreateRange(ModelVector<Range*> *ranges, int tid);
+	void printRangeVector(ModelExecution *execution);
 	HashTable<ModelExecution*, ModelVector<Range*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
 };
 

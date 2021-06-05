@@ -395,6 +395,21 @@ bool ModelAction::is_executed() const
 	return seq_number != ACTION_INITIAL_CLOCK;
 }
 
+bool ModelAction::is_finish() const
+{
+	switch (type)
+	{
+	case THREADONLY_FINISH:
+	case THREAD_FINISH:
+	case THREAD_FINISHALL:
+		return true;
+	default:
+		return false;
+	}
+
+	return false;
+}
+
 bool ModelAction::same_var(const ModelAction *act) const
 {
 	if (act->is_wait() || is_wait()) {
