@@ -146,6 +146,7 @@ public:
 	bool is_annotation() const;
 	bool is_seqcst() const;
 	bool is_executed() const;
+	bool is_finish() const;
 	bool same_var(const ModelAction *act) const;
 	bool same_thread(const ModelAction *act) const;
 	bool is_conflicting_lock(const ModelAction *act) const;

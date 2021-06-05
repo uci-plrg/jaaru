@@ -1,5 +1,6 @@
 #ifndef RANGE_H
 #define RANGE_H
+#include "classlist.h"
 /**
  * Range class is a general class used in cacheline and PMVerifer. Please look at
  * pmverfier.h and cacheline.h to see what beginR and endR are used for.
@@ -12,15 +13,9 @@ public:
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange(modelclock_t end) { endR = end; }
 	bool isInRange(modelclock_t val) {return val >= beginR && val <= endR;}
-	void mergeBeginRange(modelclock_t begin) {
-		if(begin > beginR)
-			beginR = begin;
-	}
-	void minMergeEndgeRange(modelclock_t end) {
-		if(end < endR) {
-			endR = end;
-		}
-	}
+	void mergeBeginRange(modelclock_t begin);
+	void minMergeEndgeRange(modelclock_t end);
+	void print() const;
 	MEMALLOC;
 protected:
 	modelclock_t beginR;

@@ -833,7 +833,6 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 	case THREAD_FINISH:
 	case THREAD_FINISHALL: {
 		Thread *th = get_thread(curr);
-		th->getMemory()->emptyStoreBuffer();
 		if (curr->get_type() == THREAD_FINISHALL || (curr->get_type() == THREAD_FINISH &&
 																								 th == model->getInitThread())) {
 			th->complete();
@@ -961,7 +960,9 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		/* Always compute new clock vector */
 		curr->merge_cv(get_parent_action(curr->get_tid()));
 	}
-
+	if(curr->is_finish()) {
+		get_thread(curr)->getMemory()->emptyStoreBuffer();
+	}
 	if(second_part_of_rmw) {
 		// Swap with previous rmw_read action and delete the second part.
 		curr = swap_rmw_write_part(curr);
