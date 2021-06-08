@@ -709,6 +709,10 @@ void ModelChecker::doCrash() {
 	if (params.verbose >= 4) {
 		execution->print_summary();
 	}
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i]->crashAnalysis(execution);
+	}
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
 	prevContext = ec;

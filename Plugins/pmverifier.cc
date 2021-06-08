@@ -26,13 +26,43 @@ void PMVerifier::crashAnalysis(ModelExecution * execution) {
 	ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
 	for (unsigned int i = 0;i < execution->get_num_threads();i++) {
 		thread_id_t tid = int_to_id(i);
+		Range *range = getOrCreateRange(ranges, tid);
 		ModelAction * action = execution->get_last_action(tid);
 		if(action) {
-			Range *range = getOrCreateRange(ranges, tid);
 			range->setEndRange(action->get_seq_number());
+		} else {
+			range->setEndRange(execution->get_curr_seq_num());
 		}
 	}
 
+}
+
+void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress) {
+	range.setBeginRange(wrt->get_seq_number());
+	mllnode<ModelAction *> * nextNode = wrt->getActionRef()->getNext();
+	while(nextNode != NULL) {
+		ModelAction *tmp = nextNode->getVal();
+		if(tmp->get_tid() == wrt->get_tid()) {
+			uintptr_t bot = (uintptr_t)tmp->get_location();
+			uintptr_t top = bot + tmp->getOpSize();
+			if ((curraddress>=bot) && (curraddress <top)) {
+				break;
+			}
+		}
+		nextNode = nextNode->getNext();
+	}
+	if(nextNode) {
+		ModelAction *nextWrite = nextNode->getVal();
+		ASSERT(nextWrite);
+		range.setEndRange(nextWrite->get_seq_number() - 1);
+	} else {
+		ModelAction * action = wrtExecution->get_last_action(wrt->get_tid());
+		if(action) {
+			range.setEndRange(action->get_seq_number());
+		} else {
+			range.setEndRange(wrtExecution->get_curr_seq_num());
+		}
+	}
 }
 
 /**
@@ -49,7 +79,10 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				// Check for persistency bugs
 				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
 				Range *range = getOrCreateRange(rangeVector, id_to_int(wrt->get_tid()));
-				if(!range->isInRange(wrt->get_seq_number())) {
+				uintptr_t curraddress = ((uintptr_t)wrt->get_location()) + i;
+				Range writeRange;
+				populateWriteConstraint(writeRange, wrt, execution, curraddress);
+				if(!range->hastIntersection(writeRange) ) {
 					ERROR(execution, wrt, read, "Fatal Persistency Bug on Write");
 				}
 				ASSERT(wrt->get_cv());
