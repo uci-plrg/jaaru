@@ -7,6 +7,7 @@
 using namespace std;
 #define NUMTHREADS 2
 #define TEST1
+#define TEST2
 
 extern "C" {
 void * getRegionFromID(uint ID);
@@ -17,8 +18,17 @@ typedef struct testStruct
 {
 	testStruct() : x(0), y(0), z(0), var(0) {}
 	uint32_t x;
+#ifdef TEST2
+	char nope [64];
+#endif
 	uint32_t y;
+#ifdef TEST2
+	char nope1 [64];
+#endif
 	uint32_t z;
+#ifdef TEST2
+	char nope2 [64];
+#endif
 	uint32_t var;
 } testStruct;
 
