@@ -12,7 +12,7 @@ public:
 	modelclock_t getEndRange(){ return endR; }
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange(modelclock_t end) { endR = end; }
-	bool isInRange(modelclock_t val) {return val >= beginR && val <= endR;}
+	bool hastIntersection(Range &r);
 	void mergeBeginRange(modelclock_t begin);
 	void minMergeEndgeRange(modelclock_t end);
 	void print() const;
