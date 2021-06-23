@@ -64,13 +64,14 @@ static void print_usage(struct model_params *params)
 		"-e							 Enable manual crash point.\n"
 		"-x							 Enable random execution (default execution number = 30)\n"
 		"-o							 Enable Verifier analysis\n"
+		"-b							 Threashold for randomly evict instructions from store buffer (Default = 15)\n"
 		"-y							 Enable Persistency race analysis\n",
 		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnoyv::x::p::r:d::c:f:";
+	const char *shortopts = "hsetnoyv::b::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -127,6 +128,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'x':
 			params->randomExecution = optarg ? atoi(optarg) : 30;
+			break;
+		case 'b':
+			params->storebufferthreshold = optarg ? atoi(optarg) : 15;
 			break;
 		case 'y':
 			params->enablePersistrace = true;
