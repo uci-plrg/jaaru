@@ -107,6 +107,9 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 		ClockVector * cv = action->get_cv();
 		ASSERT(cv);
 		thread_id_t tid = int_to_id(i);
+		if(range->getEndRange()<cv->getClock(tid)){
+			model_print("WARNING: end range %u is not compatable with new begin range %u\n", range->getEndRange(), cv->getClock(tid));
+		}
 		range->mergeBeginRange(cv->getClock(tid));
 	}
 }
@@ -190,6 +193,9 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 		ModelAction *nextWrite = nextWrites[i];
 		if(nextWrite) {
 			Range *range = getOrCreateRange(ranges, i);
+			if(range->getBeginRange()>nextWrite->get_seq_number()-1){
+				model_print("WARNING: begin range %u is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_seq_number()-1);
+			}
 			range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
 		}
 	}
