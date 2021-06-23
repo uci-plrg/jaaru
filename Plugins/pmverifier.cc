@@ -83,6 +83,15 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				Range writeRange;
 				populateWriteConstraint(writeRange, wrt, execution, curraddress);
 				if(!range->hastIntersection(writeRange) ) {
+					if(model->getParams()->pmdebug > 1 ) {
+						model_print("******************************\nPMVerfier found bug! Write:\n");
+						wrt->print();
+						model_print("Write range:\t");
+						writeRange.print();
+						model_print("\nThread Range:\t");
+						range->print();
+						model_print("\n****************************\n");
+					}
 					ERROR(execution, wrt, read, "Fatal Persistency Bug on Write");
 				}
 				ASSERT(wrt->get_cv());
@@ -91,6 +100,16 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 					range = getOrCreateRange(rangeVector, i);
 					thread_id_t tid = int_to_id(i);
 					if(range->getEndRange() < cv->getClock(tid)) {
+						if(model->getParams()->pmdebug > 1 ) {
+							model_print("******************************\nPMVerfier found bug! Write:\n");
+							wrt->print();
+							model_print("Write range:\t");
+							writeRange.print();
+							model_print("\nThread Range:\t");
+							range->print();
+							model_print("\n****************************\n");
+						}
+						
 						ERROR(execution, wrt, read,
 									"Fatal Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t");
 					}
@@ -130,6 +149,10 @@ void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelE
 			crashInnerExecutionsBeforeFirstWrite(execution, curraddress);
 		}
 
+	}
+	if(model->getParams()->pmdebug > 2 ) {
+		model_print("Execution Thread changes after applying the read operation:\n");
+		printRangeVector(currExecution);
 	}
 }
 
