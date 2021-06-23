@@ -148,7 +148,19 @@ ModelChecker::ModelChecker() :
 /** @brief Destructor */
 ModelChecker::~ModelChecker()
 {
-	delete scheduler;
+	cleanup();
+}
+
+void ModelChecker::cleanup() {
+	if(scheduler) {
+		delete scheduler;
+	}
+	if(nodestack) {
+		delete nodestack;
+	}
+	if(execution) {
+		delete execution;
+	}
 }
 
 /** Method to set parameters */
@@ -502,6 +514,7 @@ void ModelChecker::finishRunExecution(Thread *old) {
 	char filename[256];
 	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
 	unlink(filename);
+	cleanup();
 
 	/* Exit. */
 	_Exit(0);
