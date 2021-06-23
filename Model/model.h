@@ -101,7 +101,7 @@ private:
 	void chooseThread(ModelAction *act, Thread *thr);
 	Thread * getNextThread(Thread *old);
 	bool handleChosenThread(Thread *old);
-
+	void cleanup();
 
 
 	uint numcrashes;
