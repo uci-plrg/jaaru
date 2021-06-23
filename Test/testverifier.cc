@@ -11,8 +11,8 @@
 
 using namespace std;
 #define NUMTHREADS 2
-//#define TEST1
-//#define TEST2
+#define FIX
+#define TEST2
 
 extern "C" {
 void * getRegionFromID(uint ID);
@@ -43,10 +43,13 @@ void* func1(void * input){
 	myobj->x=2;
 	myobj->y=3;
 	myobj->x=3;
+#ifdef FIX
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
+#endif	
 	myobj->var=11;
 	myobj->x=4;
-#ifdef TEST1
-	cacheOperation(CLFLUSH, (char *)myobj, sizeof(myobj));
+#ifdef FIX
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
 #endif
 	return NULL;
 }
@@ -59,8 +62,8 @@ void* func2(void * input)
 	myobj->y=20;
 	myobj->z=10;
 	myobj->x=60;
-#ifdef TEST1
-	cacheOperation(CLFLUSH, (char *)myobj, sizeof(myobj));
+#ifdef FIX
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
 #endif
 	return NULL;
 }
