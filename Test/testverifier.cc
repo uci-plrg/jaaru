@@ -3,16 +3,11 @@
 #include <stdio.h>
 #include <cstdlib>
 #include "test.h"
-#include "common.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 using namespace std;
 #define NUMTHREADS 2
-//#define TEST1
-//#define TEST2
+#define FIX
+#define TEST2
 
 extern "C" {
 void * getRegionFromID(uint ID);
@@ -43,10 +38,13 @@ void* func1(void * input){
 	myobj->x=2;
 	myobj->y=3;
 	myobj->x=3;
+#ifdef FIX
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
+#endif	
 	myobj->var=11;
 	myobj->x=4;
-#ifdef TEST1
-	cacheOperation(CLFLUSH, (char *)myobj, sizeof(myobj));
+#ifdef FIX
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
 #endif
 	return NULL;
 }
@@ -59,8 +57,8 @@ void* func2(void * input)
 	myobj->y=20;
 	myobj->z=10;
 	myobj->x=60;
-#ifdef TEST1
-	cacheOperation(CLFLUSH, (char *)myobj, sizeof(myobj));
+#ifdef FIX
+	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
 #endif
 	return NULL;
 }
@@ -86,12 +84,6 @@ int main(){
 		}
 	} else {
 		myobj = (testStruct *)getRegionFromID(0);
-		// char outputX[13] = {'%','%','%','%','%','%','%','%','%','%','%','%','\n'};
-		// outputX[1]=myobj->x + '0';
-		// outputX[3]=myobj->y + '0';
-		// outputX[5]=myobj->z + '0';
-		// outputX[7]=myobj->var + '0';
-		// write(model_out, outputX, 13);
 		printf("x=%u\n", myobj->x);
 		printf("y=%u\n", myobj->y);
 		printf("z=%u\n", myobj->z);
