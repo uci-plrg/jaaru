@@ -96,16 +96,16 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				}
 				ASSERT(wrt->get_cv());
 				ClockVector *cv = wrt->get_cv();
-				for(uint i=0;i< execution->get_num_threads();i++) {
+				for(int i=0;i< cv->getNumThreads();i++) {
 					range = getOrCreateRange(rangeVector, i);
 					thread_id_t tid = int_to_id(i);
 					if(range->getEndRange() < cv->getClock(tid)) {
 						if(model->getParams()->pmdebug > 1 ) {
 							model_print("******************************\nPMVerfier found bug! Write:\n");
 							wrt->print();
-							model_print("Write range:\t");
+							model_print("Write<%u> range:\t", wrt->get_tid());
 							writeRange.print();
-							model_print("\nThread Range:\t");
+							model_print("\nThread<%u> Range:\t", tid);
 							range->print();
 							model_print("\n****************************\n");
 						}
@@ -127,7 +127,7 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 		ASSERT(cv);
 		thread_id_t tid = int_to_id(i);
 		if(range->getEndRange()<cv->getClock(tid)){
-			model_print("WARNING: end range %u at Location=%s, and address %p, is not compatable with new begin range %u\n", range->getEndRange(), action->get_position(), action->get_location(), cv->getClock(tid));
+			FATAL(exec, action, NULL, "End range %u at Location=%s, and address %p, is not compatable with new begin range %u\n", range->getEndRange(), action->get_position(), action->get_location(), cv->getClock(tid));
 		}
 		range->mergeBeginRange(cv->getClock(tid));
 	}
@@ -217,7 +217,7 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 		if(nextWrite) {
 			Range *range = getOrCreateRange(ranges, i);
 			if(range->getBeginRange()>nextWrite->get_seq_number()-1){
-				model_print("WARNING: begin range %u at location %s, and address %p, is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_position(), nextWrite->get_location(), nextWrite->get_seq_number()-1);
+				FATAL(execution, wrt, NULL, "Begin range %u at location %s, and address %p, is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_position(), nextWrite->get_location(), nextWrite->get_seq_number()-1);
 			}
 			range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
 		}

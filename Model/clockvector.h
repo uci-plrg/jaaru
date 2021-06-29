@@ -20,7 +20,7 @@ public:
 
 	void print() const;
 	modelclock_t getClock(thread_id_t thread);
-
+	int getNumThreads();
 	MEMALLOC
 private:
 	/** @brief Holds the actual clock data, as an array. */

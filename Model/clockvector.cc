@@ -133,6 +133,10 @@ modelclock_t ClockVector::getClock(thread_id_t thread) {
 		return 0;
 }
 
+int ClockVector::getNumThreads() {
+	return num_threads;
+}
+
 /** @brief Formats and prints this ClockVector's data. */
 void ClockVector::print() const
 {
