@@ -371,7 +371,7 @@ bool ModelExecution::is_complete_execution() const
 	return true;
 }
 
-ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) {
+ModelAction * ModelExecution::convertNonAtomicStore(ModelAction *read,void * location, uint size) {
 	uint64_t value = *((const uint64_t *) location);
 	switch(size) {
 	case 1:
@@ -392,7 +392,7 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
 	thread_id_t storethread;
 	getStoreThreadAndClock(location, &storethread, &storeclock);
 	setAtomicStoreFlag(location);
-	ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, location, value, get_thread(storethread), size);
+	ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, location, value, get_thread(storethread?storethread:read->get_tid()), size);
 	if (storeclock == 0)
 		act->set_seq_number(get_next_seq_num());
 	else
@@ -1389,7 +1389,7 @@ void ModelExecution::build_may_read_from(ModelAction *curr, SnapVector<SnapVecto
 				flushBuffers(curraddress);
 				if (hasCrashed)
 					return;
-				ModelAction * nonatomicstore = convertNonAtomicStore(curraddress, 1);
+				ModelAction * nonatomicstore = convertNonAtomicStore(curr, curraddress, 1);
 				(*write_array)[i].p1 = this;
 				(*write_array)[i].p2 = nonatomicstore;
 				numslotsleft--;
