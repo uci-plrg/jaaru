@@ -21,6 +21,8 @@ public:
 	virtual void freeExecution(ModelExecution *exec) = 0;
 	virtual void persistExecutionAnalysis(ModelExecution *execution) = 0;
 	virtual void printStats() = 0;
+	virtual void enterRecoveryProcedure() = 0;
+	virtual void exitRecoveryProcedure() = 0;
 	void ERROR(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	void WARNING(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	void FATAL(ModelExecution *exec, ModelAction *write, ModelAction *read, const char * message, ...);

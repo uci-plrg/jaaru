@@ -98,6 +98,7 @@ public:
 	action_list_t *getActionTrace() {return &action_trace;}
 	void makeExecutionPersistent();
 	auto get_obj_write_map() {return &obj_wr_map;}
+	ModelAction *getLastAction() { return lastAction;}
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
@@ -182,6 +183,7 @@ private:
 	bool hasCrashed;
 	bool noWriteSinceCrashCheck;
 	bool enableCrash;
+	ModelAction *lastAction;
 };
 
 inline void * alignAddress(void * addr) {

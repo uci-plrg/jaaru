@@ -7,6 +7,8 @@
 
 PMVerifier::~PMVerifier() {
 	rangeMap.resetanddelete();
+	beginRangeLastAction.resetanddelete();
+	endRangeLastAction.resetanddelete();
 }
 
 void PMVerifier::freeExecution(ModelExecution *exec) {
@@ -16,6 +18,15 @@ void PMVerifier::freeExecution(ModelExecution *exec) {
 			delete (*rangeVector)[i];
 		}
 		rangeVector->clear();
+	}
+	ModelVector<ModelAction*> *alist = beginRangeLastAction.get(exec);
+	if(alist != NULL) {
+		alist->clear();
+		alist = NULL;
+	}
+	alist = endRangeLastAction.get(exec);
+	if( alist != NULL) {
+		alist->clear();
 	}
 }
 
@@ -30,8 +41,10 @@ void PMVerifier::crashAnalysis(ModelExecution * execution) {
 		ModelAction * action = execution->get_last_action(tid);
 		if(action) {
 			range->setEndRange(action->get_seq_number());
+			setActionIndex( endRangeLastAction.get(execution), tid, action);
 		} else {
 			range->setEndRange(execution->get_curr_seq_num());
+			setActionIndex(endRangeLastAction.get(execution), tid, execution->getLastAction());
 		}
 	}
 
@@ -69,6 +82,9 @@ void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelEx
  * This analysis checks all writes that the execution may possibly read from are in range.
  */
 void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set) {
+	if(disabled) {
+		return;
+	}
 	ModelExecution *currExecution = model->get_execution();
 	for(uint j=0;j< rf_set->size();j++) {
 		SnapVector<Pair<ModelExecution *, ModelAction *> > * writeVec = (*rf_set)[j];
@@ -78,21 +94,28 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 			if(currExecution != execution ) {
 				// Check for persistency bugs
 				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
-				Range *range = getOrCreateRange(rangeVector, id_to_int(wrt->get_tid()));
+				uint index = id_to_int(wrt->get_tid());
+				Range *range = getOrCreateRange(rangeVector, index);
 				uintptr_t curraddress = ((uintptr_t)wrt->get_location()) + i;
 				Range writeRange;
 				populateWriteConstraint(writeRange, wrt, execution, curraddress);
 				if(!range->hastIntersection(writeRange) ) {
-					if(model->getParams()->pmdebug > 1 ) {
-						model_print("******************************\nPMVerfier found bug! Write:\n");
+					if(model->getParams()->pmdebug > 0 ) {
+						model_print("******************************\nPMVerfier found bug! read:\n");
+						read->print();
+						model_print("From write:\n");
 						wrt->print();
 						model_print("Write range:\t");
 						writeRange.print();
 						model_print("\nThread Range:\t");
 						range->print();
-						model_print("\n****************************\n");
+						model_print("\nThread last begin Action:\n");
+						getActionIndex( beginRangeLastAction.get(execution),index)->print();
+						model_print("\nThread last end Action:\n");
+						getActionIndex( endRangeLastAction.get(execution),index)->print();
+						model_print("****************************\n");
 					}
-					ERROR(execution, wrt, read, "Fatal Persistency Bug on Write");
+					ERROR(execution, wrt, read, "ERROR Persistency Bug on Write");
 				}
 				ASSERT(wrt->get_cv());
 				ClockVector *cv = wrt->get_cv();
@@ -100,18 +123,24 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 					range = getOrCreateRange(rangeVector, i);
 					thread_id_t tid = int_to_id(i);
 					if(range->getEndRange() < cv->getClock(tid)) {
-						if(model->getParams()->pmdebug > 1 ) {
-							model_print("******************************\nPMVerfier found bug! Write:\n");
+						if(model->getParams()->pmdebug > 0 ) {
+							model_print("******************************\nPMVerfier found bug! read:\n");
+							read->print();
+							model_print("From write:\n");
 							wrt->print();
-							model_print("Write<%u> range:\t", wrt->get_tid());
+							model_print("Write<%u> range:\t", tid);
 							writeRange.print();
 							model_print("\nThread<%u> Range:\t", tid);
 							range->print();
-							model_print("\n****************************\n");
+							model_print("\nThread last begin Action:\n");
+							getActionIndex( beginRangeLastAction.get(execution),i)->print();
+							model_print("\nThread last end Action:\n");
+							getActionIndex( endRangeLastAction.get(execution),i)->print();
+							model_print("****************************\n");
 						}
-						
+
 						ERROR(execution, wrt, read,
-									"Fatal Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t");
+									"ERROR Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t");
 					}
 				}
 			}
@@ -120,16 +149,36 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 }
 
 void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
+	if(disabled) {
+		return;
+	}
 	ModelVector<Range*> *rangeVector = getOrCreateRangeVector(exec);
 	for(uint i=0;i< exec->get_num_threads();i++) {
 		Range * range = getOrCreateRange(rangeVector, i);
 		ClockVector * cv = action->get_cv();
 		ASSERT(cv);
 		thread_id_t tid = int_to_id(i);
-		if(range->getEndRange()<cv->getClock(tid)){
-			FATAL(exec, action, action, "End range %u is not compatable with new begin range %u\n", range->getEndRange(), cv->getClock(tid));
+		if(range->getEndRange()<cv->getClock(tid)) {
+			if(model->getParams()->pmdebug > 0 ) {
+				model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR ~~~~~~~~~~~~\n");
+				range->print();
+				model_print(">> Range Begin Action:\n");
+				auto tmplist = beginRangeLastAction.get(exec);
+				ModelAction *tmpact = getActionIndex(tmplist, i);
+				tmpact->print();
+				model_print(">> End Range Action:\n");
+				tmplist = endRangeLastAction.get(exec);
+				tmpact = getActionIndex(tmplist, i);
+				tmpact->print();
+				model_print(">> The write causing the bug:\n");
+				action->print();
+				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			}
+			FATAL(exec, action, action, "RECORD PROGRESS: End range %u is not compatable with new begin range %u\n", range->getEndRange(), cv->getClock(tid));
 		}
-		range->mergeBeginRange(cv->getClock(tid));
+		if(range->mergeBeginRange(cv->getClock(tid)) || (range->getBeginRange() == 0 && getActionIndex(beginRangeLastAction.get(exec), i) == NULL)) {
+			setActionIndex(beginRangeLastAction.get(exec), i, action);
+		}
 	}
 }
 
@@ -147,15 +196,18 @@ void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelE
 		ModelExecution * execution = (*rfarray)[i].p1;
 		if(currExecution != execution) {
 			ModelAction *wrt = (*rfarray)[i].p2;
+			if(model->getParams()->pmdebug > 1 ) {
+				model_print("~~~~~~~~~~~~~~~~~READ FROM PREVIOUS WRITE~~~~~~~~~~~~~~~~~~~\n");
+				read->print();
+				model_print("Reading from write:\n");
+				wrt->print();
+				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			}
 			recordProgress(execution, wrt);
 			updateThreadsEndRangeafterWrite(execution, wrt, curraddress);
 			crashInnerExecutionsBeforeFirstWrite(execution, curraddress);
 		}
 
-	}
-	if(model->getParams()->pmdebug > 2 ) {
-		model_print("Execution Thread changes after applying the read operation:\n");
-		printRangeVector(currExecution);
 	}
 }
 
@@ -216,10 +268,27 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 		ModelAction *nextWrite = nextWrites[i];
 		if(nextWrite) {
 			Range *range = getOrCreateRange(ranges, i);
-			if(range->getBeginRange()>nextWrite->get_seq_number()-1){
-				FATAL(execution, wrt, wrt, "Begin range %u is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_position(), nextWrite->get_location(), nextWrite->get_seq_number()-1);
+			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
+				if(model->getParams()->pmdebug > 0 ) {
+					model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR IN Setting EndRange ~~~~~~~~~~~~\n");
+					range->print();
+					model_print(">> Range Begin Action:\n");
+					auto tmplist = beginRangeLastAction.get(execution);
+					ModelAction *tmpact = getActionIndex(tmplist, i);
+					tmpact->print();
+					model_print(">> End Range Action:\n");
+					tmplist = endRangeLastAction.get(execution);
+					tmpact = getActionIndex(tmplist, i);
+					tmpact->print();
+					model_print(">> The write causing the bug:\n");
+					nextWrite->print();
+					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				}
+				FATAL(execution, wrt, wrt, "UpdateEndrageAfterWrite: Begin range %u is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_seq_number()-1);
 			}
-			range->minMergeEndgeRange(nextWrite->get_seq_number()-1);
+			if(range->minMergeEndgeRange(nextWrite->get_seq_number()-1)) {
+				setActionIndex(endRangeLastAction.get(execution), i, nextWrite);
+			}
 		}
 	}
 }
@@ -242,6 +311,12 @@ ModelVector<Range*> * PMVerifier::getOrCreateRangeVector(ModelExecution * exec) 
 		rangeVector = new ModelVector<Range*>();
 		rangeMap.put(exec, rangeVector);
 	}
+	if(!beginRangeLastAction.get(exec)) {
+		beginRangeLastAction.put(exec, new ModelVector<ModelAction*>());
+	}
+	if(!endRangeLastAction.get(exec)) {
+		endRangeLastAction.put(exec, new ModelVector<ModelAction*>());
+	}
 	if( rangeVector->size() < exec->get_num_threads()) {
 		rangeVector->resize(exec->get_num_threads());
 	}
@@ -254,4 +329,19 @@ Range * PMVerifier::getOrCreateRange(ModelVector<Range*> *ranges, int tid) {
 		(*ranges)[tid] = new Range();
 	}
 	return (*ranges)[tid];
+}
+
+ModelAction * PMVerifier::getActionIndex(ModelVector<ModelAction*> *actions, unsigned int index) {
+	if(index < actions->size()) {
+		return (*actions)[index];
+	} else {
+		return NULL;
+	}
+}
+
+void PMVerifier::setActionIndex(ModelVector<ModelAction*> *actions, unsigned int index, ModelAction *action) {
+	if( index >= actions->size()) {
+		actions->resize(index + 1);
+	}
+	(*actions)[index] = action;
 }

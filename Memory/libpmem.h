@@ -64,6 +64,8 @@ void jaaru_inject_crash(void);
 int jaaru_num_crashes();
 void jaaru_set_region(const void *, uint64_t size);
 void jaaru_file_permission_change();
+void jaaru_recovery_procedure_begin();
+void jaaru_recovery_procedure_end();
 #ifdef __cplusplus
 }
 #endif
