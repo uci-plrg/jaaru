@@ -7,7 +7,7 @@
 
 class PMVerifier : public Analysis {
 public:
-	PMVerifier(){}
+	PMVerifier() : disabled(false){}
 	~PMVerifier();
 	void crashAnalysis(ModelExecution * execution);
 	void mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set);
@@ -18,6 +18,8 @@ public:
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action){}
 	void freeExecution(ModelExecution *exec);
 	void persistExecutionAnalysis(ModelExecution *execution) {}
+	void enterRecoveryProcedure() {disabled = true;}
+	void exitRecoveryProcedure() {disabled = false;}
 	void printStats() {}
 private:
 	void recordProgress(ModelExecution *exec, ModelAction *action);
@@ -25,10 +27,15 @@ private:
 	void updateThreadsEndRangeafterWrite(ModelExecution *exec, ModelAction *action, uintptr_t curraddress);
 	void crashInnerExecutionsBeforeFirstWrite(ModelExecution *execution, uintptr_t curraddress);
 	ModelVector<Range*> *getOrCreateRangeVector(ModelExecution * exec);
-	Range * getOrCreateRange(ModelVector<Range*> *ranges, int tid);
+	Range * getOrCreateRange(ModelVector<Range*> *ranges,  int tid);
+	ModelAction * getActionIndex(ModelVector<ModelAction*> *ranges, unsigned int index);
+	void setActionIndex(ModelVector<ModelAction*> *ranges, unsigned int index, ModelAction *action);
 	void printRangeVector(ModelExecution *execution);
 	void populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress);
 	HashTable<ModelExecution*, ModelVector<Range*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
+	HashTable<ModelExecution*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeLastAction;
+	HashTable<ModelExecution*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> endRangeLastAction;
+	bool disabled;
 };
 
 #endif

@@ -13,6 +13,7 @@
 #include "pminterface.h"
 #include "model.h"
 #include "execution.h"
+#include "plugins.h"
 
 #define CACHE_LINE_SIZE 64
 FileMap *fileIDMap = NULL;
@@ -327,4 +328,20 @@ int jaaru_num_crashes() {
 void jaaru_file_permission_change() {
 	createModelIfNotExist();
 	model->get_execution()->makeExecutionPersistent();
+}
+
+void jaaru_recovery_procedure_begin() {
+	createModelIfNotExist();
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i]->enterRecoveryProcedure();
+	}
+}
+
+void jaaru_recovery_procedure_end() {
+	createModelIfNotExist();
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i]->exitRecoveryProcedure();
+	}
 }

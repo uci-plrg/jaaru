@@ -1,15 +1,19 @@
 #include "range.h"
 #include "common.h"
 
-void Range::mergeBeginRange(modelclock_t begin) {
+bool Range::mergeBeginRange(modelclock_t begin) {
 	if(begin > beginR) {
 		beginR = begin;
+		return true;
 	}
+	return false;
 }
-void Range::minMergeEndgeRange(modelclock_t end) {
+bool Range::minMergeEndgeRange(modelclock_t end) {
 	if(end < endR) {
 		endR = end;
+		return true;
 	}
+	return false;
 }
 
 bool Range::hastIntersection(Range &r) {

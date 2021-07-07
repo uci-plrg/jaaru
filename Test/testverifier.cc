@@ -40,7 +40,7 @@ void* func1(void * input){
 	myobj->x=3;
 #ifdef FIX
 	cacheOperation(CLFLUSH, (char *)myobj, sizeof(*myobj));
-#endif	
+#endif
 	myobj->var=11;
 	myobj->x=4;
 #ifdef FIX

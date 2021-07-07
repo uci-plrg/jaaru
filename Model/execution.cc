@@ -874,7 +874,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 void ModelExecution::initialize_curr_action(ModelAction *curr)
 {
 	curr->set_seq_number(get_next_seq_num());
-
+	lastAction = curr;
 	action_trace.addAction(curr);
 	if (params->pmdebug > 1) {
 		curr->print();

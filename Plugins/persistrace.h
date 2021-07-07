@@ -45,6 +45,8 @@ public:
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 	void freeExecution(ModelExecution *exec);
 	void persistExecutionAnalysis(ModelExecution *execution);
+	void enterRecoveryProcedure() {}
+	void exitRecoveryProcedure() {}
 	void printStats();
 private:
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);
