@@ -159,7 +159,7 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 		ASSERT(cv);
 		thread_id_t tid = int_to_id(i);
 		if(range->getEndRange()<cv->getClock(tid)) {
-			if(model->getParams()->pmdebug > 0 ) {
+			if(model->getParams()->pmdebug > 0 || 1) {
 				model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR ~~~~~~~~~~~~\n");
 				range->print();
 				model_print(">> Range Begin Action:\n");
@@ -189,6 +189,9 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
  * writes.
  */
 void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
+	if(disabled) {
+		return;
+	}
 	ModelExecution *currExecution = model->get_execution();
 	void * address = read->get_location();
 	for(uint i=0;i<read->getOpSize();i++ ) {
@@ -269,7 +272,7 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 		if(nextWrite) {
 			Range *range = getOrCreateRange(ranges, i);
 			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
-				if(model->getParams()->pmdebug > 0 ) {
+				if(model->getParams()->pmdebug > 0 || 1) {
 					model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR IN Setting EndRange ~~~~~~~~~~~~\n");
 					range->print();
 					model_print(">> Range Begin Action:\n");
