@@ -1181,7 +1181,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 
 	ModelAction * lastact = thrd_last_action[tid];
 	// Update thrd_last_action, the last action taken by each thrad
-	if (lastact == NULL || lastact->get_seq_number() != act->get_seq_number())
+	if (lastact == NULL || lastact->get_seq_number() <= act->get_seq_number())
 		thrd_last_action[tid] = act;
 }
 

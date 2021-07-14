@@ -103,6 +103,12 @@ int pthread_mutex_trylock(pthread_mutex_t *p_mutex) {
 	createModelIfNotExist();
 
 	ModelExecution *execution = model->get_execution();
+	/* to protect the case where PTHREAD_MUTEX_INITIALIZER is used
+	   instead of pthread_mutex_init, or where *p_mutex is not stored
+	   in the execution->mutex_map for some reason. */
+	if (!execution->getMutexMap()->contains(p_mutex)) {
+		pthread_mutex_init(p_mutex, NULL);
+	}
 	pmc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 	return m->try_lock() ? 0 : EBUSY;
 }
