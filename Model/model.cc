@@ -307,7 +307,7 @@ void ModelChecker::print_execution(bool printbugs) const
 	}
 
 	model_print("\n");
-	execution->print_summary();
+	//execution->print_summary();
 }
 
 /**
