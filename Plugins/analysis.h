@@ -6,8 +6,8 @@
 #define PMVERIFIERNAME "PM-Verfier"
 #define PERSISTRACENAME "PersistRace"
 
-unsigned int hashErrorPosition(const char *pos);
-bool equalErrorPosition(const char *p1,const char *p2);
+unsigned int hashErrorPosition(char *pos);
+bool equalErrorPosition(char *p1, char *p2);
 
 class Analysis {
 public:
@@ -25,8 +25,8 @@ public:
 	void WARNING(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	MEMALLOC
 protected:
-	HashSet<const char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;
-	HashSet<const char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> warningSet;
+	HashSet<char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> errorSet;
+	HashSet<char*, uintptr_t, 0, model_malloc, model_calloc, model_free, hashErrorPosition, equalErrorPosition> warningSet;
 	int num_total_bugs = {0};
 	int num_total_warnings = {0};
 };
