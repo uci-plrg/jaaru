@@ -35,6 +35,7 @@ public:
 	actionlist();
 	~actionlist();
 	void addAction(ModelAction * act);
+	mllnode<ModelAction *> * getAction(modelclock_t clock);
 	void removeAction(ModelAction * act);
 	void clear();
 	void clearAndDeleteActions();

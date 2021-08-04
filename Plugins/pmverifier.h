@@ -20,9 +20,10 @@ public:
 	void persistExecutionAnalysis(ModelExecution *execution) {}
 	void enterRecoveryProcedure() {disabled = true;}
 	void exitRecoveryProcedure() {disabled = false;}
+	void ignoreAnalysisForLocation(char * addrs, size_t size);
 	void printStats() {}
 private:
-	void recordProgress(ModelExecution *exec, ModelAction *action);
+	bool recordProgress(ModelExecution *exec, ModelAction *action);
 	void findFirstWriteInEachThread(ModelVector<ModelAction*> &nextWrites, mllnode<ModelAction *> * node, uintptr_t curraddress, unsigned int numThreads);
 	void updateThreadsEndRangeafterWrite(ModelExecution *exec, ModelAction *action, uintptr_t curraddress);
 	void crashInnerExecutionsBeforeFirstWrite(ModelExecution *execution, uintptr_t curraddress);
@@ -32,9 +33,13 @@ private:
 	void setActionIndex(ModelVector<ModelAction*> *ranges, unsigned int index, ModelAction *action);
 	void printRangeVector(ModelExecution *execution);
 	void populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress);
+	void printWriteAndFirstReadByThread(ModelExecution *exec, modelclock_t wclock, ModelAction *readThreadAction);
+	bool ignoreVariable(void * address);
 	HashTable<ModelExecution*, ModelVector<Range*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
 	HashTable<ModelExecution*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeLastAction;
 	HashTable<ModelExecution*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> endRangeLastAction;
+	HashTable<uintptr_t, ModelVector<ModelPair<char*, size_t>*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> ignoreTable;
+	ModelVector<ModelPair<char*, size_t>*> modelPairList;
 	bool disabled;
 };
 

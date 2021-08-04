@@ -13,6 +13,8 @@ public:
 	void setBeginRange(modelclock_t begin) { beginR = begin; }
 	void setEndRange(modelclock_t end) { endR = end; }
 	bool hastIntersection(Range &r);
+	bool canUpdateBeginRange(modelclock_t begin);
+	bool canUpdateEndRange(modelclock_t end);
 	bool mergeBeginRange(modelclock_t begin);
 	bool minMergeEndgeRange(modelclock_t end);
 	void print() const;

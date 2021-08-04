@@ -47,6 +47,7 @@ public:
 	void persistExecutionAnalysis(ModelExecution *execution);
 	void enterRecoveryProcedure() {}
 	void exitRecoveryProcedure() {}
+	void ignoreAnalysisForLocation(char * addrs, size_t size) {}
 	void printStats();
 private:
 	CacheLineMetaData * getOrCreateCacheLineMeta(ModelExecution *, uintptr_t cid);

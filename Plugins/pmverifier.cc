@@ -4,11 +4,17 @@
 #include "model.h"
 #include "clockvector.h"
 #include "threads-model.h"
+#include "cacheline.h"
+#include "libpmem.h"
 
 PMVerifier::~PMVerifier() {
 	rangeMap.resetanddelete();
 	beginRangeLastAction.resetanddelete();
 	endRangeLastAction.resetanddelete();
+	ignoreTable.resetanddelete();
+	for(uint i=0; i< modelPairList.size(); i++) {
+		delete modelPairList[i];
+	}
 }
 
 void PMVerifier::freeExecution(ModelExecution *exec) {
@@ -55,7 +61,7 @@ void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelEx
 	mllnode<ModelAction *> * nextNode = wrt->getActionRef()->getNext();
 	while(nextNode != NULL) {
 		ModelAction *tmp = nextNode->getVal();
-		if(tmp->get_tid() == wrt->get_tid()) {
+		if(tmp->get_tid() == wrt->get_tid() && tmp->get_seq_number() > wrt->get_seq_number()) {
 			uintptr_t bot = (uintptr_t)tmp->get_location();
 			uintptr_t top = bot + tmp->getOpSize();
 			if ((curraddress>=bot) && (curraddress <top)) {
@@ -78,6 +84,33 @@ void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelEx
 	}
 }
 
+void PMVerifier::printWriteAndFirstReadByThread(ModelExecution *exec, modelclock_t wclock, ModelAction *readThreadAction) {
+	mllnode<ModelAction*> * actionNode = exec->getActionTrace()->getAction(wclock);
+	ASSERT(actionNode);
+	ModelAction *wrt = actionNode->getVal();
+	wrt->print();
+	mllnode<ModelAction *> *tmp = actionNode;
+	ModelAction *tmpAction = NULL;
+	while(true) {
+		tmpAction = tmp->getVal();
+		if(tmpAction->get_tid() == readThreadAction->get_tid() && tmpAction->get_cv()->getClock(wrt->get_tid()) == wclock) {
+			break;
+		}
+		if(tmpAction->get_seq_number() > readThreadAction->get_seq_number()) {
+			break;
+		}
+		tmp = tmp->getNext();
+	}
+	if(tmpAction!= wrt && tmpAction->get_seq_number() <= readThreadAction->get_seq_number()) {
+		tmpAction->print();
+	}
+	if(!pmem_is_pmem(wrt->get_location(), wrt->getOpSize()<<3) ) {
+		const char * location = wrt->get_position()? wrt->get_position() : tmpAction && tmpAction->get_position()? tmpAction->get_position(): "[]";
+		model_print("(Warning: Variable at %s is located in DRAM. Either, it needs to be moved to persistent memory"
+		 " or use API to ignore robustness violations for this memory location!)\n", location);
+	}
+}
+
 /**
  * This analysis checks all writes that the execution may possibly read from are in range.
  */
@@ -93,6 +126,8 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 			ModelAction *wrt = (*writeVec)[i].p2;
 			if(currExecution != execution ) {
 				// Check for persistency bugs
+				model_print(">>>>>>> Possibly Reading from:\t");
+				wrt->print();
 				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
 				uint index = id_to_int(wrt->get_tid());
 				Range *range = getOrCreateRange(rangeVector, index);
@@ -101,41 +136,68 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				populateWriteConstraint(writeRange, wrt, execution, curraddress);
 				if(!range->hastIntersection(writeRange) ) {
 					if(model->getParams()->pmdebug > 0 ) {
-						model_print("******************************\nPMVerfier found bug! read:\n");
+						model_print("******************************\nPMVerifier found Robustness Violation in read:\n");
 						read->print();
-						model_print("From write:\n");
+						model_print("From following write by thread %u:\n", wrt->get_tid());
 						wrt->print();
 						model_print("Write range:\t");
 						writeRange.print();
-						model_print("\nThread Range:\t");
+						model_print("\tvs. Thread %d Range:\t", wrt->get_tid());
 						range->print();
-						model_print("\nThread last begin Action:\n");
-						getActionIndex( beginRangeLastAction.get(execution),index)->print();
-						model_print("\nThread last end Action:\n");
-						getActionIndex( endRangeLastAction.get(execution),index)->print();
+						model_print("\n");
+						ModelAction *beginAction = getActionIndex( beginRangeLastAction.get(execution),index);
+						if(beginAction) {
+							model_print("Thread last begin Action:\n");
+							beginAction->print();
+						}
+						model_print("Thread last end Action:\n");
+						ModelAction * endAction = getActionIndex( endRangeLastAction.get(execution),index);
+						endAction->print();
+						model_print(">> Possible fix: Insert flushes after write(s):\n");
+						if(writeRange.getEndRange() < range->getBeginRange()) {
+							if(wrt->get_tid() != beginAction->get_tid()) {
+								printWriteAndFirstReadByThread(execution, beginAction->get_cv()->getClock(wrt->get_tid()), beginAction);
+							} else {
+								wrt->print();
+							}
+
+						} else if(range->getEndRange() < writeRange.getBeginRange()) {
+							beginAction->print();
+						}
 						model_print("****************************\n");
 					}
-					ERROR(execution, wrt, read, "ERROR Persistency Bug on Write");
+					ERROR(execution, wrt, read, "Robustness Violation on Write");
 				}
 				ASSERT(wrt->get_cv());
 				ClockVector *cv = wrt->get_cv();
 				for(int i=0;i< cv->getNumThreads();i++) {
 					range = getOrCreateRange(rangeVector, i);
 					thread_id_t tid = int_to_id(i);
-					if(range->getEndRange() < cv->getClock(tid)) {
+					modelclock_t trd_seq_num = cv->getClock(tid);
+					if( ignoreVariable(execution->getActionTrace()->getAction(trd_seq_num)->getVal()->get_location()) ) {
+						continue;
+					}
+					if(range->getEndRange() < trd_seq_num) {
 						if(model->getParams()->pmdebug > 0 ) {
-							model_print("******************************\nPMVerfier found bug! read:\n");
+							model_print("******************************\nPMVerifier found Robustness Violation in read:\n");
 							read->print();
 							model_print("From write:\n");
 							wrt->print();
-							model_print("Write<%u> range:\t", tid);
-							writeRange.print();
-							model_print("\nThread<%u> Range:\t", tid);
+							model_print("Conflicts in Thread %u Range:\t", tid);
 							range->print();
-							model_print("\nThread last begin Action:\n");
-							getActionIndex( beginRangeLastAction.get(execution),i)->print();
-							model_print("\nThread last end Action:\n");
-							getActionIndex( endRangeLastAction.get(execution),i)->print();
+							model_print("\n");
+							ModelAction * beginAction = getActionIndex( beginRangeLastAction.get(execution),i);
+							if(beginAction) {
+								model_print("Thread last begin Action:\n");
+								beginAction->print();
+							}
+							model_print("Thread last end Action:\n");
+							ModelAction *endAction = getActionIndex( endRangeLastAction.get(execution),i);
+							endAction->print();
+							model_print(">> Possible fix: Insert flushes after write(s):\n");
+							if( tid != wrt->get_tid() ) {
+								printWriteAndFirstReadByThread(execution, trd_seq_num, wrt);
+							}
 							model_print("****************************\n");
 						}
 
@@ -148,9 +210,9 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 	}
 }
 
-void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
+bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 	if(disabled) {
-		return;
+		return true;
 	}
 	ModelVector<Range*> *rangeVector = getOrCreateRangeVector(exec);
 	for(uint i=0;i< exec->get_num_threads();i++) {
@@ -163,12 +225,14 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 				model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR ~~~~~~~~~~~~\n");
 				range->print();
 				model_print(">> Range Begin Action:\n");
-				auto tmplist = beginRangeLastAction.get(exec);
-				ModelAction *tmpact = getActionIndex(tmplist, i);
-				tmpact->print();
+				ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(exec), i);
+				if(tmpact) {
+					tmpact->print();
+				} else {
+					model_print("No ModelAction Yet\n");
+				}
 				model_print(">> End Range Action:\n");
-				tmplist = endRangeLastAction.get(exec);
-				tmpact = getActionIndex(tmplist, i);
+				tmpact = getActionIndex(endRangeLastAction.get(exec), i);
 				tmpact->print();
 				model_print(">> The write causing the bug:\n");
 				action->print();
@@ -176,10 +240,22 @@ void PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 			}
 			FATAL(exec, action, action, "RECORD PROGRESS: End range %u is not compatable with new begin range %u\n", range->getEndRange(), cv->getClock(tid));
 		}
+		if(range->canUpdateBeginRange(cv->getClock(tid))) {
+			//This read is affecting begin Range of other threads. Need to check
+			ModelAction *otherAction = exec->getActionTrace()->getAction(cv->getClock(tid))->getVal();
+			if(ignoreVariable(otherAction->get_location())) {
+				otherAction->print();
+				if(tid == action->get_tid()) {
+					return true;
+				}
+				continue;
+			}
+		}
 		if(range->mergeBeginRange(cv->getClock(tid)) || (range->getBeginRange() == 0 && getActionIndex(beginRangeLastAction.get(exec), i) == NULL)) {
 			setActionIndex(beginRangeLastAction.get(exec), i, action);
 		}
 	}
+	return false;
 }
 
 /**
@@ -203,7 +279,9 @@ void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelE
 				wrt->print();
 				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 			}
-			recordProgress(execution, wrt);
+			if(recordProgress(execution, wrt) ) {
+				continue;
+			}
 			updateThreadsEndRangeafterWrite(execution, wrt, curraddress);
 			crashInnerExecutionsBeforeFirstWrite(execution, curraddress);
 		}
@@ -273,12 +351,14 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 					model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR IN Setting EndRange ~~~~~~~~~~~~\n");
 					range->print();
 					model_print(">> Range Begin Action:\n");
-					auto tmplist = beginRangeLastAction.get(execution);
-					ModelAction *tmpact = getActionIndex(tmplist, i);
-					tmpact->print();
+					ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
+					if(tmpact) {
+						tmpact->print();
+					} else {
+						model_print("No ModelAction Yet!\n");
+					}
 					model_print(">> End Range Action:\n");
-					tmplist = endRangeLastAction.get(execution);
-					tmpact = getActionIndex(tmplist, i);
+					tmpact = getActionIndex(endRangeLastAction.get(execution), i);
 					tmpact->print();
 					model_print(">> The write causing the bug:\n");
 					nextWrite->print();
@@ -344,4 +424,33 @@ void PMVerifier::setActionIndex(ModelVector<ModelAction*> *actions, unsigned int
 		actions->resize(index + 1);
 	}
 	(*actions)[index] = action;
+}
+
+void PMVerifier::ignoreAnalysisForLocation(char * addrs, size_t size) {
+	auto mp = new ModelPair<char*, size_t>(addrs, size);
+	modelPairList.push_back(mp);
+	for (uintptr_t ptr = getCacheID(addrs); ptr < (uintptr_t)addrs+size; ptr+=CACHELINESIZE) {
+		auto ignoreList = ignoreTable.get(ptr);
+		if(!ignoreList) {
+			ignoreList = new ModelVector<ModelPair<char*, size_t>*>();
+			ignoreTable.put(ptr, ignoreList);
+		}
+		ignoreList->push_back(mp);
+	}
+}
+
+bool PMVerifier::ignoreVariable(void * address) {
+	uintptr_t ptr = getCacheID(address);
+	auto ignoreList = ignoreTable.get(ptr);
+	if(ignoreList) {
+		for(uint i=0; i< ignoreList->size(); i++) {
+			auto mp = (*ignoreList)[i];
+			uintptr_t lowerlimit = (uintptr_t)mp->p1;
+			uintptr_t upperlimit = (uintptr_t)mp->p1 + mp->p2;
+			if(upperlimit > (uintptr_t)address && lowerlimit >= (uintptr_t)address) {
+				return true;
+			}
+		}
+	}
+	return false;
 }

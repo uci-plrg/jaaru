@@ -18,6 +18,19 @@ public:
 	SNAPSHOTALLOC;
 };
 
+template<typename _T1, typename _T2>
+class ModelPair {
+public:
+	ModelPair(_T1 mp1, _T2 mp2) :
+		p1(mp1),
+		p2(mp2) {
+	}
+
+	_T1 p1;
+	_T2 p2;
+	MEMALLOC;
+};
+
 
 
 template<typename _Tp>

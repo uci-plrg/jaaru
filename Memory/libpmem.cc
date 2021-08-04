@@ -14,8 +14,8 @@
 #include "model.h"
 #include "execution.h"
 #include "plugins.h"
+#include "cacheline.h"
 
-#define CACHE_LINE_SIZE 64
 FileMap *fileIDMap = NULL;
 mspace mallocSpace = NULL;
 
@@ -76,8 +76,8 @@ void pmem_drain(void)
 
 void pmem_flush(const void *addr, size_t len)
 {
-	char *ptr = (char *)((unsigned long)addr &~(CACHE_LINE_SIZE-1));
-	for(;ptr<(char*)addr + len;ptr += CACHE_LINE_SIZE) {
+	char *ptr = (char *)((unsigned long)addr &~(CACHELINESIZE-1));
+	for(;ptr<(char*)addr + len;ptr += CACHELINESIZE) {
 		pmc_clflushopt(ptr);
 	}
 }
@@ -343,5 +343,13 @@ void jaaru_recovery_procedure_end() {
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 	for(uint i=0;i<analyses->size();i++) {
 		(*analyses)[i]->exitRecoveryProcedure();
+	}
+}
+
+void jaaru_ignore_analysis(char * addrs, size_t size) {
+	createModelIfNotExist();
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i]->ignoreAnalysisForLocation(addrs, size);
 	}
 }
