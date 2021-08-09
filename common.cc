@@ -10,13 +10,32 @@
 #include "execution.h"
 #include "stacktrace.h"
 #include "output.h"
+#include "utils.h"
 
 #define MAX_TRACE_LEN 100
 
 /** @brief Model-checker output file descriptor; default to stdout until redirected */
 int model_out = STDOUT_FILENO;
 
-#define CONFIG_STACKTRACE
+// #define CONFIG_STACKTRACE
+
+static void run_cmd(char * cmd, char *result) {
+	FILE *fp = popen(cmd, "r");
+	char output [1024];
+	if (fp == NULL) {
+		printf("Failed to run command\n" );
+		exit(1);
+	}
+
+	/* Read the output a line at a time - output it. */
+	while (fgets(output, sizeof(output), fp) != NULL) {
+		replace_char(output, '\n', ':');
+		strcat(result, output);
+	}
+	/* close */
+	pclose(fp);
+}
+
 /** Print a backtrace of the current program state. */
 void print_trace(void)
 {
@@ -32,9 +51,22 @@ void print_trace(void)
 
 	model_print("\nDumping stack trace (%d frames):\n", size);
 
-	for (i = 0;i < size;i++)
-		model_print("\t%s\n", strings[i]);
-
+	for (i = 0;i < size;i++) {
+		char *sharedlib = strtok(strings[i], "(");
+		char *func = strtok(NULL, "+");
+		char *offset = strtok(NULL, ")");
+		char cmd[2048] = {0};
+		if(offset) {
+			sprintf(cmd,"funcaddr=$(nm %s | grep %s | head -n1 | cut -d \" \" -f1) && funcoffset=$(python -c \"print hex(0x${funcaddr}+%s)\") && addr2line -e %s ${funcoffset}",
+				sharedlib, func, offset, sharedlib);
+		} else {
+			offset = strtok(func, ")");
+			sprintf(cmd,"addr2line -a -f --exe=%s %s", sharedlib, offset);
+		}
+		char output[1024] ={0};
+		run_cmd(cmd, output);
+		model_print("\t%s:%s(%s)\n", sharedlib, func, output);
+	}
 	free(strings);
 #endif	/* CONFIG_STACKTRACE */
 }

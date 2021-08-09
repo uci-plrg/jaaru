@@ -11,4 +11,14 @@ static inline long long current_timestamp() {
 	return milliseconds;
 }
 
+static inline void replace_char(char *str, char oldchar, char newchar) {
+	uint index = 0;
+	while(str && str[index] != '\0') {
+		if(str[index] == oldchar) {
+			str[index] = newchar;
+		}
+		index++;
+	}
+}
+
 #endif
