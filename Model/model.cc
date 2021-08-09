@@ -639,7 +639,7 @@ void ModelChecker::startChecker() {
 	startExecution();
 	//Need to initial random number generator state to avoid resets on rollback
 	if(isRandomExecutionEnabled()) {
-		initstate(423121, random_state, sizeof(random_state));
+		initstate(params.randomSeed, random_state, sizeof(random_state));
 	}
 	snapshot = take_snapshot();
 	if(isRandomExecutionEnabled()) {

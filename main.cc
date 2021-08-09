@@ -29,6 +29,7 @@ void param_defaults(struct model_params *params)
 	params->enableCrash = true;
 	params->enablePersistrace = false;
 	params->randomExecution = -1;
+	params->randomSeed = 423121;
 }
 
 
@@ -63,13 +64,14 @@ static void print_usage(struct model_params *params)
 		"-d [file]					 Deleting the persistent file after each execution.\n"
 		"-e							 Enable manual crash point.\n"
 		"-x							 Enable random execution (default execution number = 30)\n"
+		"-a							 Initializing random seed (default seed = 423121)\n"
 		"-y							 Enable Persistency race analysis\n",
 		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnyv::x::p::r:d::c:f:";
+	const char *shortopts = "hsetnyv::a::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -126,6 +128,9 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'x':
 			params->randomExecution = optarg ? atoi(optarg) : 30;
+			break;
+		case 'a':
+			params->randomSeed = optarg ? atoi(optarg) : 423121;
 			break;
 		case 'y':
 			params->enablePersistrace = true;
