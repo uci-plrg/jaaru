@@ -18,7 +18,9 @@
 int model_out = STDOUT_FILENO;
 
 // #define CONFIG_STACKTRACE
+// #define DETAILED_STACKTRACE
 
+#ifdef DETAILED_STACKTRACE
 static void run_cmd(char * cmd, char *result) {
 	FILE *fp = popen(cmd, "r");
 	char output [1024];
@@ -35,6 +37,7 @@ static void run_cmd(char * cmd, char *result) {
 	/* close */
 	pclose(fp);
 }
+#endif
 
 /** Print a backtrace of the current program state. */
 void print_trace(void)
@@ -52,6 +55,7 @@ void print_trace(void)
 	model_print("\nDumping stack trace (%d frames):\n", size);
 
 	for (i = 0;i < size;i++) {
+#ifdef DETAILED_STACKTRACE
 		char *sharedlib = strtok(strings[i], "(");
 		char *func = strtok(NULL, "+");
 		char *offset = strtok(NULL, ")");
@@ -66,6 +70,9 @@ void print_trace(void)
 		char output[1024] ={0};
 		run_cmd(cmd, output);
 		model_print("\t%s:%s(%s)\n", sharedlib, func, output);
+#else 
+		model_print("\t%s\n", strings[i]);
+#endif
 	}
 	free(strings);
 #endif	/* CONFIG_STACKTRACE */
