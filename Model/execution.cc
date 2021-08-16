@@ -1180,7 +1180,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 }
 
 
-void ModelExecution::add_write_to_lists(ModelAction *write) {
+bool ModelExecution::add_write_to_lists(ModelAction *write) {
 	void *address = write->get_location();
 	void * alignaddress = alignAddress(address);
 	simple_action_list_t * list =obj_wr_map.get(alignaddress);
@@ -1215,6 +1215,10 @@ void ModelExecution::add_write_to_lists(ModelAction *write) {
 						oldval &= 0xffff;
 					else if (wsize == 4)
 						oldval &= 0xffffffff;
+					//compare them
+					if (oldval == write->get_value()) {
+							return false; //old store subsumes new store...drop new store
+					}
 				}
 				//we have overlap...give up and insert new write
 				break;
@@ -1224,6 +1228,7 @@ void ModelExecution::add_write_to_lists(ModelAction *write) {
 
 	write->setActionRef(list->add_back(write));
 	noWriteSinceCrashCheck = false;
+	return true;
 }
 
 /**
