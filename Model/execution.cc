@@ -1215,10 +1215,6 @@ void ModelExecution::add_write_to_lists(ModelAction *write) {
 						oldval &= 0xffff;
 					else if (wsize == 4)
 						oldval &= 0xffffffff;
-					//compare them
-					if (oldval == write->get_value()) {
-						return;	//old store subsumes new store...drop new store
-					}
 				}
 				//we have overlap...give up and insert new write
 				break;
