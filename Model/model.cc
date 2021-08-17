@@ -579,6 +579,7 @@ uint64_t ModelChecker::switch_thread(ModelAction *act) {
 			startRunExecution(old);
 		}
 	}
+	inside_model = 0;
 	return old->get_return_value();
 }
 
