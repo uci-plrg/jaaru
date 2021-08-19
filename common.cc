@@ -84,17 +84,17 @@ char filename[256];
 void redirect_output()
 {
 	/* Save stdout for later use */
-	model_out = dup(STDOUT_FILENO);
-	if (model_out < 0) {
-		perror("Error in dup\n");
-		exit(EXIT_FAILURE);
-	}
+	// model_out = dup(STDOUT_FILENO);
+	// if (model_out < 0) {
+	//  perror("Error in dup\n");
+	//  exit(EXIT_FAILURE);
+	// }
 	snprintf_(filename, sizeof(filename), "PMCheckOutput%d", getpid());
 	fd_user_out = open(filename, O_CREAT | O_TRUNC| O_RDWR, S_IRWXU);
-	if (dup2(fd_user_out, STDOUT_FILENO) < 0) {
-		perror("Error in dup2");
-		exit(EXIT_FAILURE);
-	}
+	// if (dup2(fd_user_out, STDOUT_FILENO) < 0) {
+	//  perror("Error in dup2");
+	//  exit(EXIT_FAILURE);
+	// }
 
 }
 
