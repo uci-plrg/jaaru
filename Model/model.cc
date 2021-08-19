@@ -90,10 +90,10 @@ void setRegionFromID(uint ID, void *ptr) {
 	/**
 	 * TODO: This is just a quick hack, but setRegionID/getRegionID should probably
 	 * have plugin callbacks. The correct approach is that setRegionID needs to stash
-	 * a clock vector associated with that regionID. When you see a getRegionID, 
+	 * a clock vector associated with that regionID. When you see a getRegionID,
 	 * you take this clock vector and union it with the lower bound for the crash
-	 * for the pre-crash execution in PMRace plugin. 
-	 */ 
+	 * for the pre-crash execution in PMRace plugin.
+	 */
 	model->get_execution()->makeExecutionPersistent();
 }
 

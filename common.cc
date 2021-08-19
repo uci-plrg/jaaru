@@ -62,7 +62,7 @@ void print_trace(void)
 		char cmd[2048] = {0};
 		if(offset) {
 			sprintf(cmd,"funcaddr=$(nm %s | grep %s | head -n1 | cut -d \" \" -f1) && funcoffset=$(python -c \"print hex(0x${funcaddr}+%s)\") && addr2line -e %s ${funcoffset}",
-				sharedlib, func, offset, sharedlib);
+							sharedlib, func, offset, sharedlib);
 		} else {
 			offset = strtok(func, ")");
 			sprintf(cmd,"addr2line -a -f --exe=%s %s", sharedlib, offset);
@@ -70,7 +70,7 @@ void print_trace(void)
 		char output[1024] ={0};
 		run_cmd(cmd, output);
 		model_print("\t%s:%s(%s)\n", sharedlib, func, output);
-#else 
+#else
 		model_print("\t%s\n", strings[i]);
 #endif
 	}

@@ -12,7 +12,7 @@ PMVerifier::~PMVerifier() {
 	beginRangeLastAction.resetanddelete();
 	endRangeLastAction.resetanddelete();
 	ignoreTable.resetanddelete();
-	for(uint i=0; i< modelPairList.size(); i++) {
+	for(uint i=0;i< modelPairList.size();i++) {
 		delete modelPairList[i];
 	}
 }
@@ -105,9 +105,9 @@ void PMVerifier::printWriteAndFirstReadByThread(ModelExecution *exec, modelclock
 		tmpAction->print();
 	}
 	if(!pmem_is_pmem(wrt->get_location(), wrt->getOpSize()<<3) ) {
-		const char * location = wrt->get_position()? wrt->get_position() : tmpAction && tmpAction->get_position()? tmpAction->get_position(): "[]";
+		const char * location = wrt->get_position() ? wrt->get_position() : tmpAction && tmpAction->get_position() ? tmpAction->get_position() : "[]";
 		model_print("(Warning: Variable at %s is located in DRAM. Either, it needs to be moved to persistent memory"
-		 " or use API to ignore robustness violations for this memory location!)\n", location);
+								" or use API to ignore robustness violations for this memory location!)\n", location);
 	}
 }
 
@@ -432,7 +432,7 @@ void PMVerifier::setActionIndex(ModelVector<ModelAction*> *actions, unsigned int
 void PMVerifier::ignoreAnalysisForLocation(char * addrs, size_t size) {
 	auto mp = new ModelPair<char*, size_t>(addrs, size);
 	modelPairList.push_back(mp);
-	for (uintptr_t ptr = getCacheID(addrs); ptr < (uintptr_t)addrs+size; ptr+=CACHELINESIZE) {
+	for (uintptr_t ptr = getCacheID(addrs);ptr < (uintptr_t)addrs+size;ptr+=CACHELINESIZE) {
 		auto ignoreList = ignoreTable.get(ptr);
 		if(!ignoreList) {
 			ignoreList = new ModelVector<ModelPair<char*, size_t>*>();
@@ -446,7 +446,7 @@ bool PMVerifier::ignoreVariable(void * address) {
 	uintptr_t ptr = getCacheID(address);
 	auto ignoreList = ignoreTable.get(ptr);
 	if(ignoreList) {
-		for(uint i=0; i< ignoreList->size(); i++) {
+		for(uint i=0;i< ignoreList->size();i++) {
 			auto mp = (*ignoreList)[i];
 			uintptr_t lowerlimit = (uintptr_t)mp->p1;
 			uintptr_t upperlimit = (uintptr_t)mp->p1 + mp->p2;
