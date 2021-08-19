@@ -57,10 +57,12 @@ bool ThreadMemory::getLastWriteFromStoreBuffer(ModelAction *read, ModelExecution
 
 bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 	ASSERT(act->is_write() || act->is_cache_op() || act->is_sfence());
-	if(act->is_nonatomic_write()) {
-		evictNonAtomicWrite(act);
-	} else if (act->is_write()) {
-		evictWrite(act);
+	bool ignoreOp = false;
+	if(act->is_write()) {
+		bool applyWrite = evictWrite(act);
+		if(!applyWrite) {
+			ignoreOp = true;
+		}
 	} else if (act->is_sfence()) {
 		if (emptyFlushBuffer())
 			return true;
@@ -82,9 +84,11 @@ bool ThreadMemory::evictOpFromStoreBuffer(ModelAction *act) {
 		//There is an operation other write, memory fence, and cache operation in the store buffer!!
 		ASSERT(0);
 	}
-	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
-	for(uint i=0;i<analyses->size();i ++) {
-		(*analyses)[i] -> evictStoreBufferAnalysis(model->get_execution(), act);
+	if(!ignoreOp) {
+		ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+		for(uint i=0;i<analyses->size();i ++) {
+			(*analyses)[i] -> evictStoreBufferAnalysis(model->get_execution(), act);
+		}
 	}
 	return false;
 }
@@ -180,16 +184,10 @@ bool ThreadMemory::hasPendingFlushes() {
 	return flushcount != 0;
 }
 
-void ThreadMemory::evictNonAtomicWrite(ModelAction *na_write) {
-	ModelExecution *execution = model->get_execution();
-	execution->remove_action_from_store_buffer(na_write);
-	execution->add_write_to_lists(na_write);
-}
-
-void ThreadMemory::evictWrite(ModelAction *writeop)
+bool ThreadMemory::evictWrite(ModelAction *writeop)
 {
 	//Initializing the sequence number
 	ModelExecution *execution = model->get_execution();
 	execution->remove_action_from_store_buffer(writeop);
-	execution->add_write_to_lists(writeop);
+	return execution->add_write_to_lists(writeop);
 }

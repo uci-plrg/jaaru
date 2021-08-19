@@ -81,7 +81,7 @@ public:
 	void restore_last_seq_num();
 	modelclock_t get_curr_seq_num();
 	void remove_action_from_store_buffer(ModelAction *act);
-	void add_write_to_lists(ModelAction *act);
+	bool add_write_to_lists(ModelAction *act);
 	void persistCacheLine(CacheLine *cl, ModelAction *clflush);
 	bool evictCacheOp(ModelAction *cacheop);
 	uint32_t getStoreBuffer() { return storebufferusage; }

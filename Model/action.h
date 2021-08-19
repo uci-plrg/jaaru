@@ -151,6 +151,7 @@ public:
 	bool same_thread(const ModelAction *act) const;
 	bool is_conflicting_lock(const ModelAction *act) const;
 	bool could_synchronize_with(const ModelAction *act) const;
+	void setOpSize(uint s) {size = s;}
 	uint getOpSize() const;
 	Thread * get_thread_operand() const;
 	void merge_cv(const ModelAction *parent = NULL);

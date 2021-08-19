@@ -216,20 +216,20 @@ const char * memmovestring = "memmove";
 void *pmem_memmove(void *dst, const void *src, size_t n, unsigned flags) {
 	for(uint i=0;i<n;) {
 		if ((((uintptr_t)src+i)&7)==0 && (((uintptr_t)dst+i)&7)==0 && (i + 8) <= n) {
-			uint64_t val = pmc_load64(((char *) src) + i, memmovestring);
-			pmc_store64(((char *) dst)+i, val, memmovestring);
+			uint64_t val = pmc_atomic_load64(((char *) src) + i, 0, memmovestring);
+			pmc_atomic_store64(((char *) dst)+i, val, 0, memmovestring);
 			i+=8;
 		} else if ((((uintptr_t)src+i)&3)==0 && (((uintptr_t)dst+i)&3)==0 && (i + 4) <= n) {
-			uint32_t val = pmc_load32(((char *) src) + i, memmovestring);
-			pmc_store32(((char *) dst)+i, val, memmovestring);
+			uint32_t val = pmc_atomic_load32(((char *) src) + i, 0, memmovestring);
+			pmc_atomic_store32(((char *) dst)+i, val, 0,memmovestring);
 			i+=4;
 		} else if ((((uintptr_t)src+i)&1)==0 && (((uintptr_t)dst+i)&1)==0 && (i + 2) <= n) {
-			uint16_t val = pmc_load16(((char *) src) + i, memmovestring);
-			pmc_store16(((char *) dst)+i, val, memmovestring);
+			uint16_t val = pmc_atomic_load16(((char *) src) + i, 0, memmovestring);
+			pmc_atomic_store16(((char *) dst)+i, val, 0, memmovestring);
 			i+=2;
 		} else {
-			uint8_t val = pmc_load8(((char *) src) + i, memmovestring);
-			pmc_store8(((char *) dst)+i, val, memmovestring);
+			uint8_t val = pmc_atomic_load8(((char *) src) + i, 0, memmovestring);
+			pmc_atomic_store8(((char *) dst)+i, val, 0, memmovestring);
 			i=i+1;
 		}
 	}
@@ -248,20 +248,20 @@ const char * memstring = "memcpy";
 void *pmem_memcpy(void *dst, const void *src, size_t n, unsigned flags) {
 	for(uint i=0;i<n;) {
 		if ((((uintptr_t)src+i)&7)==0 && (((uintptr_t)dst+i)&7)==0 && (i + 8) <= n) {
-			uint64_t val = pmc_load64(((char *) src) + i, memstring);
-			pmc_store64(((char *) dst)+i, val, memstring);
+			uint64_t val = pmc_atomic_load64(((char *) src) + i, 0, memstring);
+			pmc_atomic_store64(((char *) dst)+i, val, 0, memstring);
 			i+=8;
 		} else if ((((uintptr_t)src+i)&3)==0 && (((uintptr_t)dst+i)&3)==0 && (i + 4) <= n) {
-			uint32_t val = pmc_load32(((char *) src) + i, memstring);
-			pmc_store32(((char *) dst)+i, val, memstring);
+			uint32_t val = pmc_atomic_load32(((char *) src) + i, 0,memstring);
+			pmc_atomic_store32(((char *) dst)+i, val, 0, memstring);
 			i+=4;
 		} else if ((((uintptr_t)src+i)&1)==0 && (((uintptr_t)dst+i)&1)==0 && (i + 2) <= n) {
-			uint16_t val = pmc_load16(((char *) src) + i, memstring);
-			pmc_store16(((char *) dst)+i, val, memstring);
+			uint16_t val = pmc_atomic_load16(((char *) src) + i, 0, memstring);
+			pmc_atomic_store16(((char *) dst)+i, val, 0,memstring);
 			i+=2;
 		} else {
-			uint8_t val = pmc_load8(((char *) src) + i, memstring);
-			pmc_store8(((char *) dst)+i, val, memstring);
+			uint8_t val = pmc_atomic_load8(((char *) src) + i, 0, memstring);
+			pmc_atomic_store8(((char *) dst)+i, val, 0, memstring);
 			i=i+1;
 		}
 	}
@@ -284,19 +284,19 @@ void *pmem_memset(void *dst, int c, size_t n, unsigned flags) {
 			uint16_t cs2 = cs << 8 | cs;
 			uint64_t cs3 = cs2 << 16 | cs2;
 			uint64_t cs4 = cs3 << 32 | cs3;
-			pmc_store64(((char *) dst)+i, cs4, memsetstring);
+			pmc_atomic_store64(((char *) dst)+i, cs4, 0, memsetstring);
 			i+=8;
 		} else if ((((uintptr_t)dst+i)&3)==0 && (i + 4) <= n) {
 			uint16_t cs2 = cs << 8 | cs;
 			uint32_t cs3 = cs2 << 16 | cs2;
-			pmc_store32(((char *) dst)+i, cs3, memsetstring);
+			pmc_atomic_store32(((char *) dst)+i, cs3, 0, memsetstring);
 			i+=4;
 		} else if ((((uintptr_t)dst+i)&1)==0 && (i + 2) <= n) {
 			uint16_t cs2 = cs << 8 | cs;
-			pmc_store16(((char *) dst)+i, cs2, memsetstring);
+			pmc_atomic_store16(((char *) dst)+i, cs2, 0, memsetstring);
 			i+=2;
 		} else {
-			pmc_store8(((char *) dst)+i, cs, memsetstring);
+			pmc_atomic_store8(((char *) dst)+i, cs, 0, memsetstring);
 			i=i+1;
 		}
 	}
@@ -327,6 +327,7 @@ int jaaru_num_crashes() {
 
 void jaaru_file_permission_change() {
 	createModelIfNotExist();
+	model_print("Jaaru Permission Change:\n");
 	model->get_execution()->makeExecutionPersistent();
 }
 

@@ -5,7 +5,7 @@
 #include "action.h"
 #include "execution.h"
 #include "threads-model.h"
-
+#include "hashfunction.h"
 CacheLineMetaData::CacheLineMetaData(ModelExecution *exec, uintptr_t id) :
 	MetaDataKey(exec, id),
 	lastFlush(0)
@@ -257,7 +257,7 @@ void PersistRace::printStats() {
 }
 
 unsigned int hashCacheLineKey(MetaDataKey *clm) {
-	return ((uintptr_t)clm->getExecution() >> 4) ^ ((uintptr_t)clm->getCacheID() >> 6);
+	return int64_hash(((uintptr_t)clm->getExecution()) ^ ((uintptr_t)clm->getCacheID() >> 6));
 }
 
 bool equalCacheLineKey(MetaDataKey *clm1, MetaDataKey *clm2) {

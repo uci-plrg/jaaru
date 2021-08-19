@@ -29,6 +29,7 @@ void param_defaults(struct model_params *params)
 	params->enableCrash = true;
 	params->enablePersistrace = false;
 	params->randomExecution = -1;
+	params->randomSeed = 423121;
 }
 
 
@@ -65,13 +66,14 @@ static void print_usage(struct model_params *params)
 		"-x							 Enable random execution (default execution number = 30)\n"
 		"-o							 Enable Verifier analysis\n"
 		"-b							 Threashold for randomly evict instructions from store buffer (Default = 15)\n"
+		"-a							 Initializing random seed (default seed = 423121)\n"
 		"-y							 Enable Persistency race analysis\n",
 		params->verbose, params->numcrashes);
 	exit(EXIT_SUCCESS);
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnoyv::b::x::p::r:d::c:f:";
+	const char *shortopts = "hsetnoyv::a::b::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -131,6 +133,8 @@ void parse_options(struct model_params *params) {
 			break;
 		case 'b':
 			params->storebufferthreshold = optarg ? atoi(optarg) : 15;
+		case 'a':
+			params->randomSeed = optarg ? atoi(optarg) : 423121;
 			break;
 		case 'y':
 			params->enablePersistrace = true;

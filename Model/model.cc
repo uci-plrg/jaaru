@@ -87,6 +87,13 @@ uint getNextRegionID() {
 void setRegionFromID(uint ID, void *ptr) {
 	createModelIfNotExist();
 	model->setRegion(ID, ptr);
+	/**
+	 * TODO: This is just a quick hack, but setRegionID/getRegionID should probably
+	 * have plugin callbacks. The correct approach is that setRegionID needs to stash
+	 * a clock vector associated with that regionID. When you see a getRegionID, 
+	 * you take this clock vector and union it with the lower bound for the crash
+	 * for the pre-crash execution in PMRace plugin. 
+	 */ 
 	model->get_execution()->makeExecutionPersistent();
 }
 
@@ -319,7 +326,7 @@ void ModelChecker::print_execution(bool printbugs) const
 	}
 
 	model_print("\n");
-	execution->print_summary();
+	//execution->print_summary();
 }
 
 /**
@@ -592,6 +599,7 @@ uint64_t ModelChecker::switch_thread(ModelAction *act) {
 			startRunExecution(old);
 		}
 	}
+	inside_model = 0;
 	return old->get_return_value();
 }
 
@@ -652,7 +660,7 @@ void ModelChecker::startChecker() {
 	startExecution();
 	//Need to initial random number generator state to avoid resets on rollback
 	if(isRandomExecutionEnabled()) {
-		initstate(423121, random_state, sizeof(random_state));
+		initstate(params.randomSeed, random_state, sizeof(random_state));
 	}
 	snapshot = take_snapshot();
 	if(isRandomExecutionEnabled()) {

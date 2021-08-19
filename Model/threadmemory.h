@@ -51,8 +51,7 @@ public:
 	SNAPSHOTALLOC;
 private:
 	bool evictOpFromStoreBuffer(ModelAction *op);
-	void evictWrite(ModelAction *write);
-	void evictNonAtomicWrite(ModelAction *na_write);
+	bool evictWrite(ModelAction *write);
 	void evictFlushOpt(ModelAction *flushopt);
 
 	SnapList<ModelAction*> storeBuffer;

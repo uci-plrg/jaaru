@@ -370,7 +370,7 @@ bool ModelExecution::is_complete_execution() const
 			return false;
 	return true;
 }
-
+const char * uninstrumentedposition = "uninstrumented";
 ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) {
 	uint64_t value = *((const uint64_t *) location);
 	switch(size) {
@@ -392,7 +392,8 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location, uint size) 
 	thread_id_t storethread;
 	getStoreThreadAndClock(location, &storethread, &storeclock);
 	setAtomicStoreFlag(location);
-	ModelAction * act = new ModelAction(NONATOMIC_WRITE, memory_order_relaxed, location, value, get_thread(storethread), size);
+	ModelAction * act = new ModelAction(NONATOMIC_WRITE, uninstrumentedposition, memory_order_relaxed, location, value, get_thread(storethread));
+	act->setOpSize(size);
 	if (storeclock == 0)
 		act->set_seq_number(get_next_seq_num());
 	else
@@ -1186,7 +1187,7 @@ void ModelExecution::add_normal_write_to_lists(ModelAction *act)
 }
 
 
-void ModelExecution::add_write_to_lists(ModelAction *write) {
+bool ModelExecution::add_write_to_lists(ModelAction *write) {
 	void *address = write->get_location();
 	void * alignaddress = alignAddress(address);
 	simple_action_list_t * list =obj_wr_map.get(alignaddress);
@@ -1223,7 +1224,7 @@ void ModelExecution::add_write_to_lists(ModelAction *write) {
 						oldval &= 0xffffffff;
 					//compare them
 					if (oldval == write->get_value()) {
-						return;	//old store subsumes new store...drop new store
+							return false; //old store subsumes new store...drop new store
 					}
 				}
 				//we have overlap...give up and insert new write
@@ -1234,6 +1235,7 @@ void ModelExecution::add_write_to_lists(ModelAction *write) {
 
 	write->setActionRef(list->add_back(write));
 	noWriteSinceCrashCheck = false;
+	return true;
 }
 
 /**

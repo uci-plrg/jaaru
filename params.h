@@ -19,6 +19,7 @@ struct model_params {
 	bool enableCrash;
 	bool enablePersistrace;
 	int randomExecution;
+	int randomSeed;
 };
 
 void param_defaults(struct model_params *params);
