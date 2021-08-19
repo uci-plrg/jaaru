@@ -3,11 +3,6 @@
 #include <stdio.h>
 #include <cstdlib>
 #include "test.h"
-#include "common.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 using namespace std;
 #define NUMTHREADS 2
@@ -89,12 +84,6 @@ int main(){
 		}
 	} else {
 		myobj = (testStruct *)getRegionFromID(0);
-		// char outputX[13] = {'%','%','%','%','%','%','%','%','%','%','%','%','\n'};
-		// outputX[1]=myobj->x + '0';
-		// outputX[3]=myobj->y + '0';
-		// outputX[5]=myobj->z + '0';
-		// outputX[7]=myobj->var + '0';
-		// write(model_out, outputX, 13);
 		printf("x=%u\n", myobj->x);
 		printf("y=%u\n", myobj->y);
 		printf("z=%u\n", myobj->z);

@@ -64,6 +64,8 @@ static void print_usage(struct model_params *params)
 		"-d [file]					 Deleting the persistent file after each execution.\n"
 		"-e							 Enable manual crash point.\n"
 		"-x							 Enable random execution (default execution number = 30)\n"
+		"-o							 Enable Verifier analysis\n"
+		"-b							 Threashold for randomly evict instructions from store buffer (Default = 15)\n"
 		"-a							 Initializing random seed (default seed = 423121)\n"
 		"-o							 Enable Verifier analysis\n"
 		"-b							 Threashold for randomly evict instructions from store buffer (Default = 15)\n"
@@ -73,7 +75,7 @@ static void print_usage(struct model_params *params)
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnoyv::b::a::x::p::r:d::c:f:";
+	const char *shortopts = "hsetnoyv::a::b::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -131,6 +133,8 @@ void parse_options(struct model_params *params) {
 		case 'x':
 			params->randomExecution = optarg ? atoi(optarg) : 30;
 			break;
+		case 'b':
+			params->storebufferthreshold = optarg ? atoi(optarg) : 15;
 		case 'a':
 			params->randomSeed = optarg ? atoi(optarg) : 423121;
 		case 'b':
