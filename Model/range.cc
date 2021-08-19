@@ -16,11 +16,18 @@ bool Range::minMergeEndgeRange(modelclock_t end) {
 	return false;
 }
 
+bool Range::canUpdateBeginRange(modelclock_t begin) {
+	return begin > beginR;
+}
+bool Range::canUpdateEndRange(modelclock_t end) {
+	return end < endR;
+}
+
 bool Range::hastIntersection(Range &r) {
 	return !(r.beginR > endR || r.endR < beginR);
 }
 
 
 void Range::print() const {
-	model_print("%u => %u\n", beginR, endR);
+	model_print("%u => %u", beginR, endR);
 }

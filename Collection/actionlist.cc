@@ -170,6 +170,22 @@ void decrementCount(allnode * ptr) {
 	}
 }
 
+mllnode<ModelAction *> * actionlist::getAction(modelclock_t clock) {
+	int shiftbits = MODELCLOCKBITS;
+	allnode * ptr = &root;
+	modelclock_t currindex;
+
+	while(shiftbits != 0) {
+		shiftbits -= ALLBITS;
+		currindex = (clock >> shiftbits) & ALLMASK;
+		ptr = ptr->children[currindex];
+		if (ptr == NULL)
+			return NULL;
+	}
+
+	return reinterpret_cast<mllnode<ModelAction *> *>(((uintptr_t) ptr) & ACTMASK);
+}
+
 void actionlist::removeAction(ModelAction * act) {
 	int shiftbits = MODELCLOCKBITS;
 	modelclock_t clock = act->get_seq_number();

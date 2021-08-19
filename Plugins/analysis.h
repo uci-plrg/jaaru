@@ -23,6 +23,7 @@ public:
 	virtual void printStats() = 0;
 	virtual void enterRecoveryProcedure() = 0;
 	virtual void exitRecoveryProcedure() = 0;
+	virtual void ignoreAnalysisForLocation(char * addrs, size_t size) = 0;
 	void ERROR(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	void WARNING(ModelExecution *exec, ModelAction * write,  ModelAction *read, const char * message);
 	void FATAL(ModelExecution *exec, ModelAction *write, ModelAction *read, const char * message, ...);
