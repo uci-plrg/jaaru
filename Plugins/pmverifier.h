@@ -35,6 +35,9 @@ private:
 	void populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress);
 	void printWriteAndFirstReadByThread(ModelExecution *exec, modelclock_t wclock, ModelAction *readThreadAction);
 	bool ignoreVariable(void * address);
+	bool checkBeginRangeInversion(ModelExecution *exec, ModelAction *action);
+	bool checkEndRangeInversion(ModelExecution *execution, ModelAction *wrt, uintptr_t curraddress);
+
 	HashTable<ModelExecution*, ModelVector<Range*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> rangeMap;
 	HashTable<ModelExecution*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> beginRangeLastAction;
 	HashTable<ModelExecution*, ModelVector<ModelAction*>*, uintptr_t, 2, model_malloc, model_calloc, model_free> endRangeLastAction;

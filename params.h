@@ -18,6 +18,7 @@ struct model_params {
 	char *file;
 	bool enableCrash;
 	bool enablePersistrace;
+	int verifierPluginMode;
 	int randomExecution;
 	int randomSeed;
 };

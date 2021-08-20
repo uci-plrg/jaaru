@@ -28,6 +28,7 @@ void param_defaults(struct model_params *params)
 	params->file = NULL;
 	params->enableCrash = true;
 	params->enablePersistrace = false;
+	params->verifierPluginMode = -1;
 	params->randomExecution = -1;
 	params->randomSeed = 423121;
 }
@@ -64,7 +65,10 @@ static void print_usage(struct model_params *params)
 		"-d [file]					 Deleting the persistent file after each execution.\n"
 		"-e							 Enable manual crash point.\n"
 		"-x							 Enable random execution (default execution number = 30)\n"
-		"-o							 Enable Verifier analysis\n"
+		"-o							 Enable Verifier analysis (Default: Naive mode=1)\n"
+		"								1: Naive: Report bug and continue\n"
+		"								2: Exit: exit on first error\n"
+		"								3: Safe: Forcing to explore robustness violation-free writes\n"
 		"-a							 Initializing random seed (default seed = 423121)\n"
 		"-o							 Enable Verifier analysis\n"
 		"-b							 Threashold for randomly evict instructions from store buffer (Default = 15)\n"
@@ -74,7 +78,7 @@ static void print_usage(struct model_params *params)
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hsetnoyv::a::b::x::p::r:d::c:f:";
+	const char *shortopts = "hsetnyv::a::b::o::x::p::r:d::c:f:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", optional_argument, NULL, 'v'},
@@ -142,6 +146,7 @@ void parse_options(struct model_params *params) {
 			enableAnalysis(PERSISTRACENAME);
 			break;
 		case 'o':
+			params->verifierPluginMode = optarg ? atoi(optarg) : 1;
 			enableAnalysis(PMVERIFIERNAME);
 			break;
 		case 'f':

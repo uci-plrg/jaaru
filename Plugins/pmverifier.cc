@@ -118,9 +118,11 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 	if(disabled) {
 		return;
 	}
+	model_params *params = model->getParams();
 	ModelExecution *currExecution = model->get_execution();
 	for(uint j=0;j< rf_set->size();j++) {
 		SnapVector<Pair<ModelExecution *, ModelAction *> > * writeVec = (*rf_set)[j];
+		bool hasError = false;
 		for(uint i=0;i<read->getOpSize();i++ ) {
 			ModelExecution * execution = (*writeVec)[i].p1;
 			ModelAction *wrt = (*writeVec)[i].p2;
@@ -167,6 +169,10 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 						model_print("****************************\n");
 					}
 					ERROR(execution, wrt, read, "Robustness Violation on Write");
+					if(params->verifierPluginMode > 1) {
+						hasError = true;
+						break;
+					}
 				}
 				ASSERT(wrt->get_cv());
 				ClockVector *cv = wrt->get_cv();
@@ -203,10 +209,31 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 
 						ERROR(execution, wrt, read,
 									"ERROR Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t");
+						if(params->verifierPluginMode > 1 && !hasError) {
+							hasError = true;
+						}
 					}
 				}
+				if( params->verifierPluginMode > 2 && !hasError && checkBeginRangeInversion(execution, wrt) & checkEndRangeInversion(execution, wrt, curraddress)) {
+					hasError = true;
+				}
+			}
+			if(hasError && params->verifierPluginMode > 1) {
+				break;
 			}
 		}
+		if(hasError && params->verifierPluginMode == 2) {
+			// Exit mode. need to exit the execution when there is an error
+			model->get_execution()->set_assert();
+		} else if (hasError && params->verifierPluginMode == 3){
+			// Safe mode. Not explore this write.
+			rf_set->removeAt(j);
+			j=j-1;
+		}
+	}
+	if(rf_set->size()==0){
+		// No more option to explore
+		model->get_execution()->set_assert();
 	}
 }
 
@@ -237,6 +264,9 @@ bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 				model_print(">> The write causing the bug:\n");
 				action->print();
 				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			}
+			if(!exec->has_asserted() && model->getParams()->verifierPluginMode > 1){
+				exec->set_assert();
 			}
 			FATAL(exec, action, action, "RECORD PROGRESS: End range %u is not compatable with new begin range %u\n", range->getEndRange(), cv->getClock(tid));
 		}
@@ -367,6 +397,9 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 					nextWrite->print();
 					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 				}
+				if(!execution->has_asserted() && model->getParams()->verifierPluginMode > 1){
+					execution->set_assert();
+				}
 				FATAL(execution, wrt, wrt, "UpdateEndrageAfterWrite: Begin range %u is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_seq_number()-1);
 			}
 			if(range->minMergeEndgeRange(nextWrite->get_seq_number()-1)) {
@@ -451,6 +484,72 @@ bool PMVerifier::ignoreVariable(void * address) {
 			uintptr_t lowerlimit = (uintptr_t)mp->p1;
 			uintptr_t upperlimit = (uintptr_t)mp->p1 + mp->p2;
 			if(upperlimit > (uintptr_t)address && lowerlimit >= (uintptr_t)address) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool PMVerifier::checkBeginRangeInversion(ModelExecution *exec, ModelAction *action) {
+	ModelVector<Range*> *rangeVector = getOrCreateRangeVector(exec);
+	for(uint i=0;i< exec->get_num_threads();i++) {
+		Range * range = getOrCreateRange(rangeVector, i);
+		ClockVector * cv = action->get_cv();
+		ASSERT(cv);
+		thread_id_t tid = int_to_id(i);
+		if(range->getEndRange()<cv->getClock(tid)) {
+			if(model->getParams()->pmdebug > 0 ) {
+				model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR (precheck)~~~~~~~~~~~~\n");
+				range->print();
+				model_print(">> Range Begin Action:\n");
+				ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(exec), i);
+				if(tmpact) {
+					tmpact->print();
+				} else {
+					model_print("No ModelAction Yet\n");
+				}
+				model_print(">> End Range Action:\n");
+				tmpact = getActionIndex(endRangeLastAction.get(exec), i);
+				tmpact->print();
+				model_print(">> The write causing the bug:\n");
+				action->print();
+				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+bool PMVerifier::checkEndRangeInversion(ModelExecution *execution, ModelAction *wrt, uintptr_t curraddress) {
+	// Update the endRange for all threads
+	mllnode<ModelAction *> * nextNode = wrt->getActionRef()->getNext();
+	ModelVector<ModelAction*> nextWrites;
+	findFirstWriteInEachThread(nextWrites, nextNode, curraddress, execution->get_num_threads());
+	ModelVector<Range*> *ranges = getOrCreateRangeVector(execution);
+	for(uint i=0;i < nextWrites.size();i++) {
+		ModelAction *nextWrite = nextWrites[i];
+		if(nextWrite) {
+			Range *range = getOrCreateRange(ranges, i);
+			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
+				if(model->getParams()->pmdebug > 0 ) {
+					model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR IN Setting EndRange (precheck) ~~~~~~~~~~~~\n");
+					range->print();
+					model_print(">> Range Begin Action:\n");
+					ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
+					if(tmpact) {
+						tmpact->print();
+					} else {
+						model_print("No ModelAction Yet!\n");
+					}
+					model_print(">> End Range Action:\n");
+					tmpact = getActionIndex(endRangeLastAction.get(execution), i);
+					tmpact->print();
+					model_print(">> The write causing the bug:\n");
+					nextWrite->print();
+					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				}
 				return true;
 			}
 		}

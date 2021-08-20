@@ -1051,6 +1051,9 @@ void ModelExecution::handle_read(ModelAction *curr) {
 	for(uint i=0;i<analyses->size();i ++) {
 		(*analyses)[i] -> mayReadFromAnalysis(curr, &rf_set);
 	}
+	if(has_asserted()) {
+		return;
+	}
 	int index = 0;
 	if (hasCrashed)
 		return;
