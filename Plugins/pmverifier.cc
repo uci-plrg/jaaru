@@ -128,8 +128,6 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 			ModelAction *wrt = (*writeVec)[i].p2;
 			if(currExecution != execution ) {
 				// Check for persistency bugs
-				model_print(">>>>>>> Possibly Reading from:\t");
-				wrt->print();
 				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
 				uint index = id_to_int(wrt->get_tid());
 				Range *range = getOrCreateRange(rangeVector, index);
@@ -162,7 +160,8 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 							} else {
 								wrt->print();
 							}
-
+							ModelAction *endWrt = execution->getActionTrace()->getAction(writeRange.getEndRange()+1)->getVal();
+							endWrt->print();
 						} else if(range->getEndRange() < writeRange.getBeginRange()) {
 							beginAction->print();
 						}
