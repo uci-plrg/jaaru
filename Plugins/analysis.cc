@@ -38,7 +38,7 @@ void Analysis::FATAL(ModelExecution *exec, ModelAction *wrt, ModelAction *read, 
 			errorSet.add(duplicateString(position));
 		}
 	} else {
-		//ASSERT(0);
+		ASSERT(0);
 	}
 	num_total_bugs++;
 }
@@ -55,7 +55,7 @@ void Analysis::ERROR(ModelExecution *exec, ModelAction * wrt, ModelAction *read,
 			errorSet.add(duplicateString(position));
 		}
 	} else {
-		//ASSERT(0);
+		ASSERT(0);
 	}
 	num_total_bugs++;
 }
@@ -72,7 +72,7 @@ void Analysis::WARNING(ModelExecution *exec, ModelAction * wrt, ModelAction *rea
 			warningSet.add(duplicateString(position));
 		}
 	} else {
-		//ASSERT(0);
+		ASSERT(0);
 	}
 	num_total_warnings++;
 }
