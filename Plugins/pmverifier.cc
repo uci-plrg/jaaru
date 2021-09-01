@@ -115,7 +115,7 @@ void PMVerifier::printWriteAndFirstReadByThread(ModelExecution *exec, modelclock
  * This analysis checks all writes that the execution may possibly read from are in range.
  */
 void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pair<ModelExecution *, ModelAction *> > *> *rf_set) {
-	if(disabled) {
+	if(disabled || ignoreVariable(read->get_location())) {
 		return;
 	}
 	model_params *params = model->getParams();
@@ -131,7 +131,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				ModelVector<Range*> *rangeVector = getOrCreateRangeVector(execution);
 				uint index = id_to_int(wrt->get_tid());
 				Range *range = getOrCreateRange(rangeVector, index);
-				uintptr_t curraddress = ((uintptr_t)wrt->get_location()) + i;
+				uintptr_t curraddress = ((uintptr_t)read->get_location()) + i;
 				Range writeRange;
 				populateWriteConstraint(writeRange, wrt, execution, curraddress);
 				if(!range->hastIntersection(writeRange) ) {
@@ -237,7 +237,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 }
 
 bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
-	if(disabled) {
+	if(disabled || ignoreVariable(action->get_location())) {
 		return true;
 	}
 	ModelVector<Range*> *rangeVector = getOrCreateRangeVector(exec);
@@ -294,7 +294,7 @@ bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
  * writes.
  */
 void PMVerifier::readFromWriteAnalysis(ModelAction *read, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) {
-	if(disabled) {
+	if(disabled || ignoreVariable(read->get_location())) {
 		return;
 	}
 	ModelExecution *currExecution = model->get_execution();

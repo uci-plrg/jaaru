@@ -704,8 +704,6 @@ void ModelExecution::persistCacheLine(CacheLine *cacheline, ModelAction *clflush
 }
 
 bool ModelExecution::evictCacheOp(ModelAction *cacheop) {
-	if (shouldInsertCrash())
-		return true;
 	remove_action_from_store_buffer(cacheop);
 	void * loc = cacheop->get_location();
 	CacheLine *cacheline = getCacheLine(loc);
@@ -714,6 +712,8 @@ bool ModelExecution::evictCacheOp(ModelAction *cacheop) {
 	for(uint i=0;i<analyses->size();i++) {
 		(*analyses)[i] -> evictFlushBufferAnalysis(this, cacheop);
 	}
+	if (shouldInsertCrash())
+		return true;
 	return false;
 }
 
