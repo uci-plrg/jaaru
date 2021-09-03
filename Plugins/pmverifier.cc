@@ -163,7 +163,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 							ModelAction *endWrt = execution->getActionTrace()->getAction(writeRange.getEndRange()+1)->getVal();
 							endWrt->print();
 						} else if(range->getEndRange() < writeRange.getBeginRange()) {
-							beginAction->print();
+							endAction->print();
 						}
 						model_print("****************************\n");
 					}
@@ -184,7 +184,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 					}
 					if(range->getEndRange() < trd_seq_num) {
 						if(model->getParams()->pmdebug > 0 ) {
-							model_print("******************************\nPMVerifier found Robustness Violation in read:\n");
+							model_print("******************************\nPMVerifier found Robustness Violation in another thread by read:\n");
 							read->print();
 							model_print("From write:\n");
 							wrt->print();
@@ -482,7 +482,7 @@ bool PMVerifier::ignoreVariable(void * address) {
 			auto mp = (*ignoreList)[i];
 			uintptr_t lowerlimit = (uintptr_t)mp->p1;
 			uintptr_t upperlimit = (uintptr_t)mp->p1 + mp->p2;
-			if(upperlimit > (uintptr_t)address && lowerlimit >= (uintptr_t)address) {
+			if(upperlimit > (uintptr_t)address && lowerlimit <= (uintptr_t)address) {
 				return true;
 			}
 		}

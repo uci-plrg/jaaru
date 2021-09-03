@@ -1026,6 +1026,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	return curr;
 }
 
+const char *ensureposition = "ensureposition";
 void ModelExecution::ensureInitialValue(ModelAction *curr) {
 	void * address = curr->get_location();
 	void * align_address = alignAddress(address);
@@ -1038,6 +1039,7 @@ void ModelExecution::ensureInitialValue(ModelAction *curr) {
 	if (list == NULL) {
 		ModelAction *act = new ModelAction(ATOMIC_INIT, memory_order_relaxed, align_address, *((uint64_t*) align_address), exec->model_thread, 8);
 		act->merge_cv( (ModelAction*) NULL);
+		act->set_position(ensureposition);
 		ValidateAddress64(align_address);
 		exec->action_trace.addAction(act);
 		exec->add_write_to_lists(act);
