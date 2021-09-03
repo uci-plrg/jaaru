@@ -273,7 +273,6 @@ bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 			//This read is affecting begin Range of other threads. Need to check
 			ModelAction *otherAction = exec->getActionTrace()->getAction(cv->getClock(tid))->getVal();
 			if(ignoreVariable(otherAction->get_location())) {
-				otherAction->print();
 				if(tid == action->get_tid()) {
 					return true;
 				}
