@@ -479,8 +479,8 @@ Thread* ModelChecker::getNextThread(Thread *old) {
 		}
 		chooseThread(act, thr);
 	}
-
-	if (execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads()) {
+	bool isRMWR = chosen_thread && execution->get_last_action(chosen_thread->get_id()) && execution->get_last_action(chosen_thread->get_id())->is_rmw_read();
+	if (execution->getStoreBuffer() > params.storebufferthreshold * execution->get_num_threads() && !isRMWR) {
 		uint targetthread = random() % execution->get_num_threads();
 		uint numberEvict = random() % params.evictmax;
 		ThreadMemory * mem = get_thread(int_to_id(targetthread))->getMemory();
