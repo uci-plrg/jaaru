@@ -98,14 +98,23 @@ ModelExecution::~ModelExecution()
 	for(uint i=0;i<analyses->size();i++) {
 		(*analyses)[i] -> freeExecution(this);
 	}
+	model->freeExecution(this);
 	action_trace.clearAndDeleteActions();
 	obj_wr_map.resetanddelete();
 	obj_to_cacheline.resetanddelete();
+	if(!regionIDSnapshots.empty()) {
+		for(unsigned int i=0;i< regionIDSnapshots.size();i ++) {
+			if(regionIDSnapshots[i]) {
+				delete regionIDSnapshots[i];
+			}
+		}
+		regionIDSnapshots.clear();
+	}
 	delete priv;
 }
 
 void ModelExecution::clearPreRollback() {
-	for (unsigned int i = 0;i < get_num_threads();i ++) {
+	for (unsigned int i = 0;i < get_num_threads();i++) {
 		ModelAction *pending = get_thread(int_to_id(i))->get_pending();
 		if (pending != NULL)
 			delete pending;
@@ -132,7 +141,7 @@ bool CLEquals(CLData *c1, CLData *c2) {
 
 double ModelExecution::computeCombinations() {
 	HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals> * tmpset = new HashSet<CLData *, uintptr_t, 2, snapshot_malloc, snapshot_calloc, snapshot_free, CLFunction, CLEquals>();
-	for(uint i=0;i<obj_wr_map.capacity;i ++) {
+	for(uint i=0;i<obj_wr_map.capacity;i++) {
 		struct hashlistnode<const void *, simple_action_list_t *> entry = obj_wr_map.table[i];
 		if (entry.key == NULL || !pmem_is_pmem(entry.key, 1))
 			continue;
@@ -1744,3 +1753,22 @@ Fuzzer * ModelExecution::getFuzzer() {
 	return fuzzer;
 }
 
+
+void ModelExecution::takeThreadLastActionSnapshot(uint regionID) {
+	ModelVector<ModelAction*>* snapshotVector = new ModelVector<ModelAction*>();
+	for(unsigned int i=0;i< thrd_last_action.size();i++) {
+		snapshotVector->push_back(thrd_last_action[i]);
+	}
+	regionIDSnapshots.setExpand(regionID, snapshotVector);
+}
+
+void ModelExecution::getRegionFromIDAnalysis(uint regionID) {
+	if(regionID >= regionIDSnapshots.size() || !regionIDSnapshots[regionID]) {
+		return;
+	}
+	auto setregionlastactions = regionIDSnapshots[regionID];
+	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
+	for(uint i=0;i<analyses->size();i++) {
+		(*analyses)[i]->getRegionFromIDAnalysis(this, setregionlastactions);
+	}
+}

@@ -56,7 +56,7 @@ void PMVerifier::crashAnalysis(ModelExecution * execution) {
 
 }
 
-void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress) {
+ModelAction* PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress) {
 	range.setBeginRange(wrt->get_seq_number());
 	mllnode<ModelAction *> * nextNode = wrt->getActionRef()->getNext();
 	while(nextNode != NULL) {
@@ -70,8 +70,9 @@ void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelEx
 		}
 		nextNode = nextNode->getNext();
 	}
+	ModelAction *nextWrite = NULL;
 	if(nextNode) {
-		ModelAction *nextWrite = nextNode->getVal();
+		nextWrite = nextNode->getVal();
 		ASSERT(nextWrite);
 		range.setEndRange(nextWrite->get_seq_number() - 1);
 	} else {
@@ -82,6 +83,7 @@ void PMVerifier::populateWriteConstraint(Range &range, ModelAction *wrt, ModelEx
 			range.setEndRange(wrtExecution->get_curr_seq_num());
 		}
 	}
+	return nextWrite;
 }
 
 void PMVerifier::printWriteAndFirstReadByThread(ModelExecution *exec, modelclock_t wclock, ModelAction *readThreadAction) {
@@ -104,6 +106,8 @@ void PMVerifier::printWriteAndFirstReadByThread(ModelExecution *exec, modelclock
 	if(tmpAction!= wrt && tmpAction->get_seq_number() <= readThreadAction->get_seq_number()) {
 		tmpAction->print();
 	}
+	model_print(">> The flushes have to be inserted before write(s):\n");
+	tmpAction->print();
 	if(!pmem_is_pmem(wrt->get_location(), wrt->getOpSize()<<3) ) {
 		const char * location = wrt->get_position() ? wrt->get_position() : tmpAction && tmpAction->get_position() ? tmpAction->get_position() : "[]";
 		model_print("(Warning: Variable at %s is located in DRAM. Either, it needs to be moved to persistent memory"
@@ -133,7 +137,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				Range *range = getOrCreateRange(rangeVector, index);
 				uintptr_t curraddress = ((uintptr_t)read->get_location()) + i;
 				Range writeRange;
-				populateWriteConstraint(writeRange, wrt, execution, curraddress);
+				ModelAction* nextWrite = populateWriteConstraint(writeRange, wrt, execution, curraddress);
 				if(!range->hastIntersection(writeRange) ) {
 					if(model->getParams()->pmdebug > 0 ) {
 						model_print("******************************\nPMVerifier found Robustness Violation in read:\n");
@@ -155,15 +159,19 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 						endAction->print();
 						model_print(">> Possible fix: Insert flushes after write(s):\n");
 						if(writeRange.getEndRange() < range->getBeginRange()) {
+							ASSERT(nextWrite);
 							if(wrt->get_tid() != beginAction->get_tid()) {
 								printWriteAndFirstReadByThread(execution, beginAction->get_cv()->getClock(wrt->get_tid()), beginAction);
+								nextWrite->print();
 							} else {
-								wrt->print();
+								nextWrite->print();
+								model_print(">> The flushes have to be inserted before:\n");
+								beginAction->print();
 							}
-							ModelAction *endWrt = execution->getActionTrace()->getAction(writeRange.getEndRange()+1)->getVal();
-							endWrt->print();
 						} else if(range->getEndRange() < writeRange.getBeginRange()) {
 							endAction->print();
+							model_print(">> The flushes have to be inserted before:\n");
+							wrt->print();
 						}
 						model_print("****************************\n");
 					}
@@ -224,13 +232,13 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 		if(hasError && params->verifierPluginMode == 2) {
 			// Exit mode. need to exit the execution when there is an error
 			model->get_execution()->set_assert();
-		} else if (hasError && params->verifierPluginMode == 3){
+		} else if (hasError && params->verifierPluginMode == 3) {
 			// Safe mode. Not explore this write.
 			rf_set->removeAt(j);
 			j=j-1;
 		}
 	}
-	if(rf_set->size()==0){
+	if(rf_set->size()==0) {
 		// No more option to explore
 		model->get_execution()->set_assert();
 	}
@@ -264,7 +272,7 @@ bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 				action->print();
 				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 			}
-			if(!exec->has_asserted() && model->getParams()->verifierPluginMode > 1){
+			if(!exec->has_asserted() && model->getParams()->verifierPluginMode > 1) {
 				exec->set_assert();
 			}
 			FATAL(exec, action, action, "RECORD PROGRESS: End range %u is not compatable with new begin range %u\n", range->getEndRange(), cv->getClock(tid));
@@ -395,7 +403,7 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 					nextWrite->print();
 					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 				}
-				if(!execution->has_asserted() && model->getParams()->verifierPluginMode > 1){
+				if(!execution->has_asserted() && model->getParams()->verifierPluginMode > 1) {
 					execution->set_assert();
 				}
 				FATAL(execution, wrt, wrt, "UpdateEndrageAfterWrite: Begin range %u is not compatable with new end range %u\n", range->getBeginRange(), nextWrite->get_seq_number()-1);
@@ -553,4 +561,13 @@ bool PMVerifier::checkEndRangeInversion(ModelExecution *execution, ModelAction *
 		}
 	}
 	return false;
+}
+
+void PMVerifier::getRegionFromIDAnalysis(ModelExecution *execution, ModelVector<ModelAction*>* thrdLastActions) {
+	for(unsigned int i=0;i< thrdLastActions->size();i++) {
+		ModelAction * lastAction = (*thrdLastActions)[i];
+		if(lastAction) {
+			recordProgress(execution, lastAction);
+		}
+	}
 }

@@ -45,6 +45,7 @@ public:
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action);
 	void freeExecution(ModelExecution *exec);
 	void persistExecutionAnalysis(ModelExecution *execution);
+	void getRegionFromIDAnalysis(ModelExecution *execution, ModelVector<ModelAction*>* thrdLastActions);
 	void enterRecoveryProcedure() {}
 	void exitRecoveryProcedure() {}
 	void ignoreAnalysisForLocation(char * addrs, size_t size) {}

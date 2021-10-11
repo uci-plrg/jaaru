@@ -99,6 +99,8 @@ public:
 	void makeExecutionPersistent();
 	auto get_obj_write_map() {return &obj_wr_map;}
 	ModelAction *getLastAction() { return lastAction;}
+	void takeThreadLastActionSnapshot(uint regionID);
+	void getRegionFromIDAnalysis(uint regionID);
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
@@ -184,6 +186,7 @@ private:
 	bool noWriteSinceCrashCheck;
 	bool enableCrash;
 	ModelAction *lastAction;
+	ModelVector<ModelVector<ModelAction *>*> regionIDSnapshots;
 };
 
 inline void * alignAddress(void * addr) {

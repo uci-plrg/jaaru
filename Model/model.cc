@@ -74,7 +74,7 @@ void createModelIfNotExist() {
 
 void * getRegionFromID(uint ID) {
 	createModelIfNotExist();
-
+	model->getRegionFromIDAnalysis(ID);
 	return model->getRegion(ID);
 }
 
@@ -87,14 +87,7 @@ uint getNextRegionID() {
 void setRegionFromID(uint ID, void *ptr) {
 	createModelIfNotExist();
 	model->setRegion(ID, ptr);
-	/**
-	 * TODO: This is just a quick hack, but setRegionID/getRegionID should probably
-	 * have plugin callbacks. The correct approach is that setRegionID needs to stash
-	 * a clock vector associated with that regionID. When you see a getRegionID,
-	 * you take this clock vector and union it with the lower bound for the crash
-	 * for the pre-crash execution in PMRace plugin.
-	 */
-	model->get_execution()->makeExecutionPersistent();
+	model->takeLastActionSnapshot(ID);
 }
 
 void * ModelChecker::getRegion(uint ID) {
@@ -102,6 +95,18 @@ void * ModelChecker::getRegion(uint ID) {
 		return NULL;
 	else
 		return regionID[ID];
+}
+
+void ModelChecker::takeLastActionSnapshot(uint ID) {
+	execution->takeThreadLastActionSnapshot(ID);
+	regionIDExecutions.setExpand(ID, execution);
+}
+
+void ModelChecker::getRegionFromIDAnalysis(uint ID) {
+	if(ID >= regionIDExecutions.size() || !regionIDExecutions[ID]) 
+		return;
+	ModelExecution *exec = regionIDExecutions[ID];
+	exec->getRegionFromIDAnalysis(ID);
 }
 
 void ModelChecker::setRegion(uint ID, void *ptr) {
@@ -753,3 +758,10 @@ void ModelChecker::doCrash() {
 	reset_to_initial_state();
 }
 
+void ModelChecker::freeExecution(ModelExecution *exec) {
+	for(unsigned int i=0; i< regionIDExecutions.size(); i++) {
+		if(regionIDExecutions[i] == exec) {
+			regionIDExecutions[i] = NULL;
+		}
+	}
+}

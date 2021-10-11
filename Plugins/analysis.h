@@ -17,6 +17,7 @@ public:
 	virtual void readFromWriteAnalysis(ModelAction *curr, SnapVector<Pair<ModelExecution *, ModelAction *> > *rfarray) = 0;
 	virtual void evictFlushBufferAnalysis(ModelExecution *execution, ModelAction *flush) = 0;
 	virtual void evictStoreBufferAnalysis(ModelExecution *execution, ModelAction *action) = 0;
+	virtual void getRegionFromIDAnalysis(ModelExecution *execution, ModelVector<ModelAction*>* thrdLastActions) = 0;
 	virtual void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action) = 0;
 	virtual void freeExecution(ModelExecution *exec) = 0;
 	virtual void persistExecutionAnalysis(ModelExecution *execution) = 0;

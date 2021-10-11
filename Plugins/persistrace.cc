@@ -229,6 +229,15 @@ void PersistRace::persistExecutionAnalysis(ModelExecution *execution) {
 	}
 }
 
+void PersistRace::getRegionFromIDAnalysis(ModelExecution *execution, ModelVector<ModelAction*>* thrdLastActions) {
+	for(unsigned int i =0;i < thrdLastActions->size();i++) {
+		ModelAction *action = (*thrdLastActions)[i];
+		if(action != NULL) {
+			persistUntilAction(execution, action);
+		}
+	}
+}
+
 void PersistRace::persistUntilAction(ModelExecution *execution, ModelAction *action) {
 	ClockVector* beginRange = beginRangeCV.get(execution);
 	if(beginRange == NULL) {

@@ -48,6 +48,7 @@ public:
 	void exit_model_checker();
 
 	ModelExecution * get_execution() const { return execution; }
+	void freeExecution(ModelExecution *exec);
 	ModelExecution * getOrigExecution() const { return origExecution; }
 
 	uint get_execution_number() const { return execution_number; }
@@ -72,6 +73,8 @@ public:
 	uint getNextRegionID() { return regionID.size() + 1;}
 	modelclock_t getNextCrashPoint() {return nextCrashPoint;}
 	void setRegion(uint ID, void *ptr);
+	void takeLastActionSnapshot(uint ID);
+	void getRegionFromIDAnalysis(uint ID);
 	uint getNumCrashes() {return numcrashes;}
 
 	MEMALLOC
@@ -106,6 +109,7 @@ private:
 
 	uint numcrashes;
 	ModelVector<void *> regionID;
+	ModelVector<ModelExecution*> regionIDExecutions;
 	ModelList<NodeStack *> replaystack;
 
 	unsigned int get_num_threads() const;

@@ -18,6 +18,7 @@ public:
 	void fenceExecutionAnalysis(ModelExecution *execution, ModelAction *action){}
 	void freeExecution(ModelExecution *exec);
 	void persistExecutionAnalysis(ModelExecution *execution) {}
+	void getRegionFromIDAnalysis(ModelExecution *execution, ModelVector<ModelAction*>* thrdLastActions);
 	void enterRecoveryProcedure() {disabled = true;}
 	void exitRecoveryProcedure() {disabled = false;}
 	void ignoreAnalysisForLocation(char * addrs, size_t size);
@@ -32,7 +33,7 @@ private:
 	ModelAction * getActionIndex(ModelVector<ModelAction*> *ranges, unsigned int index);
 	void setActionIndex(ModelVector<ModelAction*> *ranges, unsigned int index, ModelAction *action);
 	void printRangeVector(ModelExecution *execution);
-	void populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress);
+	ModelAction* populateWriteConstraint(Range &range, ModelAction *wrt, ModelExecution * wrtExecution, uintptr_t curraddress);
 	void printWriteAndFirstReadByThread(ModelExecution *exec, modelclock_t wclock, ModelAction *readThreadAction);
 	bool ignoreVariable(void * address);
 	bool checkBeginRangeInversion(ModelExecution *exec, ModelAction *action);
