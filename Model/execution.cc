@@ -1756,9 +1756,8 @@ Fuzzer * ModelExecution::getFuzzer() {
 
 void ModelExecution::takeThreadLastActionSnapshot(uint regionID) {
 	ModelVector<ModelAction*>* snapshotVector = new ModelVector<ModelAction*>();
-	for(unsigned int i=0;i< thrd_last_action.size();i++) {
-		snapshotVector->push_back(thrd_last_action[i]);
-	}
+	int tid = id_to_int(thread_current()->get_id());
+	snapshotVector->push_back(thrd_last_action[tid]);
 	regionIDSnapshots.setExpand(regionID, snapshotVector);
 }
 
