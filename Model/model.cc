@@ -504,9 +504,6 @@ Thread* ModelChecker::getNextThread(Thread *old) {
 void ModelChecker::finishRunExecution(Thread *old) {
 	scheduler->set_current_thread(NULL);
 
-	/** Reset curr_thread_num to initial value for next execution. */
-	curr_thread_num = 1;
-
 	/** If we have more executions, we won't make it past this call. */
 	finish_execution();
 
@@ -678,6 +675,10 @@ void ModelChecker::startChecker() {
 		execution->get_next_id();	//increment thread count for init_thread in execution object since it is a new object
 		execution->add_thread(init_thread);
 		execution->setParams(&params);
+
+		/** Reset thread_chosen, chosen_thread, and curr_thread_num to initial value for execution. */
+		thread_chosen = false;
+		chosen_thread = NULL;
 		curr_thread_num = 1;
 
 		if (prevContext == NULL) {
