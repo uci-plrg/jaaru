@@ -223,7 +223,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 						}
 					}
 				}
-				if( params->verifierPluginMode > 2 && !hasError && checkBeginRangeInversion(execution, wrt) && checkEndRangeInversion(execution, wrt, curraddress)) {
+				if( params->verifierPluginMode > 1 && !hasError && (checkBeginRangeInversion(execution, wrt) || checkEndRangeInversion(execution, wrt, curraddress))) {
 					hasError = true;
 				}
 			}
