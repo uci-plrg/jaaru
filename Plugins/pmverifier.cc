@@ -210,6 +210,8 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 							model_print(">> Possible fix: Insert flushes after write(s):\n");
 							if( tid != wrt->get_tid() ) {
 								printWriteAndFirstReadByThread(execution, trd_seq_num, wrt);
+							} else {
+								endAction->print();
 							}
 							model_print("****************************\n");
 						}
@@ -221,7 +223,7 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 						}
 					}
 				}
-				if( params->verifierPluginMode > 2 && !hasError && checkBeginRangeInversion(execution, wrt) & checkEndRangeInversion(execution, wrt, curraddress)) {
+				if( params->verifierPluginMode > 2 && !hasError && checkBeginRangeInversion(execution, wrt) && checkEndRangeInversion(execution, wrt, curraddress)) {
 					hasError = true;
 				}
 			}
@@ -540,7 +542,7 @@ bool PMVerifier::checkEndRangeInversion(ModelExecution *execution, ModelAction *
 			Range *range = getOrCreateRange(ranges, i);
 			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
 				if(model->getParams()->pmdebug > 0 ) {
-					model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR IN Setting EndRange (precheck) ~~~~~~~~~~~~\n");
+					model_print("~~~~~~~~~ PMVerifier found Robustness Violation in read from address = %p ~~~~~~~~~~~~\n", curraddress);
 					range->print();
 					model_print(">> Range Begin Action:\n");
 					ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
@@ -552,8 +554,13 @@ bool PMVerifier::checkEndRangeInversion(ModelExecution *execution, ModelAction *
 					model_print(">> End Range Action:\n");
 					tmpact = getActionIndex(endRangeLastAction.get(execution), i);
 					tmpact->print();
-					model_print(">> The write causing the bug:\n");
+					model_print(">> Possible fix: Insert flushes after write(s):\n");
 					nextWrite->print();
+					mllnode<ModelAction *> * nextNode = nextWrite->getActionRef()->getNext();
+					if(nextNode && nextNode->getVal()) {
+						model_print(">> The flushes have to be inserted before:\n");
+						nextNode->getVal()->print();
+					}
 					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 				}
 				return true;
