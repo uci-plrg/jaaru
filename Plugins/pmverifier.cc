@@ -389,7 +389,7 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 			Range *range = getOrCreateRange(ranges, i);
 			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
 				if(model->getParams()->pmdebug > 0) {
-					model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR IN Setting EndRange ~~~~~~~~~~~~\n");
+					model_print("~~~~~~~~~ PMVerifier found Robustness Violation in read from address = %p ~~~~~~~~~~~~\n", curraddress);
 					range->print();
 					model_print(">> Range Begin Action:\n");
 					ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
@@ -401,8 +401,13 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 					model_print(">> End Range Action:\n");
 					tmpact = getActionIndex(endRangeLastAction.get(execution), i);
 					tmpact->print();
-					model_print(">> The write causing the bug:\n");
+					model_print(">> Possible fix: Insert flushes after write(s):\n");
 					nextWrite->print();
+					mllnode<ModelAction *> * nextNode = nextWrite->getActionRef()->getNext();
+					if(nextNode && nextNode->getVal()) {
+						model_print(">> The flushes have to be inserted before:\n");
+						nextNode->getVal()->print();
+					}
 					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 				}
 				if(!execution->has_asserted() && model->getParams()->verifierPluginMode > 1) {
