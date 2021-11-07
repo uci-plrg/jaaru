@@ -103,7 +103,7 @@ void ModelChecker::takeLastActionSnapshot(uint ID) {
 }
 
 void ModelChecker::getRegionFromIDAnalysis(uint ID) {
-	if(ID >= regionIDExecutions.size() || !regionIDExecutions[ID]) 
+	if(ID >= regionIDExecutions.size() || !regionIDExecutions[ID])
 		return;
 	ModelExecution *exec = regionIDExecutions[ID];
 	exec->getRegionFromIDAnalysis(ID);
@@ -738,7 +738,7 @@ void ModelChecker::doCrash() {
 	}
 	ModelVector<Analysis*> *analyses = getInstalledAnalyses();
 	for(uint i=0;i<analyses->size();i++) {
-		(*analyses)[i]->crashAnalysis(execution);
+		(*analyses)[i] -> crashAnalysis(execution);
 	}
 	model_print("Execution %d at sequence number %d\n",execution_number, execution->get_curr_seq_num());
 	Execution_Context * ec = new Execution_Context(prevContext, execution, nodestack);
@@ -760,7 +760,7 @@ void ModelChecker::doCrash() {
 }
 
 void ModelChecker::freeExecution(ModelExecution *exec) {
-	for(unsigned int i=0; i< regionIDExecutions.size(); i++) {
+	for(unsigned int i=0;i< regionIDExecutions.size();i ++) {
 		if(regionIDExecutions[i] == exec) {
 			regionIDExecutions[i] = NULL;
 		}

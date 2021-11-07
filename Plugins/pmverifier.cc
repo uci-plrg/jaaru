@@ -139,42 +139,42 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 				Range writeRange;
 				ModelAction* nextWrite = populateWriteConstraint(writeRange, wrt, execution, curraddress);
 				if(!range->hastIntersection(writeRange) ) {
-					if(model->getParams()->pmdebug > 0 ) {
-						model_print("******************************\nPMVerifier found Robustness Violation in read:\n");
-						read->print();
-						model_print("From following write by thread %u:\n", wrt->get_tid());
-						wrt->print();
-						model_print("Write range:\t");
-						writeRange.print();
-						model_print("\tvs. Thread %d Range:\t", wrt->get_tid());
-						range->print();
-						model_print("\n");
-						ModelAction *beginAction = getActionIndex( beginRangeLastAction.get(execution),index);
-						if(beginAction) {
-							model_print("Thread last begin Action:\n");
+
+					model_print("******************************\nPMVerifier found Robustness Violation in read:\n");
+					read->print();
+					model_print("From following write by thread %u:\n", wrt->get_tid());
+					wrt->print();
+					model_print("Write range:\t");
+					writeRange.print();
+					model_print("\tvs. Thread %d Range:\t", wrt->get_tid());
+					range->print();
+					model_print("\n");
+					ModelAction *beginAction = getActionIndex( beginRangeLastAction.get(execution),index);
+					if(beginAction) {
+						model_print("Thread last begin Action:\n");
+						beginAction->print();
+					}
+					model_print("Thread last end Action:\n");
+					ModelAction * endAction = getActionIndex( endRangeLastAction.get(execution),index);
+					endAction->print();
+					model_print(">> Possible fix: Insert flushes after write(s):\n");
+					if(writeRange.getEndRange() < range->getBeginRange()) {
+						ASSERT(nextWrite);
+						if(wrt->get_tid() != beginAction->get_tid()) {
+							printWriteAndFirstReadByThread(execution, beginAction->get_cv()->getClock(wrt->get_tid()), beginAction);
+							nextWrite->print();
+						} else {
+							nextWrite->print();
+							model_print(">> The flushes have to be inserted before:\n");
 							beginAction->print();
 						}
-						model_print("Thread last end Action:\n");
-						ModelAction * endAction = getActionIndex( endRangeLastAction.get(execution),index);
+					} else if(range->getEndRange() < writeRange.getBeginRange()) {
 						endAction->print();
-						model_print(">> Possible fix: Insert flushes after write(s):\n");
-						if(writeRange.getEndRange() < range->getBeginRange()) {
-							ASSERT(nextWrite);
-							if(wrt->get_tid() != beginAction->get_tid()) {
-								printWriteAndFirstReadByThread(execution, beginAction->get_cv()->getClock(wrt->get_tid()), beginAction);
-								nextWrite->print();
-							} else {
-								nextWrite->print();
-								model_print(">> The flushes have to be inserted before:\n");
-								beginAction->print();
-							}
-						} else if(range->getEndRange() < writeRange.getBeginRange()) {
-							endAction->print();
-							model_print(">> The flushes have to be inserted before:\n");
-							wrt->print();
-						}
-						model_print("****************************\n");
+						model_print(">> The flushes have to be inserted before:\n");
+						wrt->print();
 					}
+					model_print("****************************\n");
+
 					ERROR(execution, wrt, read, "Robustness Violation on Write");
 					if(params->verifierPluginMode > 1) {
 						hasError = true;
@@ -191,30 +191,30 @@ void PMVerifier::mayReadFromAnalysis(ModelAction *read, SnapVector<SnapVector<Pa
 						continue;
 					}
 					if(range->getEndRange() < trd_seq_num) {
-						if(model->getParams()->pmdebug > 0 ) {
-							model_print("******************************\nPMVerifier found Robustness Violation in another thread by read:\n");
-							read->print();
-							model_print("From write:\n");
-							wrt->print();
-							model_print("Conflicts in Thread %u Range:\t", tid);
-							range->print();
-							model_print("\n");
-							ModelAction * beginAction = getActionIndex( beginRangeLastAction.get(execution),i);
-							if(beginAction) {
-								model_print("Thread last begin Action:\n");
-								beginAction->print();
-							}
-							model_print("Thread last end Action:\n");
-							ModelAction *endAction = getActionIndex( endRangeLastAction.get(execution),i);
-							endAction->print();
-							model_print(">> Possible fix: Insert flushes after write(s):\n");
-							if( tid != wrt->get_tid() ) {
-								printWriteAndFirstReadByThread(execution, trd_seq_num, wrt);
-							} else {
-								endAction->print();
-							}
-							model_print("****************************\n");
+
+						model_print("******************************\nPMVerifier found Robustness Violation in another thread by read:\n");
+						read->print();
+						model_print("From write:\n");
+						wrt->print();
+						model_print("Conflicts in Thread %u Range:\t", tid);
+						range->print();
+						model_print("\n");
+						ModelAction * beginAction = getActionIndex( beginRangeLastAction.get(execution),i);
+						if(beginAction) {
+							model_print("Thread last begin Action:\n");
+							beginAction->print();
 						}
+						model_print("Thread last end Action:\n");
+						ModelAction *endAction = getActionIndex( endRangeLastAction.get(execution),i);
+						endAction->print();
+						model_print(">> Possible fix: Insert flushes after write(s):\n");
+						if( tid != wrt->get_tid() ) {
+							printWriteAndFirstReadByThread(execution, trd_seq_num, wrt);
+						} else {
+							endAction->print();
+						}
+						model_print("****************************\n");
+
 
 						ERROR(execution, wrt, read,
 									"ERROR Persistency Bug on read from thread_id= %d\t with clock= %u out of range[%u,%u]\t");
@@ -257,23 +257,23 @@ bool PMVerifier::recordProgress(ModelExecution *exec, ModelAction *action) {
 		ASSERT(cv);
 		thread_id_t tid = int_to_id(i);
 		if(range->getEndRange()<cv->getClock(tid)) {
-			if(model->getParams()->pmdebug > 0) {
-				model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR ~~~~~~~~~~~~\n");
-				range->print();
-				model_print(">> Range Begin Action:\n");
-				ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(exec), i);
-				if(tmpact) {
-					tmpact->print();
-				} else {
-					model_print("No ModelAction Yet\n");
-				}
-				model_print(">> End Range Action:\n");
-				tmpact = getActionIndex(endRangeLastAction.get(exec), i);
+
+			model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR ~~~~~~~~~~~~\n");
+			range->print();
+			model_print(">> Range Begin Action:\n");
+			ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(exec), i);
+			if(tmpact) {
 				tmpact->print();
-				model_print(">> The write causing the bug:\n");
-				action->print();
-				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			} else {
+				model_print("No ModelAction Yet\n");
 			}
+			model_print(">> End Range Action:\n");
+			tmpact = getActionIndex(endRangeLastAction.get(exec), i);
+			tmpact->print();
+			model_print(">> The write causing the bug:\n");
+			action->print();
+			model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
 			if(!exec->has_asserted() && model->getParams()->verifierPluginMode > 1) {
 				exec->set_assert();
 			}
@@ -388,28 +388,28 @@ void PMVerifier::updateThreadsEndRangeafterWrite(ModelExecution *execution, Mode
 		if(nextWrite) {
 			Range *range = getOrCreateRange(ranges, i);
 			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
-				if(model->getParams()->pmdebug > 0) {
-					model_print("~~~~~~~~~ PMVerifier found Robustness Violation in read from address = %p ~~~~~~~~~~~~\n", curraddress);
-					range->print();
-					model_print(">> Range Begin Action:\n");
-					ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
-					if(tmpact) {
-						tmpact->print();
-					} else {
-						model_print("No ModelAction Yet!\n");
-					}
-					model_print(">> End Range Action:\n");
-					tmpact = getActionIndex(endRangeLastAction.get(execution), i);
+
+				model_print("~~~~~~~~~ PMVerifier found Robustness Violation in read from address = %p ~~~~~~~~~~~~\n", curraddress);
+				range->print();
+				model_print(">> Range Begin Action:\n");
+				ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
+				if(tmpact) {
 					tmpact->print();
-					model_print(">> Possible fix: Insert flushes after write(s):\n");
-					nextWrite->print();
-					mllnode<ModelAction *> * nextNode = nextWrite->getActionRef()->getNext();
-					if(nextNode && nextNode->getVal()) {
-						model_print(">> The flushes have to be inserted before:\n");
-						nextNode->getVal()->print();
-					}
-					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				} else {
+					model_print("No ModelAction Yet!\n");
 				}
+				model_print(">> End Range Action:\n");
+				tmpact = getActionIndex(endRangeLastAction.get(execution), i);
+				tmpact->print();
+				model_print(">> Possible fix: Insert flushes after write(s):\n");
+				nextWrite->print();
+				mllnode<ModelAction *> * nextNode = nextWrite->getActionRef()->getNext();
+				if(nextNode && nextNode->getVal()) {
+					model_print(">> The flushes have to be inserted before:\n");
+					nextNode->getVal()->print();
+				}
+				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
 				if(!execution->has_asserted() && model->getParams()->verifierPluginMode > 1) {
 					execution->set_assert();
 				}
@@ -512,23 +512,23 @@ bool PMVerifier::checkBeginRangeInversion(ModelExecution *exec, ModelAction *act
 		ASSERT(cv);
 		thread_id_t tid = int_to_id(i);
 		if(range->getEndRange()<cv->getClock(tid)) {
-			if(model->getParams()->pmdebug > 0 ) {
-				model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR (precheck)~~~~~~~~~~~~\n");
-				range->print();
-				model_print(">> Range Begin Action:\n");
-				ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(exec), i);
-				if(tmpact) {
-					tmpact->print();
-				} else {
-					model_print("No ModelAction Yet\n");
-				}
-				model_print(">> End Range Action:\n");
-				tmpact = getActionIndex(endRangeLastAction.get(exec), i);
+
+			model_print("~~~~~~~~~ FATAL RANGE INVERSION ERROR (precheck)~~~~~~~~~~~~\n");
+			range->print();
+			model_print(">> Range Begin Action:\n");
+			ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(exec), i);
+			if(tmpact) {
 				tmpact->print();
-				model_print(">> The write causing the bug:\n");
-				action->print();
-				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			} else {
+				model_print("No ModelAction Yet\n");
 			}
+			model_print(">> End Range Action:\n");
+			tmpact = getActionIndex(endRangeLastAction.get(exec), i);
+			tmpact->print();
+			model_print(">> The write causing the bug:\n");
+			action->print();
+			model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
 			return true;
 		}
 	}
@@ -546,28 +546,28 @@ bool PMVerifier::checkEndRangeInversion(ModelExecution *execution, ModelAction *
 		if(nextWrite) {
 			Range *range = getOrCreateRange(ranges, i);
 			if(range->getBeginRange()>nextWrite->get_seq_number()-1) {
-				if(model->getParams()->pmdebug > 0 ) {
-					model_print("~~~~~~~~~ PMVerifier found Robustness Violation in read from address = %p ~~~~~~~~~~~~\n", curraddress);
-					range->print();
-					model_print(">> Range Begin Action:\n");
-					ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
-					if(tmpact) {
-						tmpact->print();
-					} else {
-						model_print("No ModelAction Yet!\n");
-					}
-					model_print(">> End Range Action:\n");
-					tmpact = getActionIndex(endRangeLastAction.get(execution), i);
+
+				model_print("~~~~~~~~~ PMVerifier found Robustness Violation in read from address = %p ~~~~~~~~~~~~\n", curraddress);
+				range->print();
+				model_print(">> Range Begin Action:\n");
+				ModelAction *tmpact = getActionIndex(beginRangeLastAction.get(execution), i);
+				if(tmpact) {
 					tmpact->print();
-					model_print(">> Possible fix: Insert flushes after write(s):\n");
-					nextWrite->print();
-					mllnode<ModelAction *> * nextNode = nextWrite->getActionRef()->getNext();
-					if(nextNode && nextNode->getVal()) {
-						model_print(">> The flushes have to be inserted before:\n");
-						nextNode->getVal()->print();
-					}
-					model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				} else {
+					model_print("No ModelAction Yet!\n");
 				}
+				model_print(">> End Range Action:\n");
+				tmpact = getActionIndex(endRangeLastAction.get(execution), i);
+				tmpact->print();
+				model_print(">> Possible fix: Insert flushes after write(s):\n");
+				nextWrite->print();
+				mllnode<ModelAction *> * nextNode = nextWrite->getActionRef()->getNext();
+				if(nextNode && nextNode->getVal()) {
+					model_print(">> The flushes have to be inserted before:\n");
+					nextNode->getVal()->print();
+				}
+				model_print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
 				return true;
 			}
 		}
